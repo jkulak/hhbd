@@ -1,3 +1,25 @@
+<?php
+// Generate simple math CAPTCHA
+$num1 = rand(1, 10);
+$num2 = rand(1, 10);
+$captchaAnswer = $num1 + $num2;
+$captchaHash = md5($captchaAnswer . 'hhbd_salt_2024');
+?>
+<?php // Display error messages ?>
+<?php if (isset($_GET['postError'])): ?>
+  <div class="error-message" style="color: #c00; padding: 8px; margin-bottom: 10px; background: #fee; border: 1px solid #c00;">
+    <?php if (isset($_GET['captchaError'])): ?>
+      Nieprawidłowa odpowiedź na pytanie zabezpieczające. Spróbuj ponownie.
+    <?php elseif (isset($_GET['emptyComment'])): ?>
+      Komentarz nie może być pusty.
+    <?php elseif (isset($_GET['commentTooLong'])): ?>
+      Komentarz jest za długi (maksymalnie 1000 znaków).
+    <?php else: ?>
+      Wystąpił błąd podczas dodawania komentarza.
+    <?php endif ?>
+  </div>
+<?php endif ?>
+
 <span id="comment-form-show" class="hidden"><a href="?showCommentForm=1" rel="nofollow">Dodaj kolejny komentarz...</a></span>
 <form action="<?php echo $this->url(array(), 'comment') ?>" method="post" id="post-comment">
   <label>Komentarz</label>
@@ -6,17 +28,30 @@
   </div>
   <div>
     <?php if ($this->LoggedIn()): ?>
-      
+
     <?php else: ?>
       <label>Podpis:</label>
       <input type="text" name="author" value="" />
     <?php endif ?>
+
+    <?php // Simple math CAPTCHA for anonymous users ?>
+    <?php if (!$this->LoggedIn()): ?>
+    <div class="captcha-field">
+      <label>Ile to <?php echo $num1 ?> + <?php echo $num2 ?>? (antyspam)</label>
+      <input type="text" name="captcha_answer" value="" autocomplete="off" required />
+      <input type="hidden" name="captcha_hash" value="<?php echo $captchaHash ?>" />
+    </div>
+    <?php endif ?>
+
     <span id="comment-character-count" class="hidden">Pozostało znaków: 1000</span>
     <input type="submit" value="Dodaj komentarz" id="submit" />
   </div>
   <input type="hidden" name="com_object_id" value="<?php echo $this->comObjectId ?>" id="com_object_id">
   <input type="hidden" name="com_object_type" value="<?php echo $this->comObjectType ?>" id="com_object_type">
-  
+
+  <?php // Timestamp check - form loaded time ?>
+  <input type="hidden" name="form_time" value="<?php echo time() ?>" />
+
   <div class="hidden">
     <?php // Honey Pot spam filter field ?>
     <label>Zostaw puste:</label>
