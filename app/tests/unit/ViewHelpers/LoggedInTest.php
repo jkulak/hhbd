@@ -25,6 +25,10 @@ class Zend_View_Helper_LoggedInTest extends TestCase
         // Reset to ensure clean state
         $this->resetZendAuth();
 
+        // Use non-persistent storage to avoid session issues in tests
+        $auth = Zend_Auth::getInstance();
+        $auth->setStorage(new Zend_Auth_Storage_NonPersistent());
+
         $helper = new Zend_View_Helper_LoggedIn();
         $result = $helper->LoggedIn();
 
