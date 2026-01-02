@@ -12,18 +12,3 @@ COPY conf/nginx/default.conf /etc/nginx/conf.d/default.conf
 
 # Copy public assets (static files served by nginx)
 COPY app/public /var/www/html/app/public
-
-# Copy content (covers, images, etc.)
-COPY content /var/www/html/content
-
-# Normalize filenames from NFD (macOS) to NFC (standard)
-# This fixes issues with Polish/accented characters in URLs
-RUN find /var/www/html/content -depth -name '*' | perl -MUnicode::Normalize -MEncode -ne \
-    'chomp; \
-     $decoded = decode("UTF-8", $_); \
-     $nfc = NFC($decoded); \
-     $nfc_path = encode("UTF-8", $nfc); \
-     if ($_ ne $nfc_path && -e $_) { \
-       print "Renaming: $_ -> $nfc_path\n"; \
-       rename($_, $nfc_path) or warn "Failed: $!"; \
-     }'

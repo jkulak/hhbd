@@ -48,3 +48,6 @@ node_modules/
 
 # Vendor directory is handled by composer install in Dockerfile
 app/vendor/
+
+# Ignore content folder
+content/
