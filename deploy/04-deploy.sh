@@ -14,7 +14,6 @@
 #   ./04-deploy.sh nginx                        # Deploy only nginx service
 #   ./04-deploy.sh backoffice                   # Deploy only backoffice service
 #   ./04-deploy.sh app nginx                    # Deploy app and nginx services
-#   ./04-deploy.sh --with-db-import dump.sql    # Deploy all + import database
 #
 
 set -euo pipefail
@@ -29,7 +28,6 @@ REMOTE_DIR="/opt/hhbd"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Parse arguments
-DB_DUMP=""
 DEPLOY_APP=false
 DEPLOY_NGINX=false
 DEPLOY_BACKOFFICE=false
@@ -37,15 +35,6 @@ SERVICES_SPECIFIED=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --with-db-import)
-            if [[ -z "${2:-}" || "${2:-}" == --* ]]; then
-                echo "Error: --with-db-import requires a path to the SQL dump file"
-                echo "Usage: $0 [--with-db-import dump.sql] [app] [nginx] [backoffice]"
-                exit 1
-            fi
-            DB_DUMP="$2"
-            shift 2
-            ;;
         app)
             DEPLOY_APP=true
             SERVICES_SPECIFIED=true
@@ -63,7 +52,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--with-db-import dump.sql] [app] [nginx] [backoffice]"
+            echo "Usage: $0 [app] [nginx] [backoffice]"
             exit 1
             ;;
     esac
@@ -126,17 +115,7 @@ if [ -f "${SCRIPT_DIR}/.env.production" ]; then
         "${VM_NAME}:${REMOTE_DIR}/.env"
 fi
 
-# Copy database dump if provided
-if [ -n "$DB_DUMP" ]; then
-    if [ -f "$DB_DUMP" ]; then
-        log_info "Uploading database dump..."
-        gcloud compute scp --zone="${ZONE}" \
-            "$DB_DUMP" "${VM_NAME}:${REMOTE_DIR}/init.sql"
-    else
-        log_error "Database dump not found: $DB_DUMP"
-        exit 1
-    fi
-fi
+
 
 # Deploy on server
 log_info "Deploying containers..."
@@ -165,19 +144,7 @@ gcloud compute ssh "${VM_NAME}" --zone="${ZONE}" --command="
     docker compose -f compose.gcp.yaml ps
 "
 
-# Import database if dump was provided
-if [ -n "$DB_DUMP" ]; then
-    log_info "Waiting for database to be ready..."
-    sleep 15
 
-    log_info "Importing database..."
-    gcloud compute ssh "${VM_NAME}" --zone="${ZONE}" --command="
-        cd ${REMOTE_DIR}
-        docker compose -f compose.gcp.yaml exec -T db mysql -u hhbd -phhbd_password hhbd < init.sql
-        rm init.sql
-        echo 'Database import complete!'
-    "
-fi
 
 # Get the static IP
 STATIC_IP=$(gcloud compute addresses describe "${VM_NAME}-ip" --region="us-central1" --format='get(address)' 2>/dev/null || echo "$VM_IP")
