@@ -1,0 +1,50 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Documentation
+*.md
+!README.md
+
+# Development files
+.env
+.env.*
+docker-compose*.yml
+compose*.yaml
+!compose.yaml
+
+# Deployment scripts
+deploy/
+
+# Logs
+*.log
+logs/
+
+# Cache and temporary files
+.cache
+*.cache
+tmp/
+temp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Database dumps
+*.sql
+database/
+
+# Running/backup directories
+_RUNNING/
+
+# Node modules (if any)
+node_modules/
+
+# Vendor directory is handled by composer install in Dockerfile
+app/vendor/

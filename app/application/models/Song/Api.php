@@ -67,7 +67,7 @@ class Model_Song_Api extends Jkl_Model_Api
     
     $params['featured'] = Model_Album_Api::getInstance()->getSongAlbums($id, null);
 
-    $max = sizeof($params['featured']);
+    $max = isset($params['featured']->items) ? count($params['featured']->items) : 0;
     if ($max > 0) {
       for ($i=0; $i < $max; $i++) { 
         if ($params['featured']->items[$i]->artist->name != 'V/A') {
@@ -90,7 +90,7 @@ class Model_Song_Api extends Jkl_Model_Api
     $params['albumArtist'] = $albumArtist;
 
     // assign album artist to a song, if it doesnt have artist assigned
-    if (sizeof($params['artist']->items) < 1) {
+    if (!isset($params['artist']->items) || count($params['artist']->items) < 1) {
       $params['artist']->add($albumArtist);
     }
     
@@ -172,44 +172,14 @@ class Model_Song_Api extends Jkl_Model_Api
     return $this->_getList($query);    
   }
 
+  /**
+   * YouTube API v2 (Zend_Gdata_YouTube) was deprecated and removed.
+   * This method now returns false. YouTube URLs should be added manually via backoffice.
+   */
   private function _getYouTubeUrl($searchTerms = 'polski hip-hop')
   {
-    $mc = Zend_Registry::get('Memcached');
-    $url = $mc->_cache->load(md5('clip' . $searchTerms));
-    
-    if (empty($url)) {
-      $videoFeed = array();
-      $yt = new Zend_Gdata_YouTube();
-      $yt->setMajorProtocolVersion(2);
-      $query = $yt->newVideoQuery();
-      $query->setSafeSearch('none');
-      $query->setVideoQuery($searchTerms);
-      $query->setMaxResults(1);
-      $videoFeed = $yt->getVideoFeed($query->getQueryUrl(2));
-    
-      if (sizeof($videoFeed) < 1) {
-        $words = explode(' ', $searchTerms);
-        $retry = '';
-        $max = sizeof($words) - 1;
-        for ($i=0; $i < $max; $i++) { 
-          $retry .= $words[$i] . ' ';
-        }
-        $query->setVideoQuery($retry);
-        $videoFeed = $yt->getVideoFeed($query->getQueryUrl(2));
-      }
-      
-      if (isset($videoFeed[0])) {
-        $result = $videoFeed[0]->getFlashPlayerUrl();
-        $mc->_cache->save(serialize($result), md5('clip' . $searchTerms));
-      }
-      else {
-        // after two attempts nothig was found
-        $result = false;
-      }
-    } else {
-      $result = unserialize($url);
-    }
-    return $result;
+    // YouTube API v2 is no longer available
+    return false;
   }
   
   public function getLike($like, $limit = 25, $page = 1)
@@ -344,10 +314,10 @@ class Model_Song_Api extends Jkl_Model_Api
       $artists->add($value);
     }
     
-    //if empty 
+    //if empty
     //get list of albums
     // seat first album artist not v/a as artist
-    if (sizeof($artists->items) < 1) {
+    if (count($artists->items) < 1) {
       $featured = Model_Album_Api::getInstance()->getSongAlbums($id, null);
       foreach ($featured->items as $key => $value) {
         if ($value->artist->name != 'V/A') {
@@ -358,7 +328,7 @@ class Model_Song_Api extends Jkl_Model_Api
     
     // if still empty
     // set song's artist
-    if (sizeof($artists->items) < 1) {
+    if (count($artists->items) < 1) {
       $artist = Model_Artist_Api::getInstance()->getSongArtist($id); 
       foreach ($featured->items as $key => $value) {
         $artists->add($value);
