@@ -25,7 +25,6 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-hhbd_password}
       # Feature flags
       SHOW_ADS: ${SHOW_ADS:-true}
-      SHOW_SHARE_IT: ${SHOW_SHARE_IT:-true}
       # PHP memory limit
       PHP_MEMORY_LIMIT: "128M"
     volumes:
