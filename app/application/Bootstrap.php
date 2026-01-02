@@ -42,9 +42,6 @@ class Bootstrap extends Zend_Application_Bootstrap_Bootstrap
     if (getenv('SHOW_ADS') !== false) {
       $options['app']['showAds'] = filter_var(getenv('SHOW_ADS'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
     }
-    if (getenv('SHOW_SHARE_IT') !== false) {
-      $options['app']['showShareIt'] = filter_var(getenv('SHOW_SHARE_IT'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
-    }
 
     $this->setOptions($options);
   }
@@ -70,10 +67,6 @@ class Bootstrap extends Zend_Application_Bootstrap_Bootstrap
     // Read Resources section and put it in registry
     $resourcesConfig = $this->getOption('resources');
     Zend_Registry::set('Config_Resources', $resourcesConfig);
-    
-    // Read Resources section and put it in registry
-    $resourcesConfig = $this->getOption('resources');
-
 
     // Start routing
     $frontController = Zend_Controller_Front::getInstance();
