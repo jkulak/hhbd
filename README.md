@@ -97,4 +97,3 @@ docker compose logs -f
 | --------- | ------------- | ------------ |
 | Error display | Shown | Hidden |
 | Opcache timestamps | Validated | Disabled |
-| FirePHP | Enabled | Disabled |

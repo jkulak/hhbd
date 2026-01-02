@@ -2,8 +2,6 @@ services:
   app:
     environment:
       APPLICATION_ENV: production
-      # Production: disable debug
-      DEBUG_FIREPHP: "false"
       # Mail - set these in .env or secrets
       # MAIL_HOST: smtp.example.com
       # MAIL_USERNAME: user

@@ -45,9 +45,6 @@ class Bootstrap extends Zend_Application_Bootstrap_Bootstrap
     if (getenv('SHOW_SHARE_IT') !== false) {
       $options['app']['showShareIt'] = filter_var(getenv('SHOW_SHARE_IT'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
     }
-    if (getenv('DEBUG_FIREPHP') !== false) {
-      $options['app']['debug']['firePhpEnable'] = filter_var(getenv('DEBUG_FIREPHP'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
-    }
 
     $this->setOptions($options);
   }

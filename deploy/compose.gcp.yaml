@@ -26,7 +26,6 @@ services:
       # Feature flags
       SHOW_ADS: ${SHOW_ADS:-true}
       SHOW_SHARE_IT: ${SHOW_SHARE_IT:-true}
-      DEBUG_FIREPHP: "false"
       # PHP memory limit
       PHP_MEMORY_LIMIT: "128M"
     volumes:
