@@ -97,3 +97,32 @@ docker compose logs -f
 | --------- | ------------- | ------------ |
 | Error display | Shown | Hidden |
 | Opcache timestamps | Validated | Disabled |
+
+## Testing
+
+### Smoke Tests
+
+Smoke tests verify that key pages are accessible and display data from the database.
+
+Run locally (after `docker compose up` and database import):
+
+```bash
+./tests/smoke-test.sh
+```
+
+Or with a custom URL:
+
+```bash
+./tests/smoke-test.sh http://localhost:8080
+```
+
+The tests check:
+
+- Homepage loads with content
+- Album, Artist, and Label listing pages work
+- Detail pages display database data
+- Search functionality works
+
+### CI/CD
+
+Smoke tests run automatically on GitHub Actions for every push and pull request. See `.github/workflows/smoke-tests.yml`.
