@@ -4,7 +4,7 @@
     "type": "project",
     "require": {
         "php": "^7.4 || ^8.0",
-        "zendframework/zendframework1": "^1.12"
+        "shardj/zf1-future": "^1.24"
     },
     "require-dev": {
         "mockery/mockery": "^1.6",
