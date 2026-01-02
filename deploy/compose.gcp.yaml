@@ -33,6 +33,8 @@ services:
       DEBUG_FIREPHP: "false"
       # PHP memory limit
       PHP_MEMORY_LIMIT: "128M"
+    volumes:
+      - /opt/hhbd/content:/var/www/html/content
     deploy:
       resources:
         limits:
@@ -50,6 +52,8 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+    volumes:
+      - /opt/hhbd/content:/var/www/html/content
     depends_on:
       app:
         condition: service_healthy
@@ -64,6 +68,8 @@ services:
     restart: unless-stopped
     ports:
       - "8081:80"
+    volumes:
+      - /opt/hhbd/content:/var/www/html/content
     depends_on:
       db:
         condition: service_healthy
