@@ -1,0 +1,146 @@
+#
+# HHBD - Production Docker Compose for GCP Free Tier
+#
+# Optimized for e2-micro (1GB RAM) with memory limits and tuned settings
+#
+# Usage:
+#   docker compose -f compose.gcp.yaml up -d
+#   docker compose -f compose.gcp.yaml --profile tools up -d adminer
+#
+
+services:
+  # PHP-FPM Application Server
+  app:
+    image: us-central1-docker.pkg.dev/hhbd-483111/hhbd/app:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APPLICATION_ENV: production
+      # Database
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:-hhbd}
+      DB_USER: ${DB_USER:-hhbd}
+      DB_PASSWORD: ${DB_PASSWORD:-hhbd_password}
+      # Cache
+      CACHE_ENABLED: "true"
+      CACHE_HOST: memcached
+      CACHE_PORT: "11211"
+      # Feature flags
+      SHOW_ADS: ${SHOW_ADS:-true}
+      SHOW_SHARE_IT: ${SHOW_SHARE_IT:-true}
+      DEBUG_FIREPHP: "false"
+      # PHP memory limit
+      PHP_MEMORY_LIMIT: "128M"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "php-fpm-healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Nginx Web Server
+  nginx:
+    image: us-central1-docker.pkg.dev/hhbd-483111/hhbd/nginx:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      app:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  # Backoffice Admin Panel
+  backoffice:
+    image: us-central1-docker.pkg.dev/hhbd-483111/hhbd/backoffice:latest
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APPLICATION_ENV: production
+      PORT: 80
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:-hhbd}
+      DB_USER: ${DB_USER:-hhbd}
+      DB_PASSWORD: ${DB_PASSWORD:-hhbd_password}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # Memcached Cache
+  memcached:
+    image: memcached:1.6-alpine
+    restart: unless-stopped
+    command: memcached -m 64
+    deploy:
+      resources:
+        limits:
+          memory: 96M
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "11211"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # MariaDB Database
+  db:
+    image: mariadb:10.11.8
+    restart: unless-stopped
+    # Critical: Limit memory usage for e2-micro
+    command: >
+      --innodb-buffer-pool-size=128M
+      --max-connections=20
+      --innodb-log-file-size=32M
+      --innodb-flush-log-at-trx-commit=2
+      --innodb-flush-method=O_DIRECT
+      --skip-name-resolve
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
+      MYSQL_DATABASE: ${DB_NAME:-hhbd}
+      MYSQL_USER: ${DB_USER:-hhbd}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-hhbd_password}
+    volumes:
+      - db_data:/var/lib/mysql
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Adminer - Database Management (only start when needed)
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+    profiles:
+      - tools
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+volumes:
+  db_data:

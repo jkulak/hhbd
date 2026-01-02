@@ -43,3 +43,6 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Copy application code
 COPY app/ ./
+
+# Copy production PHP configuration
+COPY conf/php/production.ini /usr/local/etc/php/conf.d/99-production.ini

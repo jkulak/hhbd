@@ -6,6 +6,8 @@
 # Environment
 .env
 .env.local
+.env.production
+deploy/.env.production
 *.local.php
 **/config/app.ini
 
