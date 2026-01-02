@@ -1,6 +1,8 @@
 <?php
 
 define('MAX_COMMENT_LENGTH', 1000);
+define('MIN_FORM_TIME_SECONDS', 2);  // Minimum time to fill form (bot protection)
+define('CAPTCHA_SALT', 'hhbd_salt_2024');
 
 class CommentController extends Zend_Controller_Action
 {
@@ -42,6 +44,27 @@ class CommentController extends Zend_Controller_Action
 
       // it's just spam, exit
       exit();
+    }
+
+    // Verify timestamp (bot detection - forms submitted too quickly)
+    $formTime = isset($this->params['form_time']) ? (int)$this->params['form_time'] : 0;
+    $timeDiff = time() - $formTime;
+    if ($formTime > 0 && $timeDiff < MIN_FORM_TIME_SECONDS) {
+      Zend_Registry::get('Logger')->info('Bot detected (too fast): ' . $timeDiff . 's - content: ' . $content);
+      exit();
+    }
+
+    // Verify CAPTCHA for anonymous users
+    $captchaFailed = false;
+    if (!Zend_Auth::getInstance()->hasIdentity()) {
+      $captchaAnswer = isset($this->params['captcha_answer']) ? trim($this->params['captcha_answer']) : '';
+      $captchaHash = isset($this->params['captcha_hash']) ? $this->params['captcha_hash'] : '';
+      $expectedHash = md5($captchaAnswer . CAPTCHA_SALT);
+
+      if (empty($captchaAnswer) || $expectedHash !== $captchaHash) {
+        Zend_Registry::get('Logger')->info('CAPTCHA failed - answer: ' . $captchaAnswer . ' - author: ' . $author);
+        $captchaFailed = true;
+      }
     }
 
     switch ($this->params['com_object_type']) {
@@ -96,8 +119,15 @@ class CommentController extends Zend_Controller_Action
       header("Location: /" . str_replace(' ', '+', $redirect));
       exit();
     }
-    
-        
+
+    // verify CAPTCHA (redirect with error so user can retry)
+    if ($captchaFailed) {
+      $redirect .= '?postError=1&captchaError=1#comments';
+      header("Location: /" . str_replace(' ', '+', $redirect));
+      exit();
+    }
+
+
     $result = Model_Comment_Api::getInstance()->postComment($content, $author, $authorIp, $objectId, $objectType, $authorId);
     
     
