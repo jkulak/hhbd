@@ -49,7 +49,7 @@ hhbd-new/
 | app | 9000 | PHP-FPM application server |
 | backoffice | 8081 | Backoffice admin panel (Apache) |
 | adminer | 8082 | Database management |
-| db | 3306 | MySQL 8.0 database |
+| db | 3306 | MariaDB database |
 | memcached | 11211 | Cache server |
 
 ## Development

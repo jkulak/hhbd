@@ -76,9 +76,9 @@ services:
       timeout: 5s
       retries: 3
 
-  # MySQL Database
+  # MariaDB Database (Alpine-based, ~50MB)
   db:
-    image: mysql:8.0
+    image: mariadb:10.11.8
     ports:
       - "3306:3306"
     environment:
