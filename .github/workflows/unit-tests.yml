@@ -1,0 +1,42 @@
+name: Unit Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          extensions: mbstring, xml, pdo, pdo_mysql
+          coverage: xdebug
+
+      - name: Install Composer dependencies
+        working-directory: app
+        run: composer install --prefer-dist --no-progress
+
+      - name: Run PHPUnit tests
+        working-directory: app
+        run: ./vendor/bin/phpunit -c tests/phpunit.xml --testdox
+
+      - name: Run PHPUnit with coverage
+        working-directory: app
+        run: ./vendor/bin/phpunit -c tests/phpunit.xml --coverage-text --coverage-clover=coverage.xml
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        with:
+          file: app/coverage.xml
+          fail_ci_if_error: false
+        continue-on-error: true

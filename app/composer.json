@@ -6,6 +6,10 @@
         "php": "^7.4 || ^8.0",
         "zendframework/zendframework1": "^1.12"
     },
+    "require-dev": {
+        "mockery/mockery": "^1.6",
+        "phpunit/phpunit": "^9.6"
+    },
     "autoload": {
         "psr-0": {
             "Jkl_": "library/"

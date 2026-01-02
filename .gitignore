@@ -39,3 +39,8 @@ docker-compose.override.yml
 /_RUNNING/
 WARP.md
 .claude
+
+# Tests
+/app/tests/coverage/
+/app/tests/.phpunit.cache/
+coverage.xml
