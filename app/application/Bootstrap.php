@@ -38,17 +38,6 @@ class Bootstrap extends Zend_Application_Bootstrap_Bootstrap
       $options['resources']['mail']['defaultFrom']['name'] = getenv('MAIL_FROM_NAME');
     }
 
-    // Cache configuration
-    if (getenv('CACHE_ENABLED') !== false) {
-      $options['app']['cache']['front']['caching'] = filter_var(getenv('CACHE_ENABLED'), FILTER_VALIDATE_BOOLEAN);
-    }
-    if (getenv('CACHE_HOST')) {
-      $options['app']['cache']['backend']['host'] = getenv('CACHE_HOST');
-    }
-    if (getenv('CACHE_PORT')) {
-      $options['app']['cache']['backend']['port'] = (int) getenv('CACHE_PORT');
-    }
-
     // Feature flags
     if (getenv('SHOW_ADS') !== false) {
       $options['app']['showAds'] = filter_var(getenv('SHOW_ADS'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0;

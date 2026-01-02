@@ -30,11 +30,7 @@ class ErrorController extends Zend_Controller_Action
                   case 2002:
                     $this->_forward('exception-db-connection-failed');
                     break;
-                    
-                  case Jkl_Cache_Exception::EXCEPTION_MEMCACHED_CONNECTION_FAILED:
-                    $this->_forward('exception-memcached-connection-failed');
-                    break;
-                    
+
                   default:
                     $this->view->message = 'Exception caught (' . get_class($errors->exception) . '), but no specific handler in ErrorHandler defined';
                     $this->view->exception = $errors->exception;
@@ -73,12 +69,6 @@ class ErrorController extends Zend_Controller_Action
     public function exceptionDbConnectionFailedAction()
     {
       $this->view->message = 'Nie udało się połączyć z bazą danych...';
-      $this->renderScript('error/error.phtml');
-    }
-    
-    public function exceptionMemcachedConnectionFailedAction()
-    {
-      $this->view->message = 'Nie udało się połączyć z Memcached.';
       $this->renderScript('error/error.phtml');
     }
 }

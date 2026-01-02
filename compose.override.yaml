@@ -2,8 +2,7 @@ services:
   app:
     environment:
       APPLICATION_ENV: development
-      # Development: disable cache, enable debug
-      CACHE_ENABLED: "false"
+      # Development: enable debug
       DEBUG_FIREPHP: "true"
     volumes:
       - ./app:/var/www/html/app
