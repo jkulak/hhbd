@@ -54,7 +54,6 @@ hhbd-new/
 | backoffice | 8081 | Backoffice admin panel (Apache) |
 | adminer | 8082 | Database management |
 | db | 3306 | MariaDB database |
-| memcached | 11211 | Cache server |
 
 ## Development
 
@@ -97,6 +96,5 @@ docker compose logs -f
 | Setting | Development | Production |
 | --------- | ------------- | ------------ |
 | Error display | Shown | Hidden |
-| Cache lifetime | 1800s | 3600s |
 | Opcache timestamps | Validated | Disabled |
 | FirePHP | Enabled | Disabled |

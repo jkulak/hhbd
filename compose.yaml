@@ -16,10 +16,6 @@ services:
       DB_NAME: hhbd
       DB_USER: hhbd
       DB_PASSWORD: hhbd_password
-      # Cache (Memcached)
-      CACHE_ENABLED: "true"
-      CACHE_HOST: memcached
-      CACHE_PORT: "11211"
       # Feature flags
       SHOW_ADS: "true"
       SHOW_SHARE_IT: "true"
@@ -65,16 +61,6 @@ services:
       DB_NAME: hhbd
       DB_USER: hhbd
       DB_PASSWORD: hhbd_password
-
-  # Memcached for caching
-  memcached:
-    image: memcached:1.6-alpine
-    command: memcached -m 64
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "11211"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
 
   # MariaDB Database (Alpine-based, ~50MB)
   db:
