@@ -1,0 +1,18 @@
+/* the humans responsible & colophon */
+/* humanstxt.org */
+
+/* TEAM */
+  Chief Editor: Marcin Kazmiruk
+  E-mail: marcin.kazmiruk@gmail.com
+  Location: Białystok, Poland
+
+  Developer, designer, UX: Jakub Kułak
+  Site: http://www.webascrazy.net
+  Twitter: jakub_kulak
+  Location: Warsaw, Poland
+
+/* SITE */
+  Standards: HTML, CSS, JavaScript
+  Components: jQuery
+  Technology: PHP, Zend Framework, Memcached, Nginx
+

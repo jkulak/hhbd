@@ -1,0 +1,24 @@
+<div id="main">
+  <h1><?php echo $this->title ?></h1>
+  <?php if ($this->paginator): ?>
+    <?php echo $this->paginator; ?>
+  <?php endif ?>
+  
+  <div class="list">
+    <?php echo $this->partial('album/_table.phtml', array('albums' => $this->albums)) ?>
+  </div>
+  <?php if ($this->paginator): ?>
+    <?php echo $this->paginator; ?>
+  <?php endif ?>
+
+</div>
+
+<div id="additional">
+  <div class="box googleads">
+    <h3 class="hidden">Google Ads</h3>
+    <?php echo $this->partial('common/googleAds/_rectangle.phtml'); ?>
+  </div>
+  <?php echo $this->render('album/box/_bestRated.phtml') ?>
+
+  <?php echo $this->partial('album/box/_list.phtml', array('boxId' => 'artistsalbums', 'boxHeader' => 'Najpopularniejsze albumy', 'albums' => $this->popularAlbums)) ?>
+</div>

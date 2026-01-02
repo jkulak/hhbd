@@ -1,0 +1,9 @@
+<ol>
+  <?php foreach ($this->artists->items as $key => $artist): ?>
+    <li>
+      <?php echo $this->partial('artist/_link.phtml', array('artist' => $artist)) ?> <?php if (isset($artist->albumCount)): ?>
+        (<?php echo $artist->albumCount ?>)
+      <?php endif ?>
+    </li>
+  <?php endforeach ?>
+</ol>

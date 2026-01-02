@@ -1,0 +1,137 @@
+.container
+{
+    width: 750px;
+    padding: 0px;
+    margin: 0px;
+}
+
+.leftsite
+{
+    float: left;
+    width: 200px;
+    Xbackground-color: #BBBBBB;
+}
+
+.rightsite
+{
+    float: right;
+    width: 532px;
+    margin-left: 8px;
+    padding: 4px;
+}
+
+.rightsiteh {
+    font-weight: bold;
+    padding: 4px;
+    height: 14px;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+
+.rbox
+{
+    background-color: #c9d8e9;
+    padding: 4px;
+    font-size: 10px;
+    margin-bottom: 4px;
+    border: 1px #7f9fba solid;
+}
+
+.maxlen
+{
+    width: 516px;
+}
+
+.menubox
+{
+    background-color: #DDDDDD;
+    border: 1px #888888 solid;
+    padding: 4px;
+    font-size: 10px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    line-height: 16px;
+}
+
+.menuboxh
+{
+    font-weight: bold;
+    padding: 4px;
+    height: 15px;
+    background-color: #AAAAAA;
+    font-size: 12px;
+    line-height: 14px;
+    margin-bottom: 4px;
+    color: white;
+}
+
+.menubox a:link
+{
+    color: black;
+    text-decoration: none;
+    font-weight: bold;
+
+    border: 1px #DDDDDD solid;
+    padding: 0 6px 0 6px;
+    width: 176px;
+    display: block;
+}
+
+.menubox  a:visited
+{
+    color: black;
+    text-decoration: none;
+    font-weight: bold;
+    border: 1px #DDDDDD solid;
+    padding: 0 6px 0 6px;
+    width: 176px;
+    display: block;
+}
+
+.menubox  a:hover
+{
+    background-color: #c9d8e9;
+    border: 1px #7f9fba solid;
+    padding: 0 6px 0 6px;
+}
+
+
+
+.eb
+{
+    width: 160px;
+    height: 18px;
+    padding: 2px;
+    margin: 0;
+}
+
+.btn
+{
+    xwidth: 100px;
+    height: 24px;
+     font-weight: bold;
+}
+
+BODY
+{
+    background-color: #EEEEEE;
+    font-size: 10px;
+    font-family: Verdana;
+}
+
+H1
+{
+    text-transform:  uppercase;
+}
+
+FORM
+{
+    margin: 0;
+    padding: 0;
+}
+
+SELECT
+{
+    margin-bottom: 8px;
+}

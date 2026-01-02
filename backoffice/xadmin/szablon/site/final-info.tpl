@@ -1,0 +1,2 @@
+{$info}
+<p>{$fileinfo}</p>

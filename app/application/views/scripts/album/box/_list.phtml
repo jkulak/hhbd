@@ -1,0 +1,19 @@
+<?php if (!empty($this->albums->items)): ?>
+<div class="box" id="<?php echo $this->boxId ?>">
+  <h3><?php echo $this->boxHeader ?></h3>
+  <ol <?php if ($this->showCovers) echo ' class="covers"' ?>>
+    <?php foreach ($this->albums->items as $key => $album): ?>
+      <li>
+      <?php if ($this->showCovers): ?>
+        <a href="<?php echo $this->url(array('id' => $album->id, 'seo' => ($album->artist->url . ' - ' . $album->url)), 'album') ?>">
+        	  <img src="<?php echo $album->thumbnail ?>" alt="Okładka albumu <?php echo $album->title ?>"
+        	  title="<?php echo  $album->artist->name . '<br />' . $album->title . ' (' . $album->year . ')' ?>" 
+        	  class="thumb" />
+        	  </a>
+      <?php else: ?>
+        <?php echo $this->partial('album/_link.phtml', array('album' => $album, 'showArtist' => true)) ?></li>
+      <?php endif ?>
+    <?php endforeach ?>
+  </ol>
+</div>
+<?php endif ?>

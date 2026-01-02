@@ -1,0 +1,27 @@
+<div id="main">
+  <h2>Użytkownik <?php echo $this->user->getDisplayName() ?></h2>
+  <div id="pane">
+    <div class="header">
+      <h2>Info</h2>
+    </div>
+    <p>To odsłona profilu użytkownika <strong><?php echo $this->user->getDisplayName() ?></strong>. Na razie nie ma tutaj żadnych ustawień ani inforacji, jednak pracujemy nad tym i niedługo zaczną się pojawiać nowe opcje.</p>
+    <p>W tej chwili po zalogowaniu możesz zostawiać komentarze, ze swoim podpisem.</p>
+    <p>W najbliższej przyszłości planujemy uruchomić:
+      <ul class="list">
+        <li>Dodawanie albumów do prywatnej kolekcji.</li>
+        <li>Dodawanie albumów do "chcęlisty".</li>
+        <li>Ocenianie albumów, wykonawców, utworów, newsów i wytwóri.</li>
+        <li>Dodawanie sampli do utworów.</li>
+        <li>Dodawanie testków piosenek.</li>
+        <li>Ustawienia profilu.</li>
+      </ul>
+    </p>
+  </div>
+</div>
+
+<div id="aside">
+  <div class="box googleads">
+    <h3 class="hidden">Google Ads</h3>
+    <?php echo $this->partial('common/googleAds/_rectangle.phtml'); ?>
+  </div>
+</div>

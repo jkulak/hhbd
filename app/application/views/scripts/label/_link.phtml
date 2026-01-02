@@ -1,0 +1,7 @@
+<?php if ($this->item->name=='--'): ?>
+  <?php echo $this->item->name ?>
+<?php else: ?>
+<a href="<?php echo $this->url(array('id' => $this->item->id, 'seo' => ($this->item->url)), 'label'); ?>">
+  <?php echo $this->item->name ?>
+</a>
+<?php endif ?>

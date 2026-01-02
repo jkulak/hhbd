@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+  <nav>
+    <home>
+      <uri>/</uri>
+      <label>Home</label>
+      <route>homeSite</route>
+      <pages>
+        
+        <top10>
+          <label>Top 10</label>
+          <route>top10</route>
+          <controller>top</controller>
+          <action>index</action>
+        </top10>
+        
+        <albums>
+          <label>Albums</label>
+          <controller>album</controller>
+          <action>index</action>
+          <route>albums</route>
+        </albums>
+        
+        <announced>
+          <label>Announced</label>
+          <route>announced</route>
+          <controller>album</controller>
+          <action>announced</action>
+        </announced>
+
+        <artists>
+          <label>Artists</label>
+          <controller>artist</controller>
+          <action>index</action>
+          <route>artists</route>
+        </artists>
+        
+        <labels>
+          <label>Labels</label>
+          <controller>label</controller>
+          <action>index</action>
+          <route>labels</route>
+        </labels>
+
+
+      </pages>
+    </home>
+  </nav>
+</config>

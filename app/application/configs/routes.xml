@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configdata>
+  <production>
+    <routes>
+      
+      <homeSite type="Zend_Controller_Router_Route_Static">
+        <route/>
+        <defaults>
+          <controller>index</controller>
+          <action>index</action>
+        </defaults>
+        <reverse/>
+      </homeSite>
+      
+      <about>
+        <route>o-nas.html</route>
+        <defaults>
+          <controller>index</controller>
+          <action>about</action>
+        </defaults>
+        <reverse>o-nas.html</reverse>
+      </about>
+      
+      <contact>
+        <route>kontakt.html</route>
+        <defaults>
+          <controller>index</controller>
+          <action>contact</action>
+        </defaults>
+        <reverse>kontakt.html</reverse>
+      </contact>
+      
+      <top10>
+        <route>top10.html</route>
+        <defaults>
+          <controller>top</controller>
+          <action>index</action>
+        </defaults>
+        <reverse>/top10.html</reverse>
+      </top10>
+      
+      <!-- Albumy Wykonawcy Wytwórnie "O nas" Blog Kontakt "Zasady użytkowania" "Mapa strony" -->
+      <!-- articles -->
+      
+      <albums>
+        <route>albumy.html</route>
+        <defaults>
+          <controller>album</controller>
+          <action>index</action>
+        </defaults>
+      </albums>
+      
+      <!-- <albumsByPage type="Zend_Controller_Router_Route_Regex">
+        <route>albumy.html?page=(/d+)</route>
+        <defaults>
+          <controller>album</controller>
+          <action>index</action>
+        </defaults>
+        <map>
+          <page>1</page>
+        </map>
+        <reverse>albumy/%d.html</reverse>
+      </albumsByPage> -->
+
+      <!-- <albumsByLetter type="Zend_Controller_Router_Route_Regex">
+        <route>albumy/(.).html</route>
+        <defaults>
+          <controller>album</controller>
+          <action>firstletter</action>
+        </defaults>
+        <map>
+          <letter>1</letter>
+        </map>
+        <reverse>albumy/%s.html</reverse>
+      </albumsByLetter> -->
+
+      <announced>
+        <route>premiery.html</route>
+        <defaults>
+          <controller>album</controller>
+          <action>announced</action>
+        </defaults>
+      </announced>
+
+      <album type="Zend_Controller_Router_Route_Regex">
+        <route>(.+)-a(\d+).html</route>
+        <defaults>
+          <controller>album</controller>
+          <action>view</action>
+        </defaults>
+        <map>
+          <seo>1</seo>
+          <id>2</id>
+        </map>
+        <reverse>%s-a%d.html</reverse>
+      </album>
+
+      <artists>
+         <route>wykonawcy.html</route>
+         <defaults>
+           <controller>artist</controller>
+           <action>index</action>
+         </defaults>
+         <reverse>wykonawcy.html</reverse>
+       </artists>
+
+       <artist type="Zend_Controller_Router_Route_Regex">
+         <route>(.+)-p(\d+).html</route>
+         <defaults>
+           <controller>artist</controller>
+           <action>view</action>
+         </defaults>
+         <map>
+           <seo>1</seo>
+           <id>2</id>
+         </map>
+         <reverse>%s-p%d.html</reverse>
+       </artist>
+
+      <labels>
+          <route>wytwornie.html</route>
+          <defaults>
+            <controller>label</controller>
+            <action>index</action>
+          </defaults>
+          <reverse>wytwornie.html</reverse>
+      </labels>
+
+        <label type="Zend_Controller_Router_Route_Regex">
+          <route>(.+)-l(\d+).html</route>
+          <defaults>
+            <controller>label</controller>
+            <action>view</action>
+          </defaults>
+          <map>
+            <seo>1</seo>
+            <id>2</id>
+          </map>
+          <reverse>%s-l%d.html</reverse>
+        </label>
+
+        <song type="Zend_Controller_Router_Route_Regex">
+          <route>(.+)-s(\d+).html</route>
+          <defaults>
+            <controller>song</controller>
+            <action>view</action>
+          </defaults>
+          <map>
+            <seo>1</seo>
+            <id>2</id>
+          </map>
+          <reverse>%s-s%d.html</reverse>
+        </song>
+
+        <news type="Zend_Controller_Router_Route_Regex">
+          <route>(.+)-n(\d+).html</route>
+          <defaults>
+            <controller>news</controller>
+            <action>view</action>
+          </defaults>
+          <map>
+            <seo>1</seo>
+            <id>2</id>
+          </map>
+          <reverse>%s-n%d.html</reverse>
+        </news>
+        
+        <search type="Zend_Controller_Router_Route_Static">
+          <route>szukaj.html</route>
+          <defaults>
+            <controller>search</controller>
+            <action>index</action>
+          </defaults>
+          <reverse>szukaj.html</reverse>
+        </search>
+
+        <redirectPrevUrl type="Zend_Controller_Router_Route_Regex">
+          <route>([anls]{1}|news|album|wytwornia|utwor|wykonawca)/([^/]*).*</route>
+          <defaults>
+            <controller>redirect</controller>
+            <action>index</action>
+          </defaults>
+          <map>
+            <type>1</type>
+            <urlName>2</urlName>
+            <subUrl>3</subUrl>
+          </map>
+          <reverse>www.hhbd.pl</reverse>
+        </redirectPrevUrl>
+        
+        <!-- Comments -->
+        <comment>
+          <route>comments</route>
+          <defaults>
+            <controller>comment</controller>
+            <action>index</action>
+          </defaults>
+        </comment>
+
+        <!-- Viev counting/stats -->
+        <stat>
+          <route>stat</route>
+          <defaults>
+            <controller>stat</controller>
+            <action>index</action>
+          </defaults>
+        </stat>
+
+        <!-- ************* -->
+        <!-- * USER PART * -->
+        <!-- ************* -->
+        
+        <!-- User registration -->
+        <userRegistration>
+          <route>użytkownik/rejestracja.html</route>
+          <defaults>
+            <controller>user</controller>
+            <action>registration</action>
+          </defaults>
+        </userRegistration>
+        
+        <!-- User login -->
+        <userLogin>
+          <route>użytkownik/logowanie.html</route>
+          <defaults>
+            <controller>user</controller>
+            <action>login</action>
+          </defaults>
+        </userLogin>
+        
+        <!-- User logout -->
+        <userLogout>
+          <route>user/logout</route>
+          <defaults>
+            <controller>user</controller>
+            <action>logout</action>
+          </defaults>
+        </userLogout>
+        
+        <!-- User not logged in -->
+        <userNotLoggedIn>
+          <route>użytkownik/niezalogowany.html</route>
+          <defaults>
+            <controller>user</controller>
+            <action>not-logged-in</action>
+          </defaults>
+        </userNotLoggedIn>
+        
+        <user type="Zend_Controller_Router_Route_Regex">
+          <route>użytkownik/(.+),(\d+).html</route>
+          <defaults>
+            <controller>user</controller>
+            <action>view</action>
+          </defaults>
+          <map>
+            <seo>1</seo>
+            <id>2</id>
+          </map>
+          <reverse>użytkownik/%s,%d.html</reverse>
+        </user>
+        
+        <!-- sitemaps -->
+        <sitemap type="Zend_Controller_Router_Route_Regex">
+          <route>sitemap-(.*).xml</route>
+          <defaults>
+            <controller>sitemap</controller>
+            <action>view</action>
+          </defaults>
+          <map>
+            <type>1</type>
+          </map>
+          <reverse>sitemap-%s.xml</reverse>
+        </sitemap>
+        
+        <sitemapIndex>
+          <route>sitemap-index.xml</route>
+          <defaults>
+            <controller>sitemap</controller>
+            <action>index</action>
+          </defaults>
+        </sitemapIndex>
+        
+        <songEditLyrics type="Zend_Controller_Router_Route_Regex">
+          <route>(.+)-s(\d+)\/edytuj-tekst.html</route>
+          <defaults>
+            <controller>song</controller>
+            <action>process-lyrics</action>
+          </defaults>
+          <map>
+            <seo>1</seo>
+            <id>2</id>
+          </map>
+          <reverse>%s-s%d/edytuj-tekst.html</reverse>
+        </songEditLyrics>
+
+        <!-- api -->
+         <apiSongsFlagVideo>
+          <route>api/songs/flag-video</route>
+          <defaults>
+            <controller>song</controller>
+            <action>flag-video</action>
+          </defaults>
+        </apiSongsFlagVideo>
+        
+        <!-- ADMIN INTERFACE ROUTES -->
+        
+        <saveSong>
+          <route>admin-interface/song</route>
+          <defaults>
+            <controller>song</controller>
+            <action>save-lyrics</action>
+          </defaults>
+        </saveSong>
+        
+    </routes>
+  </production>
+  <development extends="production">
+    
+  </development>
+</configdata>

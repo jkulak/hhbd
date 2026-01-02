@@ -1,0 +1,5 @@
+<ul class="letternav">
+  <li><a href="<?php echo $this->url(array(), 'albums') ?>">najnowsze</a></li>
+  <li><a href="<?php echo $this->url(array(), 'announced') ?>">zapowiedziane</a></li>
+  <?php echo $this->partial('common/_letterPaging.phtml', array('firstLetters' => $this->firstLetters, 'url' => 'albumsByLetter')) ?>
+</ul>

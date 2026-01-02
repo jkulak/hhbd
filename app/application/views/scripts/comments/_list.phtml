@@ -1,0 +1,16 @@
+<ul>
+  <?php foreach ($this->items as $key => $value): ?>
+    <li>
+      <span class="br"><?php echo $value->content ?></span>
+      <span class="secondary">
+        <?php if (!empty($value->authorId)): ?>
+          <strong><a href="<?php echo $this->url(array('seo' => $value->author, 'id' => $value->authorId), 'user') ?>"><?php echo $value->author ?></a></strong>
+        <?php else: ?>
+          <?php echo (empty($value->author)?'~anonim':$value->author) ?>
+        <?php endif ?>
+        <?php echo '(' . $value->added . ')' ?>
+      </span>
+      
+    </li>
+  <?php endforeach ?>
+</ul>

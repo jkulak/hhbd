@@ -1,0 +1,14 @@
+<ul>
+  <?php foreach ($this->list as $key => $value): ?>
+  <li>
+    <h3><?php echo $this->partial('news/_link.phtml', array('item' => $value)) ?></h3>
+    <span class="secondary"><?php echo $value->addedNormalized ?></span>
+    <p>
+      <?php if (!empty($value->attachment->url) AND false): ?>
+        <img src="<?php echo $value->attachment->url ?>" title="<?php echo $value->title ?>" alt="Załącznik do artykułu <?php echo $value->title ?>" />
+      <?php endif ?>
+    <?php echo $value->content ?>
+    </p>
+  </li>
+  <?php endforeach ?>
+</ul>

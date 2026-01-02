@@ -1,0 +1,16 @@
+{
+    "name": "jkulak/xadmin",
+    "description": "Xadmin panel",
+    "require": {
+        "katzgrau/klogger": "~1.0",
+        "danielstjules/stringy": "~1.9",
+        "sybio/image-workshop" : "~2.0"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Jakub Kułak",
+            "email": "jakub.kulak@gmail.com"
+        }
+    ]
+}

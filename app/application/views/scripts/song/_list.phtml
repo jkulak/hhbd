@@ -1,0 +1,7 @@
+<ol>
+  <?php foreach ($this->songs->items as $key => $song): ?>
+    <li>
+      <?php echo $this->partial('song/_link.phtml', array('song' => $song, 'showDuration' => true)) ?>
+    </li>
+  <?php endforeach ?>
+</ol>

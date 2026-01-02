@@ -1,0 +1,17 @@
+<div class="list">
+  <table>
+    <theader>
+      <tr><th>Nazwa</th><th>Ilość wydanych albumów</th><th>Strona internetowa</th></tr>
+    </theader>
+    <tbody>
+      <?php foreach ($this->labels->items as $key => $value): ?>
+        <tr>
+          <td><?php echo $this->partial('label/_link.phtml', array('item' =>$value)) ?></td>
+          <td><?php echo $value->albumCount ?></td>
+          <td><?php if (isset($value->website)): ?><?php echo $value->website ?><?php endif ?></td>
+        </tr>
+      <?php endforeach ?>
+    </tbody>
+    <caption class="hidden">Lista polskich wytwóri hip-hopowych</caption>
+  </table>
+</div>

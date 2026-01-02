@@ -1,0 +1,77 @@
+.plaintext	{font-family: Verdana; color: #000000; text-decoration: none; font-size: 11px}
+
+.adminmenulink	{font-family: Verdana; color: #000000; text-decoration: none; font-size: 11px; font-weight: bold}
+:hover.adminmenulink	{font-family: Verdana; color: #1C1C1C; text-decoration: underline; font-size: 11px; font-weight: bold}
+
+.feelink { font-family: Verdana; color: #000000; text-decoration: underline; font-size: 11px}
+
+:hover.feelink { font-family: Verdana; color: #993300; text-decoration: underline; font-size: 11px}
+
+
+.header { font-family: Verdana; color: #000000; text-decoration: none; font-size: 11px; font-weight: bold}
+.headerlink         { font-family: Verdana; color: #000000; text-decoration: none; font-size: 11px; font-weight: bold}
+:hover.headerlink   { font-family: Verdana; color: #993300; text-decoration: underline; font-size: 11px; font-weight: bold}
+
+
+.menu 	{  font-family: Verdana; font-size: 11px; font-weight: bold; color: #333333; text-decoration: none}
+.menulink 	{  font-family: Verdana; font-size: 11px; font-weight: bold; color: #333333; text-decoration: none}
+:hover.menulink {  font-family: Verdana; font-size: 12px; font-weight: bold; color: #993300; text-decoration: underline}
+
+.menusmalllink 	{  font-family: Verdana; font-size: 9px; font-weight: bold; color: #333333; text-decoration: none}
+:hover.menusmalllink {  font-family: Verdana; font-size: 9px; font-weight: bold; color: #333333; text-decoration: underline}
+
+#reviews
+{
+	width: 300px;
+	background-color: #DDC9DE;
+	margin-bottom: 15px;
+}
+
+
+
+BODY {
+
+ SCROLLBAR-FACE-COLOR:       #E2D9B8;
+
+
+ SCROLLBAR-SHADOW-COLOR:     #D3C18E;
+ SCROLLBAR-DARKSHADOW-COLOR: #D3C18E;
+
+ SCROLLBAR-3DLIGHT-COLOR:    #F6F2E1;
+ SCROLLBAR-HIGHLIGHT-COLOR:  #F6F2E1;
+
+
+ SCROLLBAR-ARROW-COLOR:      #F0E9CE;
+
+ SCROLLBAR-TRACK-COLOR:      #F0E9CE;
+
+     }
+body,td,th {
+	font-family: Tahoma;
+	font-size: 11px;
+	color: #000000;
+}
+body {
+	background-color: #F0E9CE;
+	margin-left: 5px;
+	margin-top: 0px;
+	margin-right: 0px;
+	margin-bottom: 0px;
+}
+TEXTAREA, SELECT {
+ padding: 1px;
+ color: #000000;
+ background-color: #E6D9B3;
+ border: solid 2px #7C514A;
+  width = 160px;
+}
+
+
+
+INPUT { 
+ padding: 1px;
+ color: #000000;
+ background-color: #E6D9B3;
+ border: 1px #7C514A solid;
+  width = 160px;
+ } 

@@ -1,0 +1,8 @@
+<a href="<?php echo $this->url(array('id' => $this->song->id, 'seo' => (((!empty($this->song->artist->items[0]))?$this->song->artist->items[0]->url . ' - ':'') . $this->song->url())), 'song'); ?>">
+  <?php echo $this->song->title ?>
+</a>
+<?php if ($this->showDuration): ?>
+  <?php if (!empty($this->song->duration)): ?>
+     (<?php echo $this->song->duration ?>)
+  <?php endif ?>
+<?php endif ?>

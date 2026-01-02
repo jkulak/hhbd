@@ -1,0 +1,16 @@
+<div id="main">
+  <h1>Ups... strona dla zalogowanych użytkowników!</h1>
+  <div class="pane">
+    <p>Jesteś niezalogowany, a strona ta jest dostępna tylko dla naszych zalogowanych użytkowników!</p>
+
+    <p><a href="<?php echo $this->url(array(), 'userLogin') . '?url=' . $this->url(); ?>">Zaloguj się</a>, jeżeli posiadasz już konto.</p>
+
+    <p><a href="<?php echo $this->url(array(), 'userRegistration') ?>">Załóż konto</a>, jeżeli jeszcze nie masz - potrwa to krócej niż 30 sekund.</p>
+  </div>
+</div>
+<div id="aside">
+  <div class="box googleads">
+    <h3 class="hidden">Google Ads</h3>
+    <?php echo $this->partial('common/googleAds/_rectangle.phtml'); ?>
+  </div>
+</div>

@@ -1,0 +1,8 @@
+<div class="box" id="bestrated">
+  <h3>Najlepiej oceniane albumy</h3>
+  <ol>
+    <?php foreach ($this->bestAlbums->items as $key => $album): ?>
+      <li><?php echo $this->partial('album/_link.phtml', array('album' => $album, 'showArtist' => true)) ?> (<?php echo $album->rating ?>)</li>
+    <?php endforeach ?>
+  </ol>
+</div>

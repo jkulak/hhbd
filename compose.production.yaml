@@ -1,0 +1,21 @@
+services:
+  app:
+    environment:
+      APPLICATION_ENV: production
+      # Production: enable cache, disable debug
+      CACHE_ENABLED: "true"
+      DEBUG_FIREPHP: "false"
+      # Mail - set these in .env or secrets
+      # MAIL_HOST: smtp.example.com
+      # MAIL_USERNAME: user
+      # MAIL_PASSWORD: password
+      # MAIL_FROM_EMAIL: noreply@hhbd.pl
+      # MAIL_FROM_NAME: Hhbd
+    volumes:
+      - ./app:/var/www/html/app:ro
+      - ./content:/var/www/html/content:ro
+      - ./conf/php/production.ini:/usr/local/etc/php/conf.d/99-production.ini:ro
+
+  backoffice:
+    environment:
+      APPLICATION_ENV: production

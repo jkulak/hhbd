@@ -1,0 +1,90 @@
+<?php if ((!empty($this->artist->alsoKnownAs->items)) OR (!empty($this->artist->realName))): ?>
+  <?php if ($this->artist->isBand()): ?>
+  Projekt  
+  <?php else: ?>
+  Wykonawca 
+  <?php endif ?>
+  <?php echo $this->artist->name ?> 
+
+  <?php if (!empty($this->artist->alsoKnownAs->items)): ?>
+    znany jest także jako <?php echo implode($this->artist->alsoKnownAs->items, ', ') ?>
+  <?php endif ?>
+
+  <?php if (!empty($this->artist->realName)): ?>
+    naprawdę nazywa się <?php echo $this->artist->realName ?>.
+  <?php endif ?>
+<?php endif ?>
+
+<?php if (!empty($this->artist->since)): ?>
+  <?php if ($this->artist->isBand()): ?>
+    Urodził się 
+  <?php else: ?>
+    Skład został założony w 
+  <?php endif ?>
+  <?php echo $this->artist->since ?>.
+<?php endif ?>
+
+<?php if (!empty($this->artist->cities->items)): ?>
+  <?php if ($this->artist->isBand()): ?>
+  Miasto założenia to
+  <?php else: ?>
+  Urodził się w mieście 
+  <?php endif ?>
+  <?php echo $this->artist->cities->items[0]['city'] ?>.
+<?php endif ?>
+
+<?php if ($this->artist->isBand()): ?>
+  W skład projektu wchodzą: <?php foreach ($this->artist->members->items as $key => $value): ?>
+    <?php echo $value->name ?><?php if (sizeof($this->artist->members->items)-1 > $key): ?>, <?php endif ?><?php endforeach ?>.
+<?php endif ?>
+
+<?php if ($this->artist->albums->items): ?>
+  <?php echo $this->artist->name ?> wydał <?php echo sizeof($this->artist->albums->items) ?> <?php echo (sizeof($this->artist->albums->items)==1)?'album':(((sizeof($this->artist->albums->items)>4)?'albumów':'albumy') . ', w tym, między innymi') ?> <?php foreach ($this->artist->albums->items as $key => $value): ?>
+    "<?php echo $value->title ?>"<?php if (sizeof($this->artist->albums->items)-1 > $key): ?>, <?php endif ?><?php endforeach ?>.
+Data wydania pierwszego albumu to <?php echo $this->artist->albums->items[sizeof($this->artist->albums->items)-1]->releaseDateNormalized ?>.
+<?php if (sizeof($this->artist->albums->items)>1): ?>
+  Natomiast ostatni album ukazał się <?php echo $this->artist->albums->items[0]->releaseDateNormalized ?>.
+<?php endif ?>
+<?php endif ?>
+
+<?php if ($this->artist->projects->items): ?>
+  <?php echo $this->artist->name ?> współtworzy <?php echo ((sizeof($this->artist->projects->items)>1)?'projekty':'projekt') ?> <?php foreach ($this->artist->projects->items as $key => $value): ?>
+    <?php echo $value->name ?><?php if (sizeof($this->artist->projects->items)-1 > $key): ?>, <?php endif ?><?php endforeach ?>.
+<?php endif ?>
+
+<?php if (!empty($this->artist->projectAlbums->items)): ?>
+  <?php echo $this->artist->name ?> w projektach wydał <?php echo sizeof($this->artist->projectAlbums->items) ?> <?php echo (sizeof($this->artist->projectAlbums->items)==1)?'album':((sizeof($this->artist->projectAlbums->items)>4)?'albumów, w tym, między innymi':'albumy, w tym, między innymi') ?> <?php foreach ($this->artist->projectAlbums->items as $key => $value): ?>
+    "<?php echo $value->title ?>"<?php if (sizeof($this->artist->projectAlbums->items)-1 > $key): ?>, <?php endif ?><?php endforeach ?>.
+<?php endif ?>
+<?php if (!empty($this->artist->concertInfo)): ?>
+  Jeżeli chcesz zabukowac występ <?php echo $this->artist->name ?>, skorzystaj z danych kontaktowych na górze strony, obok zdjęcia wykonawcy.
+<?php endif ?>
+
+<?php if (!empty($this->artist->featuring->items)): ?>
+  <?php echo $this->artist->name ?> wystąpił gościnnie na <?php echo ((sizeof($this->artist->featuring->items)>1)?'albumach':'albumie') ?> <?php foreach ($this->artist->featuring->items as $key => $value): ?>
+     "<?php echo $value->title ?>"<?php if (sizeof($this->artist->featuring->items)-1 > $key): ?>, <?php endif ?><?php endforeach ?>.
+<?php endif ?>
+
+<?php if (!empty($this->artist->music->items)): ?>
+  <?php echo $this->artist->name ?> odpowiada za muzykę na <?php echo ((sizeof($this->artist->music->items)>1)?'albumach':'albumie') ?> <?php foreach ($this->artist->music->items as $key => $value): ?>
+     "<?php echo $value->title ?>"<?php if (sizeof($this->artist->music->items)-1 > $key): ?>, <?php endif ?><?php endforeach ?>.
+<?php endif ?>
+
+<?php if (!empty($this->artist->scratch->items)): ?>
+  <?php echo $this->artist->name ?> robił skrecze na <?php echo ((sizeof($this->artist->scratch->items)>1)?'albumach':'albumie') ?> <?php foreach ($this->artist->scratch->items as $key => $value): ?>
+     "<?php echo $value->title ?>"<?php if (sizeof($this->artist->scratch->items)-1 > $key): ?>, <?php endif ?><?php endforeach ?>.
+<?php endif ?>
+
+<?php if (!empty($this->artist->trivia)): ?>
+  Jako ciekawostka: <?php echo $this->artist->trivia ?>.
+<?php endif ?>
+
+<?php if (!empty($this->artist->popularSongs->items)): ?>
+  Najpopularniejsze utwory <?php echo $this->artist->name ?> to <?php foreach ($this->artist->popularSongs->items as $key => $value): ?>
+    "<?php echo $value->title ?>"<?php if (sizeof($this->artist->popularSongs->items)-1 > $key): ?>, <?php endif ?><?php endforeach ?>.
+<?php endif ?>
+
+
+<?php if (!empty($this->artist->website)): ?>
+  Więcej informacji możesz przeczytać na oficjalnej stronie www, pod adresem: <?php echo $this->artist->website ?>.
+<?php endif ?>

@@ -1,0 +1,45 @@
+<div id="main">
+  <h1>Edycja tekstu "<?php echo $this->song->title ?>"</h1>
+  <div class="pane">
+  <?php if ($this->result == 1): ?>
+    <div class="form-message form-success">
+      <p>Tekst został zapisany. Zmiany pojawią się na odsłonie piosenki do kilku minut.</p>
+      <ul class="list">
+        <li>Wróć do odsłony piosenki <a href="<?php echo $this->url(array('id' => $this->song->id, 'seo' => $this->song->title), 'song') ?>"><?php echo $this->song->title ?></a></li>
+        <li>lub wprowadź kolejne poprawki poniżej.</li>
+      </ul>
+    </div>
+  <?php endif ?>
+  
+  <?php if ($this->result === 0): ?>
+    <div class="form-message form-info">
+      <p>Nie wprowadziłeś żadnych zmian.</p>
+      <ul class="list">
+        <li>Wprowadź tekst/poprawki poniżej</li>
+        <li>lub wróć do odsłony piosenki <a href="<?php echo $this->url(array('id' => $this->song->id, 'seo' => $this->song->title), 'song') ?>"><?php echo $this->song->title ?></a>.</li>
+      </ul>
+    </div>
+  <?php endif ?>
+  
+    <div id="lyrics-form" class="form-container">    
+      <form action="<?php echo $this->url() ?>" method="post">
+        <textarea name="lyrics" rows="20"><?php echo preg_replace('/<br ?\/?>/',"", $this->song->lyrics) ?></textarea>
+        <input class="submit" type="submit" value="Zapisz" />
+      </form>
+    </div>
+  
+  </div>
+</div>
+<div id="aside">
+  <div class="box googleads">
+    <h3 class="hidden">Google Ads</h3>
+    <?php echo $this->partial('common/googleAds/_rectangle.phtml'); ?>
+  </div>  
+  <!-- <div class="box" id="lyrics-posting-rules">
+    <h3>Zasady dodawania tekstów</h3>
+    <p>Dodając teksty piosenek pamiętaj o tym:</p>
+    <ul>
+      <li>Żeby zachować zasady polskiej ortografii</li>
+    </ul>
+  </div> -->
+</div>

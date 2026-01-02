@@ -1,0 +1,76 @@
+<div id="main">
+
+<?php /*
+  <div id="topstory">
+    <div id="epla">
+      <h1><?php echo $this->partial('artist/_link.phtml', array('artist' => $this->mainArtist)) ?></h1>
+      <div class="br secondary"><?php echo $this->mainArtist->realName ?></div>
+      <p><?php echo Jkl_Tools_String::trim_str($this->mainArtist->description, 173) ?></p>
+      <?php echo $this->partial('song/_list.phtml', array('songs' => $this->mainArtist->popularSongs)) ?>
+    </div>
+    <img src="/s/temp/tede.jpg" />
+  </div>
+
+  */?>
+
+  <!-- left column -->
+  <div class="column">
+    <!-- news -->
+    <div id="news">
+      <h2>Aktualności</h2>
+      <?php echo $this->partial('news/_list.phtml', array('list' => $this->news->items)) ?>
+    </div>
+
+    <div id="intro">
+    <h2>Polski hip-hop w pigułce</h2>
+    <p>Od ponad 10 lat dostarczamy na bieżąco informacje o wydawanych płytach i zapowiedziach, jak tylko oficjalnie lub nieoficjalnie się o nich dowiadujemy. Nasza baza jest największym i najbardziej aktualnym zbiorem informacji o polskim hip-hopie!</p>
+    <p>No i mamy teledyski i teksty do większości utworów, co aktualnie daje około 6500 teledysków!</p>
+    </div>
+  </div>
+
+  <!-- middle column -->
+  <div class="column">
+    <!-- latest releases -->
+    <div id="latest" class="albums">
+      <h2>Ostatnio wydane albumy</h2>
+      <?php echo $this->partial('album/_list.phtml', array('items' => $this->newestList->items)) ?>
+      <a class="br" href="<?php echo $this->url(array(), 'albums') ?>">Pokaż wszystkie albumy</a>
+    </div>
+
+    <!-- most popular artists -->
+    <div class="box">
+      <h2>Popularni wykonawcy</h2>
+      <?php echo $this->partial('artist/box/_list.phtml', array('artists' => $this->popularArtists)) ?>
+    </div>
+
+    <!-- most popular songs -->
+    <div id="songs">
+      <h2>Popularne teksty</h2>
+      <?php echo $this->partial('song/_list.phtml', array('songs' => $this->popularSongs)) ?>
+    </div>
+
+  </div>
+
+</div>
+
+<div id="third">
+  <div class="box googleads">
+    <h3 class="hidden">Google Ads</h3>
+    <?php echo $this->partial('common/googleAds/_rectangle.phtml'); ?>
+  </div>
+
+  <!-- soon to be released -->
+  <?php if (!empty($this->announcedList->items)): ?>
+  <div class="box albums" id="to-be-released">
+    <h2>Nadchodzące premiery</h2>
+    <?php echo $this->partial('album/_list.phtml', array('items' => $this->announcedList->items)) ?>
+    <a href="<?php echo $this->url(array(), 'announced') ?>">Pokaż wszystkie zapowiedzi</a>
+  </div>
+  <?php endif ?>
+
+  <!-- most popular albums -->
+  <div class="box albums">
+    <h2>Popularne albumy</h2>
+    <?php echo $this->partial('album/_list.phtml', array('items' => $this->popularAlbums->items)) ?>
+  </div>
+</div>

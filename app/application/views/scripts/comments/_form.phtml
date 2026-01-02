@@ -1,0 +1,48 @@
+<span id="comment-form-show" class="hidden"><a href="?showCommentForm=1" rel="nofollow">Dodaj kolejny komentarz...</a></span>
+<form action="<?php echo $this->url(array(), 'comment') ?>" method="post" id="post-comment">
+  <label>Komentarz</label>
+  <div id="textarea-wrapper">
+    <textarea name="content" onkeyup="limitChars(this, 1000, 'comment-character-count')"></textarea>
+  </div>
+  <div>
+    <?php if ($this->LoggedIn()): ?>
+      
+    <?php else: ?>
+      <label>Podpis:</label>
+      <input type="text" name="author" value="" />
+    <?php endif ?>
+    <span id="comment-character-count" class="hidden">Pozostało znaków: 1000</span>
+    <input type="submit" value="Dodaj komentarz" id="submit" />
+  </div>
+  <input type="hidden" name="com_object_id" value="<?php echo $this->comObjectId ?>" id="com_object_id">
+  <input type="hidden" name="com_object_type" value="<?php echo $this->comObjectType ?>" id="com_object_type">
+  
+  <div class="hidden">
+    <?php // Honey Pot spam filter field ?>
+    <label>Zostaw puste:</label>
+    <input type="text" name="email-honey-pot" value="" id="email-honey-pot">
+  </div>
+</form>
+
+<script type="text/javascript" charset="utf-8">
+function limitChars(textarea, limit, infodiv){
+  var text = textarea.value; 
+  var textlength = text.length;
+  var info = document.getElementById(infodiv);
+  if(textlength > limit)
+  {
+    info.innerHTML = 'Komentarz nie może mieć więcej niż '+  limit +' znaków.';
+    $('#comment-character-count').show();
+    return false;
+  }
+  else if (textlength > (limit - 100))
+  {
+    info.innerHTML = 'Pozostało '+ (limit - textlength) +' znaków!';
+    $('#comment-character-count').show();
+    return true;
+  }
+  else {
+    $('#comment-character-count').hide();
+  }
+}
+</script>

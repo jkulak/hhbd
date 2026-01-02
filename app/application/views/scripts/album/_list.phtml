@@ -1,0 +1,18 @@
+<ul>
+  <?php foreach ($this->items as $key => $value): ?>
+    <li>
+      <a href="<?php echo $this->url(array('id' => $value->id, 'seo' => ($value->artist->url . ' - ' . $value->url)), 'album') ?>">
+      	  <img src="<?php echo $value->thumbnail ?>" alt="Okładka albumu <?php echo $value->title ?>"
+      	  title="<?php echo  $value->artist->name . '<br />' . $value->title . ' (' . $value->year . ')' ?>" 
+      	  class="thumb" />
+      	  </a>
+
+      <span><?php echo $this->partial('artist/_link.phtml', array('artist' => $value->artist)) ?></span>
+      <span><?php echo $this->partial('album/_link.phtml', array('album' => $value)) ?></span>
+      <span>
+        <?php if (!empty($value->label->name)): ?>
+          <?php echo $value->label->name ?>, 
+        <?php endif ?>
+      <?php echo $value->releaseDateNormalized ?></span>
+  <?php endforeach ?>
+</ul>
