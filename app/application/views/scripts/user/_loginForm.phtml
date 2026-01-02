@@ -1,0 +1,8 @@
+<form action="<?php echo $this->url(array(), 'userLogin') ?>" method="post">
+  <label>E-mail</label>
+  <input type="text" name="email" value="" />
+  <label>Hasło</label>
+  <input type="password" name="password" />
+  <input type="hidden" name="url" value="<?php echo $this->redirectUrl ?>">
+  <input type="submit" value="Zaloguj" />
+</form>

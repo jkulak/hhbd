@@ -1,0 +1,64 @@
+<div id="main">
+    <h1><?php echo $this->label->name ?></h1>
+  <?php echo $this->partial('common/_share.phtml', array('currentUrl' => $this->currentUrl, 'title' => $this->title)) ?>
+	  <section>
+      <?php if (isset($this->label->logo)): ?>
+        <div id="logo">
+      	  <img src="<?php echo $this->label->logo ?>" alt="Logo <?php echo $this->label->name ?>" title="<?php echo $this->label->name ?>" class="image" />
+      	</div>
+      <?php endif ?>
+
+    <div id="brief">
+    	<h2 class="hidden">Informacje podstawowe</h2>
+    	<ul id="essential">
+        <?php if (!empty($this->label->website)): ?>
+          <li>Oficjalna strona: <?php echo $this->label->website ?></li>
+        <?php endif ?>
+          <li>Wydanych albumów: <?php echo sizeof($this->label->releases->items) ?></li>
+        <?php if (!empty($this->label->email)): ?>
+          <li>Adres e-mail: <?php echo $this->label->email ?></li>
+        <?php endif ?>
+        <?php if (!empty($this->label->addres)): ?>
+          <li>Adres pocztowy: <?php echo $this->label->addres ?></li>
+        <?php endif ?>
+      </ul>
+    </div> <!-- brief -->
+    </section>
+
+  <?php if (!empty($this->label->releases->items)): ?>
+  <div class="albumlist pane">
+    <div class="header">
+      <h2>Lista wydawnictw <?php echo $this->label->name ?></h2> <span class="toggle hidden"><a href="?hideDetailes=1">Pokaż szczegóły</a></span>
+    </div>
+    <div class="list">
+      <?php echo $this->partial('album/_table.phtml', array('albums' => $this->label->releases, 'showCatalogNumber' => true)) ?>
+    </div>
+  </div>
+  <?php endif ?>
+
+  <div id="description" class="pane">
+    <div class="header">
+      <h2>Profil wytwórni</h2><?php if (!empty($this->label->description)): ?><span class="toggle js-visible"><a rel="nofollow"  href="?showDefaultDescription=1">Pokaż opis standardowy</a></span><?php endif ?>
+    </div>
+  	 <?php if (!empty($this->label->description)): ?><p><?php echo $this->label->description ?></p><?php endif ?>
+    <p class="<?php if (!empty($this->label->description)): ?>js-hidden <?php endif ?>auto"><?php echo $this->label->autoDescription ?></p>
+  </div>
+
+  <div class="pane" id="comments">
+    <div class="header"><h2>Wasze komentarze <span class="hidden">na temat <?php echo $this->label->name ?></span></h2></div>
+    <?php echo $this->partial('comments/_form.phtml', array('comObjectId' => $this->label->id, 'comObjectType' => Model_Comment_Container::TYPE_LABEL)) ?>
+    <?php echo $this->partial('comments/_list.phtml', array('items' => $this->comments->items)) ?>
+  </div>
+
+</div> <!-- main -->
+
+<div id="additional">
+  <div class="box googleads">
+    <h3 class="hidden">Google Ads</h3>
+    <?php echo $this->partial('common/googleAds/_rectangle.phtml'); ?>
+  </div>
+
+  <?php if (isset($this->withMostAlbums->items)): ?>
+    <?php echo $this->partial('label/box/_withMostAlbums.phtml', array('withMostAlbums' => $this->withMostAlbums)) ?>
+  <?php endif ?>
+</div>

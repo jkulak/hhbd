@@ -1,0 +1,104 @@
+[production]
+phpSettings.display_startup_errors = 0
+phpSettings.display_errors = 0
+phpSettings.date.timezone = "Europe/Warsaw"
+phpSettings.error_reporting = E_ALL & ~E_NOTICE
+
+resources.frontController.params.displayExceptions = 0
+
+bootstrap.path = APPLICATION_PATH "/Bootstrap.php"
+bootstrap.class = "Bootstrap"
+
+autoloadernamespaces.jkl = Jkl_
+
+; baza danych
+resources.db.adapter = PDO_MYSQL
+resources.db.params.host = 127.0.0.1
+resources.db.params.port = 3306
+resources.db.params.username = www
+resources.db.params.password = www
+resources.db.params.dbname = hhbd
+
+resources.frontController.controllerDirectory = APPLICATION_PATH "/controllers"
+resources.frontController.baseUrl = http://hhbd.pl.vmx/
+resources.layout.layoutpath = APPLICATION_PATH "/layouts"
+
+app.showAds = 1
+app.showShareIt = 1
+
+; turn on/off firephp debuging
+app.debug.firePhpEnable = 0
+
+app.cache.front.caching = true
+app.cache.front.lifetime = 3600
+app.cache.front.automatic_serialization = true
+app.cache.backend.host =
+app.cache.backend.port =
+app.cache.backend.compression = true
+
+app.includes.jquery.path = "/js/jquery-1.4.4.min.js"
+
+app.paths.albumCoverPath = http://s.hhbd.pl.vmx/a/
+app.paths.albumThumbnailPath = http://s.hhbd.pl.vmx/a/th/
+app.paths.albumThumbnailSuffix = -th.jpg
+
+app.paths.artistPhotoPath = http://s.hhbd.pl.vmx/p/
+app.paths.artistThumbnailPath = http://s.hhbd.pl.vmx/p/th/
+
+app.paths.labelLogoPath = http://s.hhbd.pl.vmx/l/
+app.paths.news.image = http://s.hhbd.pl.vmx/news/
+
+; ***********
+; * MAIL    *
+; ***********
+resources.mail.transport.type = smtp
+resources.mail.transport.host = localhost
+resources.mail.transport.auth = login
+resources.mail.transport.ssl = ssl
+resources.mail.transport.username = www
+resources.mail.transport.password = www
+resources.mail.defaultFrom.email = vmx@hhbd.pl
+resources.mail.defaultFrom.name = Hhbd vmx
+
+; ***********
+; * LOGGERS
+; ***********
+
+resources.log.mail-emergency.writerName = "Mail"
+resources.log.mail-emergency.writerParams.charset = utf-8
+resources.log.mail-emergency.writerParams.to.name = "Error from Hhbd.pl"
+resources.log.mail-emergency.writerParams.to.email = "error@hhbd.pl"
+resources.log.mail-emergency.writerParams.subject = "Emergency na www.hhbd.pl"
+resources.log.mail-emergency.filterName = "Priority"
+resources.log.mail-emergency.filterParams.priority = 0
+
+resources.log.stream-emergency.writerName = "Stream"
+resources.log.stream-emergency.writerParams.stream = "/var/log/hhbd.pl.vmx/emergency-hhbd.log"
+resources.log.stream-emergency.writerParams.mode = "a"
+resources.log.stream-emergency.filterName = "Priority"
+resources.log.stream-emergency.filterParams.priority = 0
+
+resources.log.stream-debug.writerName = "Stream"
+resources.log.stream-debug.writerParams.stream = "/var/log/hhbd.pl.vmx/debug-hhbd.log"
+resources.log.stream-debug.writerParams.mode = "a"
+resources.log.stream-debug.filterName = "Priority"
+resources.log.stream-debug.filterParams.priority = 7
+
+[staging : production]
+
+[testing : production]
+phpSettings.display_startup_errors = 1
+phpSettings.display_errors = 1
+
+[development : production]
+phpSettings.display_startup_errors = 1
+phpSettings.display_errors = 1
+
+app.debug.firePhpEnable = 1
+
+app.cache.front.caching = true
+app.cache.front.lifetime = 1800
+app.cache.front.automatic_serialization = true
+app.cache.backend.host = localhost
+app.cache.backend.port = 11211
+app.cache.backend.compression = true

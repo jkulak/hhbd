@@ -1,0 +1,7 @@
+<div class="pane" id="no-results">
+  <p>Wyszukiwaie "<span><?php echo $this->searchQuery ?></span>" nie zwróciło żadnych wyników!</p>
+  <p>Sprawdź czy na pewno dobrze wpisałeś nazwę?</p>
+    <?php if (!empty($this->type)): ?><p>
+      Może powinieneś <a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->searchQuery ?>">poszukać w całej bazie</a>?</p>
+    <?php endif ?>
+</div>

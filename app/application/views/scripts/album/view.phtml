@@ -1,0 +1,151 @@
+<div id="main">
+    <h1><?php echo $this->partial('artist/_link.phtml', array('artist' => $this->album->artist)) ?> - <?php echo $this->album->title ?><?php if (!empty($this->album->epFor)): ?> <span>[EP]</span><?php endif ?></h1>
+  <?php echo $this->partial('common/_share.phtml', array('currentUrl' => $this->currentUrl, 'title' => $this->title)) ?>
+	<div id="picture">
+	  <img src="<?php echo $this->album->cover ?>" alt="Okładka albumu <?php echo $this->album->title ?>" title="<?php echo $this->album->title . ' - ' . $this->album->artist->name ?>" class="image" />
+    <!-- <span id="case"></span> -->
+	</div>
+
+	<div id="brief">
+  	<h2 class="hidden">Informacje podstawowe</h2>
+
+  	<ul id="essential">
+      <?php if (!empty($this->album->releaseDate)): ?>
+        <li><span>Premiera:</span> <?php echo $this->album->releaseDateNormalized ?>
+        </li>
+      <?php endif ?>
+
+      <li><span>Wydawnictwo:</span>
+      <?php if (!empty($this->album->label)): ?>
+        <?php echo $this->partial('label/_link.phtml', array('item' => $this->album->label)); ?>
+      <?php else: ?>
+        --
+      <?php endif ?>
+      </li>
+
+      <li><span>Studio nagrań:</span> --</li>
+
+      <li><span>Numer katalogowy:</span>
+        <?php if (!empty($this->album->catalogNumber)): ?>
+          <?php echo $this->album->catalogNumber ?>
+        <?php else: ?>
+          --
+        <?php endif ?>
+      </li>
+    </ul>
+
+    <ul id="details">
+      <!-- <li>Dodany: <?php echo $this->album->added ?></li> -->
+      <?php if (!empty($this->album->epFor)): ?>
+        <li><span>Singiel do:</span> <?php echo $this->partial('album/_link.phtml', array('album' => $this->album->epFor)) ?> </li>
+      <?php endif ?>
+      <?php if (!empty($this->album->eps->items)): ?>
+        <li><span>Poprzedzony singlami:</span>
+        <ul class="list">
+          <?php foreach ($this->album->eps->items as $ep): ?>
+            <li><?php echo $this->partial('album/_link.phtml', array('album' => $ep)) ?></li>
+          <?php endforeach ?>
+        </ul>
+        </li>
+      <?php endif ?>
+      <li><span>Czas trwania:</span> <?php if ($this->album->duration == 0): ?>
+        --:--
+        <?php else: ?>
+          <?php echo $this->album->duration ?>
+        <?php endif ?>
+      </li>
+      <?php if ($this->album->voteCount > 3): ?>
+        <li><span>Ocena:</span> <?php echo $this->album->rating ?>/10 (<?php echo $this->album->voteCount ?> głosów) Możliwość ponownego głosowania już wkrótce! :)</li>
+      <?php endif ?>
+  	</ul>
+  </div> <!-- brief -->
+
+  <?php if (!empty($this->album->tracklist->items)): ?>
+  <div id="tracklist" class="pane">
+    <div class="header">
+      <h2>Lista utworów</h2> <span class="toggle js-visible"><a rel="nofollow" href="?hideDetailes=1">Ukryj szczegóły</a></span>
+    </div>
+    <table>
+      <caption class="hidden">
+        Lista utworów z płyty: <?php echo $this->album->title ?>
+      </caption>
+      <thead>
+        <tr class="hidden"><th>Numer</th><th>Wykonawca</th><th>Tytuł</th><th>Dodatkowe infromacje (tekst piosenki, sample)</th><th>Czas trwania</th></tr>
+      </thead>
+      <tbody>
+      <?php foreach ($this->album->tracklist->items as $song): ?>
+        <tr>
+          <td><?php echo $song->track ?></td>
+          <td class="align">
+            <?php if (!empty($song->artist->items)): ?>
+
+
+            <?php foreach ($song->artist->items as $key => $feat): ?>
+              <!-- <?php echo $this->partial('artist/_link.phtml', array('artist' => $feat)) ?><?php if (sizeof($song->artist->items)-1 > $key): ?>, <?php endif ?> -->
+                <?php echo $feat->name ?><?php if (sizeof($song->artist->items)-1 > $key): ?>, <?php endif ?>
+            <?php endforeach ?>
+            <?php else: ?>
+              <?php // echo $song->albumArtist->name ?>
+            <?php endif ?>
+          </td>
+          <td>
+            <?php echo $this->partial('song/_link.phtml', array('song' => $song)) ?>
+            <a href="<?php echo $this->url(array('id' => $song->id, 'seo' => ($song->url())), 'song'); ?>?autoplay=1#clip" class="play"></a>
+            <ul class="feat">
+            <?php if (!empty($song->featuring->items)): ?>
+              <li>gościnnie:
+                <?php foreach ($song->featuring->items as $key => $feat): ?>
+                  <?php echo $this->partial('artist/_link.phtml', array('artist' => $feat)) ?><?php if (!empty($feat->featType)): ?>
+                    (<?php echo $feat->featType ?>)<?php endif ?><?php if (sizeof($song->featuring->items)-1 > $key): ?>, <?php endif ?>
+                <?php endforeach ?>
+              </li>
+            <?php endif ?>
+            <?php if (!empty($song->music->items)): ?>
+            <li>muzyka:
+              <?php foreach ($song->music->items as $key => $feat): ?>
+                <?php echo $this->partial('artist/_link.phtml', array('artist' => $feat)) ?><?php if (sizeof($song->music->items)-1 > $key): ?>, <?php endif ?>
+              <?php endforeach ?>
+            </li>
+            <?php endif ?>
+            <?php if (!empty($song->scratch->items)): ?>
+            <li>skrecze:
+              <?php foreach ($song->scratch->items as $key => $feat): ?>
+                <?php echo $this->partial('artist/_link.phtml', array('artist' => $feat)) ?><?php if (sizeof($song->scratch->items)-1 > $key): ?>, <?php endif ?>
+              <?php endforeach ?>
+            </li>
+            <?php endif ?>
+          </ul>
+          </td>
+          <td class="align"><?php if (!empty($song->lyrics)): ?>
+            słowa piosenki
+          <?php endif ?>
+          <?php if (!empty($song->saples)): ?>
+            <?php echo $song->samples ?>
+          <?php endif ?></td>
+          <td class="align"><?php echo $song->duration ?></td>
+        </tr>
+      <?php endforeach ?>
+      </tbody>
+    </table>
+  </div>
+  <?php endif ?>
+
+  <div id="description" class="pane">
+    <div class="header">
+      <h2>Opis albumu</h2><?php if (!empty($this->album->description)): ?><span class="toggle js-visible"><a rel="nofollow"  href="?showDefaultDescription=1">Pokaż opis standardowy</a></span><?php endif ?>
+    </div>
+  	 <?php if (!empty($this->album->description)): ?><p><?php echo $this->album->description ?></p><?php endif ?>
+    <p class="<?php if (!empty($this->album->description)): ?>js-hidden <?php endif ?>auto"><?php echo $this->album->autoDescription ?></p>
+  </div>
+
+  <div class="pane" id="comments">
+     <div class="header"><h2>Wasze komentarze <span class="hidden">na temat <?php echo $this->album->title ?></span></h2></div>
+     <?php echo $this->partial('comments/_form.phtml', array('comObjectId' => $this->album->id, 'comObjectType' => Model_Comment_Container::TYPE_ALBUM)) ?>
+     <?php echo $this->partial('comments/_list.phtml', array('items' => $this->comments->items)) ?>
+   </div>
+
+</div> <!-- main -->
+
+<div id="additional">
+  <?php echo $this->render('album/view/_additional.phtml') ?>
+</div>

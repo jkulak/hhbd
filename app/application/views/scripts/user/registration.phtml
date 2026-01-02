@@ -1,0 +1,64 @@
+<div id="main">
+<h2>Rejestracja użytkownika</h2>
+
+<?php if ($this->created == 1): ?>
+  <div class="msg ok">
+    <p>Konto <?php echo $this->partial('user/_link.phtml', array('user'=> $this->user)) ?> zostało założone poprawnie, 
+    <?php if ($this->LoggedIn()): ?>
+        i zostałeś automatycznie zalogowany! Przyjemnego korzystania z serwisu.
+    <?php else: ?>
+        kliknij <a href="<?php echo $this->url(array(), 'userLogin') ?>">zaloguj się</a>, aby alogowac się i w pełni móc korzystać z serwisu.
+    <?php endif ?>
+    </p>
+    <p>Kliknij <?php echo $this->partial('user/_link.phtml', array('user'=> $this->user)) ?> aby zobaczyć swój profil.</p>
+  </div>
+<?php else: ?>
+
+<div id="form">  
+  <form action="<?php echo $this->url(array(), 'userRegistration') ?>" method="post" autocomplete="off">
+    <label>Podaj adres e-mail (to będzie Twój login)</label>
+    <input type="text" name="email" value="<?php echo $this->email ?>" />
+    <?php if (isset($this->errors['email'])): ?>
+      <ul class="form-errors">
+      <?php foreach ($this->errors['email'] as $key => $value): ?>
+        <li><?php echo $value ?></li>
+      <?php endforeach ?>
+      </ul>
+    <?php endif ?>
+    
+    <label>Wpisz hasło ostrożnie i nie pomyl się :)</label>
+    <input type="password" name="password" value="<?php echo $this->password ?>" />
+    <?php if (isset($this->errors['password'])): ?>
+      <ul class="form-errors">
+      <?php foreach ($this->errors['password'] as $key => $value): ?>
+        <li><?php echo $value ?></li>
+      <?php endforeach ?>
+      </ul>
+    <?php endif ?>
+    
+    <?php if (false): ?>
+      <label>Potwierdź hasło</label>
+      <input type="password" name="password-confirm" value="<?php echo '' ?>" />
+    <?php endif ?>
+    
+    <label>Wybierz podpis dla siebie</label>
+    <input type="text" name="display-name" value="<?php echo $this->displayName ?>" />
+    <?php if (isset($this->errors['displayName'])): ?>
+      <ul class="form-errors">
+      <?php foreach ($this->errors['displayName'] as $key => $value): ?>
+        <li><?php echo $value ?></li>
+      <?php endforeach ?>
+      </ul>
+    <?php endif ?>
+    <input type="submit" value="Załóż konto!" />
+  </form>
+</div>
+<?php endif ?>
+</div>
+
+<div id="aside">
+  <div class="box googleads">
+    <h3 class="hidden">Google Ads</h3>
+    <?php echo $this->partial('common/googleAds/_rectangle.phtml'); ?>
+  </div>
+</div>

@@ -1,0 +1,21 @@
+<div id="main">
+  <h2>Zaloguj się</h2>
+  <div id="form">
+    <?php if (isset($this->errors['login'])): ?>
+      <ul class="form-errors">
+      <?php foreach ($this->errors['login'] as $key => $value): ?>
+        <li><?php echo $value ?></li>
+      <?php endforeach ?>
+      </ul>
+    <?php endif ?>
+    
+    <?php echo $this->partial('user/_loginForm.phtml', array('redirectUrl' => $this->redirectUrl)) ?>
+  </div>
+</div>
+
+<div id="aside">
+  <div class="box googleads">
+    <h3 class="hidden">Google Ads</h3>
+    <?php echo $this->partial('common/googleAds/_rectangle.phtml'); ?>
+  </div>
+</div>

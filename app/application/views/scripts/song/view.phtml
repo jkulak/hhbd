@@ -1,0 +1,175 @@
+<div id="main">
+  <h1><?php echo $this->partial('artist/_link.phtml', array('artist' => $this->song->albumArtist)) ?> -
+      <?php echo $this->song->title ?><?php if (!empty($this->song->lyrics)): ?>
+	    <span class="hidden">tekst</span>
+	  <?php endif ?>
+	</h1>
+  <?php echo $this->partial('common/_share.phtml', array('currentUrl' => $this->currentUrl, 'title' => $this->title)) ?>
+	<div class="pane">
+  	<h2 class="hidden">Informacje podstawowe</h2>
+  	<ul id="essential">
+      <?php if (!empty($this->song->artist->items)): ?>
+        <li>Wykonawcy: <?php foreach ($this->song->artist->items as $key => $feat): ?>
+          <?php echo $this->partial('artist/_link.phtml', array('artist' => $feat)) ?><?php if (sizeof($this->song->artist->items)-1 > $key): ?>, <?php endif ?>
+        <?php endforeach ?></li>
+      <?php endif ?>
+
+  	  <?php if (!empty($this->song->music->items)): ?>
+    	  <li>Muzyka: <?php foreach ($this->song->music->items as $key => $feat): ?>
+          <?php echo $this->partial('artist/_link.phtml', array('artist' => $feat)) ?><?php if (sizeof($this->song->music->items)-1 > $key): ?>, <?php endif ?>
+        <?php endforeach ?></li>
+  	  <?php endif ?>
+
+  	  <?php if (!empty($this->song->featuring->items)): ?>
+    	  <li>Gościnne: <?php foreach ($this->song->featuring->items as $key => $feat): ?>
+          <?php echo $this->partial('artist/_link.phtml', array('artist' => $feat)) ?><?php if (!empty($feat->featType)): ?>
+            (<?php echo $feat->featType ?>)<?php endif ?><?php if (sizeof($this->song->featuring->items)-1 > $key): ?>, <?php endif ?>
+        <?php endforeach ?></li>
+  	  <?php endif ?>
+
+  	  <?php if (!empty($this->song->scratch->items)): ?>
+    	  <li>Skrecze/cuty: <?php foreach ($this->song->scratch->items as $key => $feat): ?>
+          <?php echo $this->partial('artist/_link.phtml', array('artist' => $feat)) ?><?php if (sizeof($this->song->scratch->items)-1 > $key): ?>, <?php endif ?>
+        <?php endforeach ?></li>
+  	  <?php endif ?>
+	  </ul>
+	  <ul id="details">
+  	  <?php if (!empty($this->song->duration)): ?>
+	      	  <li>Czas trwania:
+    	   <?php echo $this->song->duration ?>
+	     	  </li>
+      <?php endif ?>
+
+  	  <?php if (!empty($this->song->bpm)): ?>
+  	    <li>Prędkość utworu: <?php echo $this->song->bpm ?> bpm</li>
+  	  <?php endif ?>
+  	    <?php if (!empty($this->song->featured->items)): ?>
+    	    <li>
+    	    Na albumach:
+    	   <ul class="list">
+    	     <?php foreach ($this->song->featured->items as $key => $album): ?>
+    	       <li><?php echo $this->partial('album/_link.phtml', array('album' => $album, 'showArtist' => true)) ?></li>
+    	     <?php endforeach ?>
+    	   </ul>
+  	   </li>
+    	<?php endif ?>
+	  </ul>
+	</div>
+
+  <!-- tutaj edycja url do teledysku -->
+	<?php if (isset($this->song->youTubeUrl)): ?>
+	<div id="clip" class="pane">
+	  <h2>Teledysk <?php echo $this->song->albumArtist->name ?> - <?php echo $this->song->title ?>
+	  </h2>
+    <object width="480" height="390">
+      <param name="movie" value="<?php echo $this->song->youTubeUrl ?>"></param>
+      <param name="allowFullScreen" value="true"></param>
+      <param name="allowscriptaccess" value="always"></param>
+      <embed src="<?php echo $this->song->youTubeUrl ?><?php if ($this->autoPlay): ?>&amp;autoplay=1<?php endif ?>" type="application/x-shockwave-flash" allowscriptaccess="always" allowfullscreen="true" width="480" height="390">
+      </embed>
+    </object>
+    <div id="rateClip">
+      <p class="js-visible">To nie jest teledysk do utworu "<?php echo $this->song->title ?>"? <a href="#" id="rateDown">Zgłoś to!</a> (zgłoszeń: <span id="downCount"><?php echo $this->song->youTubeUrlFlag ?></span>)</p>
+    </div>
+
+    <!-- <iframe title="YouTube video player" class="youtube-player" type="text/html" width="480" height="390" src="<?php echo $this->song->youTubeUrl ?>?rel=0" frameborder="0"></iframe> -->
+  </div>
+   	<?php endif ?>
+
+  <div id="samples" class="pane">
+    <h2>Wykorzystane sample</h2>
+    <?php if (!empty($this->song->samples)): ?>
+      sd
+    <?php else: ?>
+      Na razie nie mamy informacji o tym jakie sample zostały wykorzystane w "<?php echo $this->song->title ?>". Sprawdź za kilka dni.
+    <?php endif ?>
+  </div>
+
+  <div id="lyrics" class="pane">
+    <div class="header">
+      <h2><?php echo $this->song->albumArtist->name ?> - <?php echo $this->song->title ?> tekst</h2>
+    </div>
+    <?php if ($this->LoggedIn()): ?>
+      <span class="toggle"><a href="<?php echo $this->url(array('id' => $this->song->id, 'seo' => $this->song->title), 'songEditLyrics') ?>" id="edit-lyrics">Edytuj tekst</a></span>
+    <?php else: ?>
+      <span class="toggle">Zaloguj się, aby móc dodawać i edytować tekst piosenki!</span>
+    <?php endif ?>
+
+    <p><?php echo ($this->song->lyrics) ?></p>
+
+     <script type="text/javascript" charset="utf-8">
+        $(function() {
+          // lyrics editing
+           $('#edit-lyrics').click(function() {
+              // $('#edit-lyrics').hide();
+              var lyrics = $('#lyrics p').text();
+              $('#lyrics p').html('<div class="adm" id="adm-lyrics"><form action="/" method="post"><textarea name="lyrics" rows="30">' + lyrics + '</textarea><input class="submit" type="submit" value="Zapisz" /></form></div>');
+              $('#adm-lyrics input[type="submit"]').click(function() {
+                var dataString = $('#adm-lyrics form').serialize();
+                $.ajax({
+                  type: 'POST',
+                  url: '<?php echo $this->url(array("id" => $this->song->id, "seo" => $this->song->url()), "songEditLyrics") ?>',
+                  dataType: 'json',
+                  data: dataString,
+                  success: function(data) {
+                    gotSaveLyricsResponse(data);
+                  },
+                  error: function() {
+                    alert('Problem z zapisaniem formularza, spróbuj za jakiś czas.');
+                  }
+                });
+                return false;
+              });
+              return false;
+            });
+
+            function gotSaveLyricsResponse (data) {
+              if (data['success']) {
+                $('#lyrics p').html(data['lyrics']).hide().fadeIn('slow');
+              }
+              else
+              {
+                alert(data['result-message']);
+              }
+
+            }
+        });
+      </script>
+
+    <?php if (!empty($this->editors->items)): ?>
+    <div id="lyrics-editors">
+      <span>Tekst edytowali:</span>
+      <ul class="flat">
+        <?php foreach ($this->editors->items as $key => $value): ?>
+          <li><?php echo $this->partial('user/_link.phtml', array('user' => $value)) . (($key + 1 < sizeof($this->editors->items))?',&nbsp;':'') ?></li>
+        <?php endforeach ?>
+      </ul>
+    </div>
+    <?php endif ?>
+  </div>
+
+
+  <div id="description" class="pane">
+    <div class="header">
+      <h2>Opis <?php echo $this->song->title ?></h2>
+      <?php if (!empty($this->song->description)): ?>
+        <span class="toggle js-visible"><a rel="nofollow" href="?showDefaultDescription=1">Pokaż opis standardowy</a></span>
+      <?php endif ?>
+    </div>
+  	<?php if (!empty($this->song->description)): ?><p><?php echo $this->song->description ?></p><?php endif ?>
+    <p class="<?php if (!empty($this->song->description)): ?>js-hidden <?php endif ?>auto">
+      <?php echo $this->song->autoDescription ?>
+    </p>
+  </div>
+
+  <div class="pane" id="comments">
+    <div class="header"><h2>Wasze komentarze <span class="hidden">na temat <?php echo $this->song->title ?></span></h2></div>
+    <?php echo $this->partial('comments/_form.phtml', array('comObjectId' => $this->song->id, 'comObjectType' => Model_Comment_Container::TYPE_SONG)) ?>
+    <?php echo $this->partial('comments/_list.phtml', array('items' => $this->comments->items)) ?>
+  </div>
+
+</div>
+
+<div id="aside">
+  <?php echo $this->render('song/view/_additional.phtml') ?>
+</div>

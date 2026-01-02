@@ -1,0 +1,20 @@
+<table>
+  <caption class="hidden"><?php echo $artist->name ?> - dyskografia, lista wydanych albumów</caption>
+  <thead>
+    <tr><th>Wykonawca</th><th>Wydanych albumów</th><th>Znany także jako</th></tr>
+  </thead>
+  <tbody>
+  <?php foreach ($this->artists as $artist): ?>
+    <tr>
+      <td><?php echo $this->partial('artist/_link.phtml', array('artist' => $artist)) ?></td>
+      <td><?php if (isset($artist->albumCount)): ?>
+            <?php echo $artist->albumCount ?>
+          <?php else: ?>
+            --
+          <?php endif ?>
+      </td>
+      <td><?php echo implode($artist->alsoKnownAs->items, ', ') ?></td>
+    </tr>
+  <?php endforeach ?>
+  </tbody>
+</table>

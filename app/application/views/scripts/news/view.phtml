@@ -1,0 +1,27 @@
+<div id="main">
+  <h1><?php echo $this->news->title ?></h1>
+  <div class="br secondary"><?php echo $this->news->addedNormalized ?></div>
+  <p class="br" id="news-container">
+    <?php if ($this->news->attachment): ?>
+      <img id="news-attachment" src="<?php echo $this->news->attachment->url ?>" alt="<?php echo $this->news->title ?>" />
+    <?php endif ?>
+    <?php echo $this->news->content ?>
+  </p>
+
+  <div class="pane" id="comments">
+    <div class="header"><h2>Wasze komentarze <span class="hidden">na temat <?php echo $this->news->title ?></span></h2></div>
+    <?php echo $this->partial('comments/_form.phtml', array('comObjectId' => $this->news->id, 'comObjectType' => Model_Comment_Container::TYPE_NEWS)) ?>
+    <?php echo $this->partial('comments/_list.phtml', array('items' => $this->comments->items)) ?>
+  </div>
+</div>
+
+<div id="aside">
+  <div class="box googleads">
+    <h3 class="hidden">Google Ads</h3>
+    <?php echo $this->partial('common/googleAds/_rectangle.phtml'); ?>
+  </div>
+  <div class="box" id="other-news">
+    <h3>Pozostałe aktualności</h3>
+    <?php echo $this->partial('news/box/_list.phtml', array('items' => $this->recentNews->items)) ?>
+  </div>
+</div>

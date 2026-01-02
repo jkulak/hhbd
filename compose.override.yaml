@@ -1,0 +1,20 @@
+services:
+  app:
+    environment:
+      APPLICATION_ENV: development
+      # Development: disable cache, enable debug
+      CACHE_ENABLED: "false"
+      DEBUG_FIREPHP: "true"
+    volumes:
+      - ./app:/var/www/html/app
+      - ./content:/var/www/html/content
+      - ./conf/php/development.ini:/usr/local/etc/php/conf.d/99-development.ini:ro
+
+  backoffice:
+    environment:
+      APPLICATION_ENV: development
+      PORT: 80
+      DB_HOST: db
+      DB_NAME: hhbd
+      DB_USER: hhbd
+      DB_PASSWORD: hhbd_password

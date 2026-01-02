@@ -1,0 +1,26 @@
+      <div id="nav">
+        <div id="login">
+          <?php if (!$this->LoggedIn()): ?>
+            <a href="<?php echo $this->url(array('url' => ''), 'userLogin') ?>?url=<?php echo $this->url() ?>">Zaloguj się</a>, a jak nie masz konta: <a href="<?php echo $this->url(array(), 'userRegistration'); ?>">załóż!</a>
+          <?php else: ?>
+            Zalogowany jako: <?php echo $this->ProfileLink() ?>, <a href="<?php echo $this->url(array(), 'userLogout') ?>">wyloguj</a>
+          <?php endif ?>
+
+        </div>
+        <ul>
+          <!-- <li><a href="<?php echo $this->baseUrl(); ?>/top10.html">Top 10</a></li>  -->
+          <li><a href="<?php echo $this->baseUrl(); ?>/albumy.html">Albumy</a></li>
+          <li><a href="<?php echo $this->url(array(), 'announced'); ?>">Premiery</a></li>
+          <li><a href="<?php echo $this->url(array(), 'artists'); ?>">Wykonawcy</a></li>
+          <li><a href="<?php echo $this->url(array(), 'labels'); ?>">Wytwórnie</a></li>
+          <!-- <li><a href="<?php echo $this->baseUrl(); ?>/teksty.html">Teksty</a></li>  -->
+        </ul>
+
+        <div id="search">
+          <form action="<?php echo $this->url(array(), 'search') ?>">
+            <label for="q" class="hidden">Szukaj:&nbsp;</label>
+            <input type="text" name="q" value="" placeholder="Przeszukuj polski hip-hop..." autocomplete="off" id="q" title="Szukaj" tabindex="1" />
+            <input type="submit" value="Szukaj &rarr;" />
+          </form>
+        </div>
+      </div>

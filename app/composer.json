@@ -1,0 +1,18 @@
+{
+    "name": "hhbd/website",
+    "description": "Polish Hip-Hop Database",
+    "type": "project",
+    "require": {
+        "php": "^7.4 || ^8.0",
+        "zendframework/zendframework1": "^1.12"
+    },
+    "autoload": {
+        "psr-0": {
+            "Jkl_": "library/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}

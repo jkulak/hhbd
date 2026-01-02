@@ -1,0 +1,15 @@
+<?php
+  $config = Zend_Registry::get('Config_App');
+  $showAds = $config['showAds'];
+?>
+<?php if ($showAds == 1): ?>
+  <script type="text/javascript"><!--
+  google_ad_client = "ca-pub-6149271850793027";
+  /* hhbd_rectangle */
+  google_ad_slot = "1220656090";
+  google_ad_width = 300;
+  google_ad_height = 250;
+  //-->
+  </script>
+  <script type="text/javascript" src="http://pagead2.googlesyndication.com/pagead/show_ads.js"></script>  
+<?php endif ?>

@@ -1,0 +1,10 @@
+<?php if (sizeof($this->items) > 0): ?>
+<div class="box searches">
+  <h3><?php echo $this->title ?></h3>
+  <ul>
+  <?php foreach ($this->items as $key => $value): ?>
+    <li><a href="<?php echo $this->url(array(), 'search')?>?q=<?php echo $value['sea_query'] ?>"><?php echo $value['sea_query'] ?></a></li>
+  <?php endforeach ?>
+  </ul>
+</div>
+<?php endif ?>

@@ -1,0 +1,15 @@
+# nazwa srodowiska aplikacji
+# SetEnv APPLICATION_ENV production
+SetEnv APPLICATION_ENV development
+
+RewriteEngine On
+
+# Rewrite commented out if behind nginx
+# RewriteCond %{HTTP_HOST} ^hhbd.pl(.*)
+# RewriteRule ^(.*)$ http://www.hhbd.pl/$1 [R=301,L]
+
+RewriteCond %{REQUEST_FILENAME} -s [OR]
+RewriteCond %{REQUEST_FILENAME} -l [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^.*$ - [NC,L]
+RewriteRule ^.*$ index.php [NC,L]

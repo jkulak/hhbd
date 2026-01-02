@@ -1,0 +1,65 @@
+<?php if ($this->pageCount): ?>
+<div class="pagination">
+<table>
+  <tbody>
+  <tr>
+    <td>
+      <?php if (isset($this->previous)): ?>
+        <a href="<?php echo $this->restUrl(array('page' => $this->first, 'tp' => $this->type, 'q' => $this->searchQuery)); ?>">
+          Początek
+        </a>
+      <?php else: ?>
+        <span class="disabled">Początek</span>
+      <?php endif; ?>
+    </td>
+    <td>
+      <?php if (isset($this->previous)): ?>
+        <a href="<?php echo $this->restUrl(array('page' => $this->previous, 'tp' => $this->type, 'q' => $this->searchQuery)); ?>">
+          &lt;&nbsp;Poprzednia
+        </a>
+      <?php else: ?>
+        <span class="disabled">&lt;&nbsp;Poprzednia</span>
+      <?php endif; ?>
+    </td>
+    <td class="pages">
+      <!-- Numbered page links -->
+      <?php foreach ($this->pagesInRange as $page): ?>
+        <?php if ($page != $this->current): ?>
+          <a href="<?php echo $this->restUrl(array('page' => $page, 'tp' => $this->type, 'q' => $this->searchQuery)); ?>">
+              <span class="hidden">Przejdź do strony: </span><?php echo $page; ?>
+          </a>
+        <?php else: ?>
+          <span class="active"><span class="hidden">Jesteś na stronie: </span><?php echo $page; ?></span>
+        <?php endif; ?>
+      <?php endforeach; ?>
+    </td>
+    <td class="align">
+      <!-- Next page link -->
+      <?php if (isset($this->next)): ?>
+        <a href="<?php echo $this->restUrl(array('page' => $this->next, 'tp' => $this->type, 'q' => $this->searchQuery)); ?>">
+          Następna&nbsp;&gt;
+        </a>
+      <?php else: ?>
+        <span class="disabled">Następna&nbsp;&gt;</span>
+      <?php endif; ?>
+    </td>
+    <td class="align">
+      <!-- Last page link -->
+      <?php if (isset($this->next)): ?>
+        <a href="<?php echo $this->restUrl(array('page' => $this->last, 'tp' => $this->type, 'q' => $this->searchQuery)); ?>">
+          Ostatnia
+        </a>
+      <?php else: ?>
+        <span class="disabled">Ostatnia</span>
+      <?php endif; ?>
+    </td>
+  </tr>
+  </tbody>
+</table>
+
+
+<!-- <?php echo $this->firstItemNumber; ?> - <?php echo $this->lastItemNumber; ?> 
+of <?php echo $this->totalItemCount; ?> -->
+ 
+</div>
+<?php endif; ?>

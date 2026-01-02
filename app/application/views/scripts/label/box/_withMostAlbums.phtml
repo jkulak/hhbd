@@ -1,0 +1,8 @@
+<div class="box">
+  <h3>Najwięcej albumów wydały wytwórnie</h3>
+  <ol>
+    <?php foreach ($this->withMostAlbums->items as $key => $value): ?>
+      <li><?php echo $this->partial('label/_link.phtml', array('item' => $value)) ?></li>
+    <?php endforeach ?>
+  </ol>
+</div>

@@ -1,0 +1,30 @@
+<div id="main">
+  <h1><?php echo $this->title ?></h1>
+  <?php echo $this->render('artist/_paginator.phtml') ?>
+  <div class="list">
+    <?php echo $this->partial('artist/_list.phtml', array('artists' => $this->artists->items)) ?>
+  </div>
+  <?php echo $this->render('artist/_paginator.phtml') ?>
+</div>
+
+<div id="additional">
+  <div class="box googleads">
+    <h3 class="hidden">Google Ads</h3>
+    <?php echo $this->partial('common/googleAds/_rectangle.phtml'); ?>
+  </div>
+  
+  <div class="box">
+    <h3>Najwięcej albumów w projektach</h3>
+    <?php echo $this->partial('artist/box/_list.phtml', array('artists' => $this->mostProjectAlbums)) ?>
+  </div>
+  
+  <div class="box">
+    <h3>Najwięcej albumów solo</h3>
+    <?php echo $this->partial('artist/box/_list.phtml', array('artists' => $this->mostSoloAlbums)) ?>
+  </div>
+  
+  <div class="box">
+    <h3>Ostatnio dodani</h3>
+    <?php echo $this->partial('artist/box/_list.phtml', array('artists' => $this->recentlyAdded)) ?>
+  </div>
+</div>

@@ -1,0 +1,39 @@
+# Dependencies
+/vendor/
+/app/vendor/
+
+
+# Environment
+.env
+.env.local
+*.local.php
+**/config/app.ini
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+/logs/
+
+# Docker
+docker-compose.override.yml
+
+# Database (keep structure, ignore large dumps)
+/database/*.sql
+!/database/.gitkeep
+
+# Content (large files - stored separately)
+/content/
+
+# DEV
+/_RUNNING/
+WARP.md
+.claude

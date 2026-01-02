@@ -1,0 +1,22 @@
+<div id="main">
+  <h1>Lista wytwórni</h1>
+  
+<?php echo $this->partial('label/_list.phtml', array('labels' => $this->labels)) ?>
+  
+  <div>
+  <h2 class="hidden">Informacje</h2>
+  Lista największych, najpopularniejszych i najbardziej liczących się wytwórni zajmujących się wydaniem polksiego hip-hopu (i pochodnych). Jeżeli, uważasz, że brakuje jakiejś wytwórni, pisz do nas, będziemy uzupełniać dane. Dla każdej z wytwórni możesz sprawdzić ile płyt wydała, a po kliknięciu w wytwórnię zobaczysz szczegóły na jej temat. Jakie albumy wydała i kiedy, oraz przeczytasz ciekawe informacje na jej temat.
+  </div>
+
+  
+</div>
+
+<div id="additional">
+  <div class="box googleads">
+    <h3 class="hidden">Google Ads</h3>
+    <?php echo $this->partial('common/googleAds/_rectangle.phtml'); ?>
+  </div>
+  <?php if (isset($this->withMostAlbums->items)): ?>
+    <?php echo $this->partial('label/box/_withMostAlbums.phtml', array('withMostAlbums' => $this->withMostAlbums)) ?>
+  <?php endif ?>
+</div>

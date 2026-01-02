@@ -1,0 +1,64 @@
+<?php if ($this->pageCount): ?>
+<div class="pagination">
+<table>
+  <tbody>
+  <tr>
+    <td>
+      <?php if (isset($this->previous)): ?>
+        <a href="<?php echo $this->restUrl(array('page' => $this->first)); ?>">
+          Najnowsze
+        </a>
+      <?php else: ?>
+        <span class="disabled">Najnowsze</span>
+      <?php endif; ?>
+    </td>
+    <td>
+      <?php if (isset($this->previous)): ?>
+        <a href="<?php echo $this->restUrl(array('page' => $this->previous)); ?>">
+          &lt;&nbsp;Nowsze
+        </a>
+      <?php else: ?>
+        <span class="disabled">&lt;&nbsp;Nowsze</span>
+      <?php endif; ?>
+    </td>
+    <td class="pages">
+      <!-- Numbered page links -->
+      <?php foreach ($this->pagesInRange as $page): ?>
+        <?php if ($page != $this->current): ?>
+          <a href="<?php echo $this->restUrl(array('page' => $page)); ?>">
+              <span class="hidden">Przejdź do strony: </span><?php echo $page; ?></a>
+        <?php else: ?>
+          <span class="active"><span class="hidden">Jesteś na stronie: </span><?php echo $page; ?></span>
+        <?php endif; ?>
+      <?php endforeach; ?>
+    </td>
+    <td class="align">
+      <!-- Next page link -->
+      <?php if (isset($this->next)): ?>
+        <a href="<?php echo $this->restUrl(array('page' => $this->next)); ?>">
+          Starsze&nbsp;&gt;
+        </a>
+      <?php else: ?>
+        <span class="disabled">Starsze&nbsp;&gt;</span>
+      <?php endif; ?>
+    </td>
+    <td class="align">
+      <!-- Last page link -->
+      <?php if (isset($this->next)): ?>
+        <a href="<?php echo $this->restUrl(array('page' => $this->last)); ?>">
+          Najstarsze
+        </a>
+      <?php else: ?>
+        <span class="disabled">Najstarsze</span>
+      <?php endif; ?>
+    </td>
+  </tr>
+  </tbody>
+</table>
+
+
+<!-- <?php echo $this->firstItemNumber; ?> - <?php echo $this->lastItemNumber; ?> 
+of <?php echo $this->totalItemCount; ?> -->
+ 
+</div>
+<?php endif; ?>

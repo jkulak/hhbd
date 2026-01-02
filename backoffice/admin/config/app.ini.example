@@ -1,0 +1,9 @@
+[db]
+host=127.0.0.1
+user=xxxx
+pass=xxxx
+database=xxxx
+port=0000
+
+[directories]
+image_upload = "/var/www/s.hhbd.pl/www/"
