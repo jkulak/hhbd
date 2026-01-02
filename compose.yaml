@@ -19,7 +19,6 @@ services:
       # Feature flags
       SHOW_ADS: "true"
       SHOW_SHARE_IT: "true"
-      DEBUG_FIREPHP: "false"
     healthcheck:
       test: ["CMD", "php-fpm-healthcheck"]
       interval: 30s

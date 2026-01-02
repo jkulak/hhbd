@@ -2,8 +2,6 @@ services:
   app:
     environment:
       APPLICATION_ENV: development
-      # Development: enable debug
-      DEBUG_FIREPHP: "true"
     volumes:
       - ./app:/var/www/html/app
       - ./content:/var/www/html/content
