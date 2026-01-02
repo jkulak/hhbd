@@ -123,6 +123,31 @@ The tests check:
 - Detail pages display database data
 - Search functionality works
 
+### Unit Tests
+
+Unit tests use PHPUnit to test library classes, models, and view helpers with mocked dependencies.
+
+Run unit tests inside the container:
+
+```bash
+docker compose exec app ./vendor/bin/phpunit -c tests/phpunit.xml
+```
+
+Run with coverage report:
+
+```bash
+docker compose exec app ./vendor/bin/phpunit -c tests/phpunit.xml --coverage-html tests/coverage
+```
+
+The tests cover:
+
+- Library classes (`Jkl_Tools_String`, `Jkl_Tools_Date`, `Jkl_Og`, `Jkl_Db`)
+- View helpers (`LoggedIn`)
+- Model constants and validation logic
+
 ### CI/CD
 
-Smoke tests run automatically on GitHub Actions for every push and pull request. See `.github/workflows/smoke-tests.yml`.
+Tests run automatically on GitHub Actions for every push and pull request:
+
+- **Unit Tests**: `.github/workflows/unit-tests.yml` - PHPUnit tests with coverage
+- **Smoke Tests**: `.github/workflows/smoke-tests.yml` - Integration tests with Docker
