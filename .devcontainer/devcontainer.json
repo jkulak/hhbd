@@ -8,26 +8,20 @@
     "customizations": {
         "vscode": {
             "extensions": [
-                "bmewburn.vscode-intelephense-client",
                 "xdebug.php-debug",
                 "neilbrayfield.php-docblocker",
-                "obliviousharmony.vscode-php-codesniffer",
-                
                 "anthropic.claude-code",
                 "google.gemini-cli-vscode-ide-companion",
                 "google.geminicodeassist",
                 "github.copilot",
                 "github.copilot-chat",
-
                 "davidanson.vscode-markdownlint",
                 "github.vscode-github-actions",
-                
                 "ms-azuretools.vscode-docker",
                 "ms-azuretools.vscode-containers",
+                "junstyle.php-cs-fixer",
                 "vscode-icons-team.vscode-icons"
-                                
                 // "mechatroner.rainbow-csv",
-
             ],
             "settings": {
                 "php.validate.executablePath": "/usr/local/bin/php",
@@ -43,16 +37,29 @@
             "version": "lts"
         },
         "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
-        "version": "latest",
-        "enableNonRootDocker": "true",
-        "moby": "true"
+            "version": "latest",
+            "enableNonRootDocker": "true",
+            "moby": "true"
         }
     },
-    "forwardPorts": [8080, 8081, 8082, 3306],
+    "forwardPorts": [
+        8080,
+        8081,
+        8082,
+        3306
+    ],
     "portsAttributes": {
-        "8080": {"label": "Frontend"},
-        "8081": {"label": "Backoffice"},
-        "8082": {"label": "Adminer"},
-        "3306": {"label": "MariaDB"}
+        "8080": {
+            "label": "Frontend"
+        },
+        "8081": {
+            "label": "Backoffice"
+        },
+        "8082": {
+            "label": "Adminer"
+        },
+        "3306": {
+            "label": "MariaDB"
+        }
     }
 }
