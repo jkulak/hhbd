@@ -98,6 +98,41 @@ docker compose logs -f
 | Error display | Shown | Hidden |
 | Opcache timestamps | Validated | Disabled |
 
+## Application Overview
+
+HHBD is a content management system for Polish hip-hop music featuring:
+
+- **Music Database**: Artists, albums, songs, and record labels
+- **User System**: Registration, login, profiles, comments
+- **Community Features**: Lyrics editing, ratings, popularity tracking
+- **SEO**: XML sitemaps, Open Graph, friendly URLs (`album-name-a123.html`)
+- **Admin Panel**: Backoffice for content management
+
+### Technology Stack
+
+| Component  | Technology                            |
+| ---------- | ------------------------------------- |
+| Framework  | Zend Framework 1 (shardj/zf1-future)  |
+| Language   | PHP 7.4+                              |
+| Database   | MariaDB 10.11                         |
+| Web Server | Nginx + PHP-FPM                       |
+| Admin      | Apache (backoffice)                   |
+
+### Architecture
+
+```text
+app/
+├── application/
+│   ├── configs/         # application.ini, routes.xml
+│   ├── controllers/     # MVC controllers (Artist, Album, Song, etc.)
+│   ├── models/          # Two-tier: Model_*_Api (data) + Model_*_Container (DTO)
+│   ├── views/           # .phtml templates
+│   └── layouts/         # Main layout
+├── library/Jkl/         # Custom utilities (Db, Og, Tools)
+├── public/              # Entry point, CSS, JS, images
+└── tests/               # PHPUnit tests
+```
+
 ## Testing
 
 ### Smoke Tests
