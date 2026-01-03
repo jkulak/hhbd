@@ -141,7 +141,7 @@ if [ "$BUILD_BACKOFFICE" = true ]; then
     docker build ${NO_CACHE} \
         --platform "${PLATFORM}" \
         -t "${REGISTRY}/backoffice:latest" \
-        -f backoffice/admin/Dockerfile \
+        -f backoffice/Dockerfile \
         backoffice
 
     log_info "Pushing backoffice image..."
