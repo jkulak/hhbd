@@ -34,19 +34,20 @@ services:
       - "8080:80"
     volumes:
       - ./app/public:/var/www/html/app/public
+      - ./backoffice:/var/www/html/backoffice
       - ./content:/var/www/html/content
       - ./conf/nginx:/etc/nginx/conf.d
     depends_on:
       app:
         condition: service_started
+      backoffice:
+        condition: service_started
 
-  # Backoffice Admin Panel (Apache-based)
+  # Backoffice Admin Panel (PHP-FPM)
   backoffice:
     build:
       context: ./backoffice
       dockerfile: Dockerfile
-    ports:
-      - "8081:80"
     volumes:
       - ./backoffice:/var/www/html/backoffice
       - ./content:/var/www/html/content
@@ -54,7 +55,6 @@ services:
       db:
         condition: service_healthy
     environment:
-      PORT: 80
       DB_HOST: db
       DB_NAME: hhbd
       DB_USER: hhbd
