@@ -19,5 +19,14 @@
     "config": {
         "optimize-autoloader": true,
         "sort-packages": true
+    },
+    "scripts": {
+        "post-install-cmd": [
+            "@setup-hooks"
+        ],
+        "post-update-cmd": [
+            "@setup-hooks"
+        ],
+        "setup-hooks": "@php tools/setup-hooks.php"
     }
 }
