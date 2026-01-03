@@ -44,7 +44,7 @@ services:
   backoffice:
     build:
       context: ./backoffice
-      dockerfile: admin/Dockerfile
+      dockerfile: Dockerfile
     ports:
       - "8081:80"
     volumes:
