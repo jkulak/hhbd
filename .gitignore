@@ -44,3 +44,4 @@ WARP.md
 /app/tests/coverage/
 /app/tests/.phpunit.cache/
 coverage.xml
+app/.php-cs-fixer.cache
