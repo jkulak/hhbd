@@ -57,6 +57,42 @@ hhbd-new/
 
 ## Development
 
+### Dev Container (Recommended)
+
+The project includes a VS Code Dev Container for a consistent PHP 7.4 development environment.
+
+**Prerequisites:**
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- [VS Code](https://code.visualstudio.com/) with [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+
+**Getting Started:**
+
+1. Open the project folder in VS Code
+2. When prompted, click "Reopen in Container" (or use Command Palette: `Dev Containers: Reopen in Container`)
+3. VS Code will build the container and install dependencies automatically
+
+**Included tools:**
+
+- PHP 7.4 with GD, MySQLi, PDO extensions
+- Composer 2
+- Xdebug 3.1 (pre-configured for VS Code debugging)
+- PHP CodeSniffer
+
+**Running tests in dev container:**
+
+```bash
+cd app && ./vendor/bin/phpunit -c tests/phpunit.xml
+```
+
+**Running code sniffer:**
+
+```bash
+cd app && ./vendor/bin/phpcs --standard=PSR12 application/
+```
+
+### Docker Compose
+
 The `compose.override.yaml` file is automatically loaded by Docker Compose and enables development mode:
 
 - `APPLICATION_ENV=development` - enables Zend Framework development settings
