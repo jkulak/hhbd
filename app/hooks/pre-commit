@@ -1,0 +1,116 @@
+#!/bin/sh
+
+echo "🔍 Running pre-commit checks..."
+echo ""
+
+# Get list of staged PHP files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.php$')
+
+if [ -z "$STAGED_FILES" ]; then
+    echo "No PHP files staged for commit."
+    exit 0
+fi
+
+# Track if any checks fail
+FAILED=0
+
+# ============================================================================
+# 1. PHP CS Fixer - Check code style
+# ============================================================================
+echo "📋 Checking code style with php-cs-fixer..."
+if [ -f "app/vendor/bin/php-cs-fixer" ]; then
+    app/vendor/bin/php-cs-fixer fix --dry-run --diff --config=.php-cs-fixer.dist.php --path-mode=intersection $STAGED_FILES
+    if [ $? -ne 0 ]; then
+        echo "❌ Code style issues found."
+        echo "Run: app/vendor/bin/php-cs-fixer fix"
+        echo ""
+        FAILED=1
+    else
+        echo "✓ Code style OK"
+        echo ""
+    fi
+else
+    echo "⚠ php-cs-fixer not found, skipping..."
+    echo ""
+fi
+
+# ============================================================================
+# 2. PHP Linting - Check for syntax errors
+# ============================================================================
+echo "🔍 Linting PHP files..."
+LINT_FAILED=0
+for FILE in $STAGED_FILES; do
+    php -l "$FILE" > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "❌ Syntax error in: $FILE"
+        php -l "$FILE"
+        LINT_FAILED=1
+    fi
+done
+
+if [ $LINT_FAILED -eq 0 ]; then
+    echo "✓ All files have valid PHP syntax"
+    echo ""
+else
+    echo ""
+    FAILED=1
+fi
+
+# ============================================================================
+# 3. Check for debugging artifacts
+# ============================================================================
+echo "🐛 Checking for debugging artifacts..."
+ARTIFACTS_FOUND=0
+
+# Patterns to search for
+PATTERNS="var_dump( print_r( dd( dump( die( exit( console.log( debugger; var_export( error_log("
+
+# Check each staged file for debugging code
+for FILE in $STAGED_FILES; do
+    # Skip files in tools/, scripts/, or vendor/ directories
+    case "$FILE" in
+        */tools/*|*/scripts/*|*/vendor/*)
+            continue
+            ;;
+    esac
+    
+    for PATTERN in $PATTERNS; do
+        if grep -n "$PATTERN" "$FILE" > /dev/null 2>&1; then
+            if [ $ARTIFACTS_FOUND -eq 0 ]; then
+                echo "❌ Debugging artifacts found:"
+                ARTIFACTS_FOUND=1
+            fi
+            echo "  $FILE: $PATTERN"
+            grep -n "$PATTERN" "$FILE" | head -n 3 | sed 's/^/    /'
+        fi
+    done
+done
+
+if [ $ARTIFACTS_FOUND -eq 0 ]; then
+    echo "✓ No debugging artifacts found"
+    echo ""
+else
+    echo ""
+    echo "Remove debugging code or use --no-verify to bypass"
+    echo ""
+    FAILED=1
+fi
+
+# ============================================================================
+# Final result
+# ============================================================================
+if [ $FAILED -eq 1 ]; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "❌ Pre-commit checks FAILED"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Fix the issues above or use: git commit --no-verify"
+    echo ""
+    exit 1
+fi
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ All pre-commit checks passed!"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+exit 0
