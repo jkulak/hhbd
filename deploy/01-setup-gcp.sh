@@ -98,16 +98,6 @@ else
         --description="Allow HTTPS traffic"
 fi
 
-# Backoffice rule (port 8081)
-if gcloud compute firewall-rules describe allow-backoffice &> /dev/null; then
-    log_warn "Firewall rule 'allow-backoffice' already exists"
-else
-    gcloud compute firewall-rules create allow-backoffice \
-        --allow=tcp:8081 \
-        --target-tags=backoffice \
-        --description="Allow backoffice traffic on port 8081"
-fi
-
 # Create the VM instance
 log_info "Creating VM instance..."
 if gcloud compute instances describe "${VM_NAME}" --zone="${ZONE}" &> /dev/null; then
@@ -122,7 +112,7 @@ else
         --boot-disk-type=pd-standard \
         --address="${STATIC_IP}" \
         --network-tier=STANDARD \
-        --tags=http-server,https-server,backoffice \
+        --tags=http-server,https-server \
         --metadata=enable-oslogin=TRUE \
         --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append,https://www.googleapis.com/auth/cloud-platform
     log_info "VM instance created"

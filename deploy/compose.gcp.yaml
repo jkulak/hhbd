@@ -51,32 +51,10 @@ services:
     depends_on:
       app:
         condition: service_healthy
-      backoffice:
-        condition: service_started
     deploy:
       resources:
         limits:
           memory: 64M
-
-  # Backoffice Admin Panel (PHP-FPM)
-  backoffice:
-    image: us-central1-docker.pkg.dev/hhbd-483111/hhbd/backoffice:latest
-    restart: unless-stopped
-    volumes:
-      - /opt/hhbd/content:/var/www/html/content
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      APPLICATION_ENV: production
-      DB_HOST: db
-      DB_NAME: ${DB_NAME:-hhbd}
-      DB_USER: ${DB_USER:-hhbd}
-      DB_PASSWORD: ${DB_PASSWORD:-hhbd_password}
-    deploy:
-      resources:
-        limits:
-          memory: 256M
 
   # MariaDB Database
   db:
