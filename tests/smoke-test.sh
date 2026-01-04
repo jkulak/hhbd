@@ -144,6 +144,44 @@ test_page_multi() {
     fi
 }
 
+# Test that a page contains a minimum number of elements matching a pattern
+test_element_count() {
+    local name="$1"
+    local path="$2"
+    local pattern="$3"
+    local min_count="$4"
+    local url="${BASE_URL}${path}"
+
+    local status
+    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || echo "000")
+
+    if [[ "$status" == "200" ]]; then
+        local content
+        content=$(curl -s --max-time 10 "$url" 2>/dev/null)
+        
+        local count
+        count=$(echo "$content" | grep -o "$pattern" | wc -l)
+
+        if [[ "$count" -ge "$min_count" ]]; then
+             echo -e "${GREEN}✓${NC} $name (Found $count elements, expected >= $min_count)"
+             ((PASSED++))
+             return 0
+        else
+             local error="$name - Found $count '$pattern', expected >= $min_count"
+             echo -e "${RED}✗${NC} $error"
+             ERRORS+=("$error")
+             ((FAILED++))
+             return 1
+        fi
+    else
+        local error="$name - HTTP $status (expected 200)"
+        echo -e "${RED}✗${NC} $error"
+        ERRORS+=("$error")
+        ((FAILED++))
+        return 1
+    fi
+}
+
 # Run tests
 run_tests() {
     echo "Running tests..."
@@ -170,6 +208,13 @@ run_tests() {
     # Search functionality
     echo "--- Search ---"
     test_page_multi "Search (tede)" "/szukaj.html?q=tede" "Mefistotedes" "MercTedes"
+    echo ""
+
+    # Rankings
+    echo "--- Rankings ---"
+    test_page "Top 10 Page" "/top10.html" "Top 10"
+    test_element_count "Top 10 List Items" "/top10.html" "<li" 70
+    test_element_count "Top 10 Thumbnails" "/top10.html" "thumb" 40
     echo ""
 
     # User pages

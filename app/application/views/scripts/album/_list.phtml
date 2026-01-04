@@ -14,5 +14,11 @@
           <?php echo $value->label->name ?>, 
         <?php endif ?>
       <?php echo $value->releaseDateNormalized ?></span>
+      <?php if (!empty($this->showViews)): ?>
+        <span class="views"><?php echo number_format($value->views, 0, ',', ' ') ?> wyświetleń</span>
+      <?php endif ?>
+      <?php if (!empty($this->showRating)): ?>
+        <span class="rating">Ocena: <?php echo $value->rating ?>/10</span>
+      <?php endif ?>
   <?php endforeach ?>
 </ul>

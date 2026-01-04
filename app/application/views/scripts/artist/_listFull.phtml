@@ -1,0 +1,23 @@
+<ul>
+  <?php foreach ($this->items as $artist): ?>
+    <li>
+      <?php if (!empty($artist->photo->items[0])): ?>
+        <a href="<?php echo $this->url(array('id' => $artist->id, 'seo' => $artist->url), 'artist'); ?>">
+          <img src="<?php echo $artist->photo->items[0]->url ?>" alt="<?php echo $artist->name ?>"
+          title="<?php echo $artist->name ?>"
+          class="thumb" />
+        </a>
+      <?php endif ?>
+
+      <span><a href="<?php echo $this->url(array('id' => $artist->id, 'seo' => $artist->url), 'artist'); ?>"><?php echo $artist->name ?></a></span>
+      <?php if (!empty($artist->albumCount)): ?>
+        <span>albumów: <?php echo $artist->albumCount ?></span>
+      <?php endif ?>
+      <?php if (!empty($artist->views)): ?>
+        <span class="views"><?php echo number_format($artist->views, 0, ',', ' ') ?> wyświetleń</span>
+      <?php endif ?>
+      <?php if (isset($artist->commentCount)): ?>
+        <span class="comments"><?php echo $artist->commentCount ?> komentarzy</span>
+      <?php endif ?>
+  <?php endforeach ?>
+</ul>

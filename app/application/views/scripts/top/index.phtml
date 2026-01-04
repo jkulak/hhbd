@@ -1,0 +1,108 @@
+<style>
+  .top10-list {
+    display: flex;
+    gap: 20px;
+  }
+  .top10-list > div {
+    flex: 1;
+  }
+  .top10-list ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .top10-list li {
+    overflow: hidden;
+    margin-bottom: 15px;
+    min-height: 100px;
+  }
+</style>
+
+<div id="main">
+  <div class="page-header" style="clear: both; overflow: hidden;">
+    <h1>Top 10</h1>
+    <p>Rankingi polskiego hip-hopu - najpopularniejsze i najlepiej oceniane albumy, artyści, utwory i wytwórnie.</p>
+  </div>
+
+  <div class="pane albums">
+    <div class="header"><h2>Najpopularniejsze albumy</h2></div>
+    <div class="top10-list">
+      <div>
+        <?php echo $this->partial('album/_list.phtml', array('items' => array_slice($this->popularAlbums->items, 0, 5), 'showViews' => true)) ?>
+      </div>
+      <div>
+        <?php echo $this->partial('album/_list.phtml', array('items' => array_slice($this->popularAlbums->items, 5, 5), 'showViews' => true)) ?>
+      </div>
+    </div>
+  </div>
+
+  <div class="pane albums">
+    <div class="header"><h2>Najpopularniejsi artyści</h2></div>
+    <div class="top10-list">
+      <div>
+        <?php echo $this->partial('artist/_listFull.phtml', array('items' => array_slice($this->popularArtists->items, 0, 5), 'showViews' => true)) ?>
+      </div>
+      <div>
+        <?php echo $this->partial('artist/_listFull.phtml', array('items' => array_slice($this->popularArtists->items, 5, 5), 'showViews' => true)) ?>
+      </div>
+    </div>
+  </div>
+
+  <div class="pane albums">
+    <div class="header"><h2>Najlepiej oceniane albumy</h2></div>
+    <div class="top10-list">
+      <div>
+        <?php echo $this->partial('album/_list.phtml', array('items' => array_slice($this->bestAlbums->items, 0, 5), 'showRating' => true)) ?>
+      </div>
+      <div>
+        <?php echo $this->partial('album/_list.phtml', array('items' => array_slice($this->bestAlbums->items, 5, 5), 'showRating' => true)) ?>
+      </div>
+    </div>
+  </div>
+
+  <div class="pane albums">
+    <div class="header"><h2>Najpopularniejsze utwory</h2></div>
+    <div class="top10-list">
+      <div>
+        <?php echo $this->partial('song/_listFull.phtml', array('items' => array_slice($this->popularSongs->items, 0, 5), 'showViews' => true)) ?>
+      </div>
+      <div>
+        <?php echo $this->partial('song/_listFull.phtml', array('items' => array_slice($this->popularSongs->items, 5, 5), 'showViews' => true)) ?>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="additional">
+  <div class="box googleads">
+    <h3 class="hidden">Google Ads</h3>
+    <?php echo $this->partial('common/googleAds/_rectangle.phtml'); ?>
+  </div>
+
+  <div class="box">
+    <h3>Wytwórnie z największą liczbą albumów</h3>
+    <ol>
+      <?php foreach ($this->labelsWithMostAlbums->items as $label): ?>
+        <li><?php echo $this->partial('label/_link.phtml', array('item' => $label)) ?></li>
+      <?php endforeach ?>
+    </ol>
+  </div>
+
+  <div class="box">
+    <h3>Artyści z największą liczbą solowych albumów</h3>
+    <ol>
+      <?php foreach ($this->artistsWithMostSoloAlbums->items as $artist): ?>
+        <li><?php echo $this->partial('artist/_link.phtml', array('artist' => $artist)) ?></li>
+      <?php endforeach ?>
+    </ol>
+  </div>
+
+  <div class="box">
+    <h3>Artyści z największą liczbą projektów</h3>
+    <ol>
+      <?php foreach ($this->artistsWithMostProjects->items as $artist): ?>
+        <li><?php echo $this->partial('artist/_link.phtml', array('artist' => $artist)) ?></li>
+      <?php endforeach ?>
+    </ol>
+  </div>
+</div>
