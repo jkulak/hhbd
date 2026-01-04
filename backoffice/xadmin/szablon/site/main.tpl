@@ -1,1 +1,0 @@
-Zalogowany: <strong>{$who}</strong>
