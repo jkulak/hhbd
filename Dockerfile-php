@@ -34,7 +34,7 @@ WORKDIR /var/www/html/app
 COPY app/composer.json app/composer.lock* ./
 
 # Install dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # Copy application code
 COPY app/ ./
