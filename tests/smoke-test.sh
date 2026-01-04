@@ -23,6 +23,7 @@ echo ""
 echo "========================================"
 echo "  HHBD Smoke Tests"
 echo "  Base URL: $BASE_URL"
+# echo "  Application Environment: $(php -r 'echo getenv("APPLICATION_ENV") ?: "production (default)"')"
 echo "========================================"
 echo ""
 
@@ -92,7 +93,8 @@ wait_for_service() {
     echo -e "${YELLOW}Waiting for service to be ready...${NC}"
 
     while [[ $attempt -le $max_attempts ]]; do
-        if curl -s -o /dev/null --max-time 5 "$BASE_URL" 2>/dev/null; then
+        status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$BASE_URL" 2>/dev/null || echo "000")
+        if [[ "$status" == "200" ]]; then
             echo -e "${GREEN}Service is ready!${NC}"
             echo ""
             return 0

@@ -17,8 +17,14 @@ jobs:
 
       - name: Start Docker Compose services
         run: |
-          docker compose up -d --build
+          docker compose -f compose.yaml -f compose.ci.yaml up -d --build
           echo "Waiting for services to start..."
+
+      - name: Install Composer dependencies in app container
+        run: |
+          # Bind mount hides image-installed vendor, so install deps inside the running container
+          docker compose exec -T app composer install --no-interaction --prefer-dist --no-progress
+          echo "Composer dependencies installed!"
 
       - name: Wait for database to be healthy
         run: |
@@ -28,15 +34,29 @@ jobs:
 
       - name: Import test database
         run: |
-          echo "Importing database..."
-          docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/_backup/2016-06-30-hhbd.sql
+          echo "Importing schema..."
+          docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/schema.sql
+          echo "Importing test fixtures..."
+          docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/test-fixtures.sql
           echo "Database imported!"
+
+      - name: Generate test images
+        run: |
+          echo "Generating test cover images..."
+          docker compose exec -T app php /var/www/html/app/tools/generate-test-images.php
+          echo "Test images generated!"
 
       - name: Wait for PHP-FPM to be healthy
         run: |
           echo "Waiting for PHP-FPM..."
           timeout 60 bash -c 'until docker compose exec -T app php-fpm-healthcheck 2>/dev/null; do sleep 2; done'
           echo "PHP-FPM is ready!"
+
+      - name: Verify APPLICATION_ENV
+        run: |
+          echo "=== Checking APPLICATION_ENV ==="
+          docker compose exec -T app bash -c 'echo "Shell: APPLICATION_ENV=$APPLICATION_ENV"'
+          docker compose exec -T app php -r 'echo "PHP: APPLICATION_ENV=" . getenv("APPLICATION_ENV") . "\n";'
 
       - name: Run smoke tests
         run: |
@@ -47,6 +67,8 @@ jobs:
         run: |
           echo "=== Docker Compose Logs ==="
           docker compose logs --tail=100
+          echo "\n=== PHP error logs (app) ==="
+          docker compose exec -T app sh -lc 'for f in /var/log/php-errors.log /var/log/hhbd-website/*.log; do [ -f "$f" ] && echo "--- $f ---" && tail -n 200 "$f"; done || true'
 
       - name: Cleanup
         if: always()
