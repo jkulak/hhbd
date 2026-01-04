@@ -39,5 +39,8 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --no-script
 # Copy application code
 COPY app/ ./
 
+# Fix file permissions (ensure files are readable)
+RUN find . -type f -exec chmod 644 {} \; && find . -type d -exec chmod 755 {} \;
+
 # Copy production PHP configuration
 COPY conf/php/production.ini /usr/local/etc/php/conf.d/99-production.ini
