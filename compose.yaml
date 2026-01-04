@@ -34,31 +34,11 @@ services:
       - "8080:80"
     volumes:
       - ./app/public:/var/www/html/app/public
-      - ./backoffice:/var/www/html/backoffice
       - ./content:/var/www/html/content
       - ./conf/nginx:/etc/nginx/conf.d
     depends_on:
       app:
         condition: service_started
-      backoffice:
-        condition: service_started
-
-  # Backoffice Admin Panel (PHP-FPM)
-  backoffice:
-    build:
-      context: ./backoffice
-      dockerfile: Dockerfile
-    volumes:
-      - ./backoffice:/var/www/html/backoffice
-      - ./content:/var/www/html/content
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      DB_HOST: db
-      DB_NAME: hhbd
-      DB_USER: hhbd
-      DB_PASSWORD: hhbd_password
 
   # MariaDB Database (Alpine-based, ~50MB)
   db:

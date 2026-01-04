@@ -12,7 +12,6 @@
 #   ./03-build-push.sh                    # Build all images
 #   ./03-build-push.sh app                # Build only app image
 #   ./03-build-push.sh nginx              # Build only nginx image
-#   ./03-build-push.sh backoffice         # Build only backoffice image
 #   ./03-build-push.sh app nginx          # Build app and nginx images
 #   ./03-build-push.sh --no-cache app     # Build with --no-cache
 #
@@ -33,7 +32,6 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 NO_CACHE=""
 BUILD_APP=false
 BUILD_NGINX=false
-BUILD_BACKOFFICE=false
 SERVICES_SPECIFIED=false
 
 while [[ $# -gt 0 ]]; do
@@ -52,14 +50,9 @@ while [[ $# -gt 0 ]]; do
             SERVICES_SPECIFIED=true
             shift
             ;;
-        backoffice)
-            BUILD_BACKOFFICE=true
-            SERVICES_SPECIFIED=true
-            shift
-            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--no-cache] [app] [nginx] [backoffice]"
+            echo "Usage: $0 [--no-cache] [app] [nginx]"
             exit 1
             ;;
     esac
@@ -69,7 +62,6 @@ done
 if [ "$SERVICES_SPECIFIED" = false ]; then
     BUILD_APP=true
     BUILD_NGINX=true
-    BUILD_BACKOFFICE=true
 fi
 
 # Colors for output
@@ -133,20 +125,6 @@ if [ "$BUILD_NGINX" = true ]; then
     log_info "Pushing nginx image..."
     docker push "${REGISTRY}/nginx:latest"
     BUILT_IMAGES+=("${REGISTRY}/nginx:latest")
-fi
-
-# Build and push Backoffice image
-if [ "$BUILD_BACKOFFICE" = true ]; then
-    log_info "Building backoffice image for ${PLATFORM}..."
-    docker build ${NO_CACHE} \
-        --platform "${PLATFORM}" \
-        -t "${REGISTRY}/backoffice:latest" \
-        -f backoffice/Dockerfile \
-        backoffice
-
-    log_info "Pushing backoffice image..."
-    docker push "${REGISTRY}/backoffice:latest"
-    BUILT_IMAGES+=("${REGISTRY}/backoffice:latest")
 fi
 
 # Print summary

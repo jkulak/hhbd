@@ -12,7 +12,6 @@
 #   ./04-deploy.sh                              # Deploy all services
 #   ./04-deploy.sh app                          # Deploy only app service
 #   ./04-deploy.sh nginx                        # Deploy only nginx service
-#   ./04-deploy.sh backoffice                   # Deploy only backoffice service
 #   ./04-deploy.sh app nginx                    # Deploy app and nginx services
 #
 
@@ -30,7 +29,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Parse arguments
 DEPLOY_APP=false
 DEPLOY_NGINX=false
-DEPLOY_BACKOFFICE=false
 SERVICES_SPECIFIED=false
 
 while [[ $# -gt 0 ]]; do
@@ -45,14 +43,9 @@ while [[ $# -gt 0 ]]; do
             SERVICES_SPECIFIED=true
             shift
             ;;
-        backoffice)
-            DEPLOY_BACKOFFICE=true
-            SERVICES_SPECIFIED=true
-            shift
-            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [app] [nginx] [backoffice]"
+            echo "Usage: $0 [app] [nginx]"
             exit 1
             ;;
     esac
@@ -62,7 +55,6 @@ done
 if [ "$SERVICES_SPECIFIED" = false ]; then
     DEPLOY_APP=true
     DEPLOY_NGINX=true
-    DEPLOY_BACKOFFICE=true
 fi
 
 # Build list of services to deploy
@@ -72,9 +64,6 @@ if [ "$DEPLOY_APP" = true ]; then
 fi
 if [ "$DEPLOY_NGINX" = true ]; then
     SERVICES="${SERVICES} nginx"
-fi
-if [ "$DEPLOY_BACKOFFICE" = true ]; then
-    SERVICES="${SERVICES} backoffice"
 fi
 SERVICES=$(echo "$SERVICES" | xargs)  # Trim whitespace
 
@@ -158,7 +147,6 @@ echo ""
 echo "Deployed services: ${SERVICES}"
 echo ""
 echo "Application URL: http://${STATIC_IP}"
-echo "Backoffice URL:  http://${STATIC_IP}:8081"
 echo ""
 echo "To start Adminer (database UI):"
 echo "  gcloud compute ssh ${VM_NAME} --zone=${ZONE} --command='cd ${REMOTE_DIR} && docker compose -f compose.gcp.yaml --profile tools up -d adminer'"
