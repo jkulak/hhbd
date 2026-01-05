@@ -121,6 +121,39 @@ Rector is configured in [app/rector.php](app/rector.php) with rules for:
 - Early returns
 - Naming conventions
 
+### Code Statistics and Metrics
+
+Generate code statistics and metrics to understand your codebase.
+
+**Quick statistics with phploc:**
+
+```bash
+# Inside the dev container
+cd app && ./vendor/bin/phploc application/ library/
+
+# Outside (host), let Docker run it in the app container
+docker compose exec app ./vendor/bin/phploc application/ library/
+```
+
+**Comprehensive metrics with PHPMetrics:**
+
+```bash
+# Inside the dev container
+cd app && ./vendor/bin/phpmetrics --report-html=tests/phpmetrics application/ library/
+
+# Outside (host)
+docker compose exec app ./vendor/bin/phpmetrics --report-html=tests/phpmetrics application/ library/
+
+# View the report at: app/tests/phpmetrics/index.html
+```
+
+PHPMetrics provides:
+
+- Complexity metrics (cyclomatic, maintainability index)
+- Object-oriented metrics (coupling, cohesion)
+- Visual reports with charts and graphs
+- Code violations and code smells detection
+
 ### Docker Compose
 
 The `compose.override.yaml` file is automatically loaded by Docker Compose and enables development mode:
