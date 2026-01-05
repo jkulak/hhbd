@@ -62,8 +62,8 @@ fi
 echo "🐛 Checking for debugging artifacts..."
 ARTIFACTS_FOUND=0
 
-# Patterns to search for
-PATTERNS="var_dump( print_r( dd( dump( die( exit( console.log( debugger; var_export( error_log("
+# Patterns to search for (regex with word boundaries to avoid false positives)
+PATTERNS="var_dump\(|print_r\(|\bdd\(|dump\(|die\(|exit\(|console\.log\(|debugger;|var_export\(|error_log\("
 
 # Check each staged file for debugging code
 for FILE in $STAGED_FILES; do
@@ -75,13 +75,13 @@ for FILE in $STAGED_FILES; do
     esac
     
     for PATTERN in $PATTERNS; do
-        if grep -n "$PATTERN" "$FILE" > /dev/null 2>&1; then
+        if grep -E "$PATTERN" "$FILE" > /dev/null 2>&1; then
             if [ $ARTIFACTS_FOUND -eq 0 ]; then
                 echo "❌ Debugging artifacts found:"
                 ARTIFACTS_FOUND=1
             fi
             echo "  $FILE: $PATTERN"
-            grep -n "$PATTERN" "$FILE" | head -n 3 | sed 's/^/    /'
+            grep -En "$PATTERN" "$FILE" | head -n 3 | sed 's/^/    /'
         fi
     done
 done
