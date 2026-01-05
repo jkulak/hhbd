@@ -51,6 +51,7 @@ Configuration and env
   - Application-level settings in [application.ini](app/application/configs/application.ini) can override via `phpSettings.*`.
 - DB and flags via env: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `SHOW_ADS`, mail vars. Paths for content under `app.paths.*` in application.ini.
 - Content directories (images) are under [content/](content/); not in git, mounted into containers.
+- **Legacy tables**: The database contains unused legacy tables from earlier versions. Active tables include `hhb_users`, `artists`, `albums`, `songs`, `labels`, `comments`, `album_ratings`, `song_ratings`, etc. Legacy tables like `users`, `users_admins`, `users_activations` are NOT used by the current application. Always use `hhb_users` for user operations.
 
 Gotchas (do these)
 - **Dev container setup order**: Run `docker compose up` from **host** first (creates `hhbd_default` network), then open in VS Code. Opening VS Code first means dev container can't connect to network on startup.
