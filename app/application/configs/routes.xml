@@ -38,6 +38,15 @@
         </defaults>
         <reverse>/top10.html</reverse>
       </top10>
+
+      <adminStats>
+        <route>admin/statystyki.html</route>
+        <defaults>
+          <controller>admin</controller>
+          <action>stats</action>
+        </defaults>
+        <reverse>admin/statystyki.html</reverse>
+      </adminStats>
       
       <!-- Albumy Wykonawcy Wytwórnie "O nas" Blog Kontakt "Zasady użytkowania" "Mapa strony" -->
       <!-- articles -->

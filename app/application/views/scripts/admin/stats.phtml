@@ -1,0 +1,602 @@
+<style>
+  #page-container {
+    display: flex;
+    gap: 20px;
+  }
+  #main {
+    flex: 1;
+    min-width: 0;
+  }
+  #aside {
+    width: 250px;
+    flex-shrink: 0;
+  }
+  .stats-nav {
+    background: #f3edd5;
+    padding: 15px;
+    border-radius: 4px;
+  }
+  .stats-nav h3 {
+    color: #392312;
+    margin: 0 0 10px 0;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #d0c17e;
+    font-size: 16px;
+  }
+  .stats-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .stats-nav li {
+    margin: 0;
+  }
+  .stats-nav a {
+    display: block;
+    padding: 8px 10px;
+    color: #392312;
+    text-decoration: none;
+    border-radius: 3px;
+    transition: background 0.2s;
+  }
+  .stats-nav a:hover {
+    background: #EEE4BE;
+  }
+  .stats-section {
+    margin-bottom: 30px;
+    background: #f3edd5;
+    padding: 20px;
+    border-radius: 4px;
+    scroll-margin-top: 20px;
+  }
+  .stats-section h2 {
+    color: #392312;
+    border-bottom: 2px solid #d0c17e;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+  }
+  .stats-section h3 {
+    color: #766C45;
+    margin: 20px 0 10px 0;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+  .stat-box {
+    background: #EEE4BE;
+    padding: 15px;
+    border-radius: 4px;
+    border-left: 4px solid #ac9d59;
+  }
+  .stat-box strong {
+    color: #392312;
+    display: block;
+    margin-bottom: 5px;
+  }
+  .stats-section table {
+    width: 100%;
+    margin-top: 10px;
+    background: #f3edd5;
+  }
+  .stats-section table th {
+    background: #EEE4BE;
+    color: #392312;
+    padding: 10px;
+    font-weight: bold;
+  }
+  .stats-section table td {
+    padding: 8px;
+    border-bottom: 1px solid #EEE4BE;
+  }
+  .stats-section a {
+    color: rgb(0, 0, 238);
+    text-decoration: none;
+  }
+  .stats-section a:hover {
+    text-decoration: underline;
+  }
+  .stats-section a:visited {
+    color: rgb(85, 26, 139);
+  }
+  @media (max-width: 768px) {
+    #page-container {
+      flex-direction: column;
+    }
+    #aside {
+      width: 100%;
+    }
+  }
+</style>
+
+<div id="page-container">
+  <div id="main">
+    <h1>Statystyki HHBD - Panel Admina</h1>
+
+    <!-- Summary Section -->
+    <section id="summary" class="stats-section">
+      <h2>📊 Podsumowanie <a href="#page-container" style="float: right; font-size: 0.8em;">🔝 Do góry</a></h2>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <strong>Albumy:</strong> 
+          <?php echo number_format($this->summaryStats['totalAlbums'], 0, ',', ' '); ?><br>
+          <small><?php echo $this->summaryStats['albumCoverPercentage']; ?>% z okładkami</small>
+        </div>
+        <div class="stat-box">
+          <strong>Wykonawcy:</strong> 
+          <?php echo number_format($this->summaryStats['totalArtists'], 0, ',', ' '); ?><br>
+          <small><?php echo $this->summaryStats['artistPhotoPercentage']; ?>% ze zdjęciami</small>
+        </div>
+        <div class="stat-box">
+          <strong>Wytwórnie:</strong> 
+          <?php echo number_format($this->summaryStats['totalLabels'], 0, ',', ' '); ?><br>
+          <small><?php echo $this->summaryStats['labelLogoPercentage']; ?>% z logo</small>
+        </div>
+        <div class="stat-box">
+          <strong>Newsy:</strong> 
+          <?php echo number_format($this->summaryStats['totalNews'], 0, ',', ' '); ?>
+        </div>
+        <div class="stat-box">
+          <strong>Komentarze:</strong> 
+          <?php echo number_format($this->summaryStats['totalComments'], 0, ',', ' '); ?>
+        </div>
+        <div class="stat-box">
+          <strong>Łącznie wyświetleń:</strong> 
+          <?php echo number_format($this->summaryStats['totalViews'], 0, ',', ' '); ?>
+        </div>
+      </div>
+    </section>
+
+    <!-- Users Statistics -->
+    <section id="users" class="stats-section">
+      <h2>👥 Użytkownicy <a href="#page-container" style="float: right; font-size: 0.8em;">🔝 Do góry</a></h2>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <strong>Wszyscy użytkownicy:</strong> <?php echo number_format($this->userStats['total'], 0, ',', ' '); ?>
+        </div>
+        <div class="stat-box">
+          <strong>Administratorzy:</strong> <?php echo $this->userStats['admins']; ?>
+        </div>
+        <div class="stat-box">
+          <strong>Zarejestrowani w tym miesiącu:</strong> <?php echo $this->userStats['thisMonth']; ?>
+        </div>
+        <div class="stat-box">
+          <strong>Zarejestrowani w tym roku:</strong> <?php echo $this->userStats['thisYear']; ?>
+        </div>
+      </div>
+
+      <h3>Najbardziej aktywni użytkownicy (logowania)</h3>
+      <table>
+        <tr>
+          <th>Nazwa</th>
+          <th>Liczba logowań</th>
+          <th>Ostatnie logowanie</th>
+        </tr>
+        <?php foreach ($this->userStats['mostActive'] as $user): ?>
+        <tr>
+          <td>
+              <a href="<?php echo $this->url(array('id' => $user['usr_id'], 'seo' => Jkl_Tools_Url::createUrl($user['usr_display_name'])), 'user'); ?>">
+              <?php echo $this->escape($user['usr_display_name']); ?>
+            </a>
+          </td>
+          <td><?php echo number_format($user['usr_login_count'], 0, ',', ' '); ?></td>
+          <td><?php echo $this->escape($user['usr_last_login']); ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+
+      <h3>Najnowsi użytkownicy</h3>
+      <table>
+        <tr>
+          <th>Nazwa</th>
+          <th>Email</th>
+          <th>Data rejestracji</th>
+        </tr>
+        <?php foreach ($this->userStats['newest'] as $user): ?>
+        <tr>
+          <td>
+              <a href="<?php echo $this->url(array('id' => $user['usr_id'], 'seo' => Jkl_Tools_Url::createUrl($user['usr_display_name'])), 'user'); ?>">
+              <?php echo $this->escape($user['usr_display_name']); ?>
+            </a>
+          </td>
+          <td><?php echo $this->escape($user['usr_email']); ?></td>
+          <td><?php echo $this->escape($user['usr_added']); ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+    </section>
+
+    <!-- Albums Statistics -->
+    <section id="albums" class="stats-section">
+      <h2>💿 Albumy <a href="#page-container" style="float: right; font-size: 0.8em;">🔝 Do góry</a></h2>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <strong>Wszystkie albumy:</strong> <?php echo number_format($this->albumStats['total'], 0, ',', ' '); ?>
+        </div>
+        <div class="stat-box">
+          <strong>Z okładkami:</strong> <?php echo number_format($this->albumStats['withCovers'], 0, ',', ' '); ?>
+        </div>
+        <div class="stat-box">
+          <strong>Bez okładek:</strong> <?php echo number_format($this->albumStats['withoutCovers'], 0, ',', ' '); ?>
+        </div>
+        <div class="stat-box">
+          <strong>Z zerową liczbą wyświetleń:</strong> <?php echo number_format($this->albumStats['zeroViews'], 0, ',', ' '); ?>
+        </div>
+      </div>
+
+      <h3>Najczęściej oglądane albumy</h3>
+      <table>
+        <tr>
+          <th>Tytuł</th>
+          <th>Wyświetlenia</th>
+        </tr>
+        <?php foreach ($this->albumStats['mostViewed'] as $album): ?>
+        <tr>
+          <td>
+              <a href="<?php echo $this->url(array('id' => $album['id'], 'seo' => Jkl_Tools_Url::createUrl($album['title'])), 'album'); ?>">
+              <?php echo $this->escape($album['title']); ?>
+            </a>
+          </td>
+          <td><?php echo number_format($album['viewed'], 0, ',', ' '); ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+
+      <h3>Najnowsze albumy</h3>
+      <table>
+        <tr>
+          <th>Tytuł</th>
+          <th>Data dodania</th>
+        </tr>
+        <?php foreach ($this->albumStats['newest'] as $album): ?>
+        <tr>
+          <td>
+              <a href="<?php echo $this->url(array('id' => $album['id'], 'seo' => Jkl_Tools_Url::createUrl($album['title'])), 'album'); ?>">
+              <?php echo $this->escape($album['title']); ?>
+            </a>
+          </td>
+          <td><?php echo $this->escape($album['added']); ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+    </section>
+
+    <!-- Artists Statistics -->
+    <section id="artists" class="stats-section">
+      <h2>🎤 Wykonawcy <a href="#page-container" style="float: right; font-size: 0.8em;">🔝 Do góry</a></h2>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <strong>Wszyscy wykonawcy:</strong> <?php echo number_format($this->artistStats['total'], 0, ',', ' '); ?>
+        </div>
+        <div class="stat-box">
+          <strong>Ze zdjęciami:</strong> <?php echo number_format($this->artistStats['withPhotos'], 0, ',', ' '); ?>
+        </div>
+        <div class="stat-box">
+          <strong>Bez zdjęć:</strong> <?php echo number_format($this->artistStats['withoutPhotos'], 0, ',', ' '); ?>
+        </div>
+      </div>
+
+      <h3>Najczęściej oglądani wykonawcy</h3>
+      <table>
+        <tr>
+          <th>Nazwa</th>
+          <th>Wyświetlenia</th>
+        </tr>
+        <?php foreach ($this->artistStats['mostViewed'] as $artist): ?>
+        <tr>
+          <td>
+              <a href="<?php echo $this->url(array('id' => $artist['id'], 'seo' => Jkl_Tools_Url::createUrl($artist['name'])), 'artist'); ?>">
+              <?php echo $this->escape($artist['name']); ?>
+            </a>
+          </td>
+          <td><?php echo number_format($artist['viewed'], 0, ',', ' '); ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+
+      <h3>Wykonawcy z największą liczbą albumów</h3>
+      <table>
+        <tr>
+          <th>Nazwa</th>
+          <th>Liczba albumów</th>
+        </tr>
+        <?php foreach ($this->artistStats['mostAlbums'] as $artist): ?>
+        <tr>
+          <td>
+              <a href="<?php echo $this->url(array('id' => $artist['id'], 'seo' => Jkl_Tools_Url::createUrl($artist['name'])), 'artist'); ?>">
+              <?php echo $this->escape($artist['name']); ?>
+            </a>
+          </td>
+          <td><?php echo $artist['album_count']; ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+
+      <h3>Podział według typu</h3>
+      <table>
+        <tr>
+          <th>Typ</th>
+          <th>Liczba</th>
+        </tr>
+        <?php
+        $typeLabels = [
+          'm' => 'Mężczyzna (wykonawca solo)',
+          'f' => 'Kobieta (wykonawczyni solo)',
+          'b' => 'Zespół',
+          'x' => 'Grupa producentów/inne'
+        ];
+          foreach ($this->artistStats['byType'] as $type):
+              ?>
+        <tr>
+          <td><?php echo isset($typeLabels[$type['type']]) ? $typeLabels[$type['type']] : $this->escape($type['type']); ?></td>
+          <td><?php echo $type['count']; ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+    </section>
+
+    <!-- Songs Statistics -->
+    <section id="songs" class="stats-section">
+      <h2>🎵 Utwory <a href="#page-container" style="float: right; font-size: 0.8em;">🔝 Do góry</a></h2>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <strong>Wszystkie utwory:</strong> <?php echo number_format($this->songStats['total'], 0, ',', ' '); ?>
+        </div>
+        <div class="stat-box">
+          <strong>Z tekstami:</strong> <?php echo number_format($this->songStats['withLyrics'], 0, ',', ' '); ?>
+        </div>
+        <div class="stat-box">
+          <strong>Bez tekstów:</strong> <?php echo number_format($this->songStats['withoutLyrics'], 0, ',', ' '); ?>
+        </div>
+        <div class="stat-box">
+          <strong>Z linkami YouTube:</strong> <?php echo number_format($this->songStats['withYoutube'], 0, ',', ' '); ?>
+        </div>
+      </div>
+
+      <h3>Najczęściej oglądane utwory</h3>
+      <table>
+        <tr>
+          <th>Tytuł</th>
+          <th>Wyświetlenia</th>
+        </tr>
+        <?php foreach ($this->songStats['mostViewed'] as $song): ?>
+        <tr>
+          <td>
+              <a href="<?php echo $this->url(array('id' => $song['id'], 'seo' => Jkl_Tools_Url::createUrl($song['title'])), 'song'); ?>">
+              <?php echo $this->escape($song['title']); ?>
+            </a>
+          </td>
+          <td><?php echo number_format($song['viewed'], 0, ',', ' '); ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+    </section>
+
+    <!-- Labels Statistics -->
+    <section id="labels" class="stats-section">
+      <h2>🏢 Wytwórnie <a href="#page-container" style="float: right; font-size: 0.8em;">🔝 Do góry</a></h2>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <strong>Wszystkie wytwórnie:</strong> <?php echo number_format($this->labelStats['total'], 0, ',', ' '); ?>
+        </div>
+        <div class="stat-box">
+          <strong>Z logo:</strong> <?php echo number_format($this->labelStats['withLogos'], 0, ',', ' '); ?>
+        </div>
+      </div>
+
+      <h3>Wytwórnie z największą liczbą albumów</h3>
+      <table>
+        <tr>
+          <th>Nazwa</th>
+          <th>Liczba albumów</th>
+        </tr>
+        <?php foreach ($this->labelStats['mostAlbums'] as $label): ?>
+        <tr>
+          <td>
+              <a href="<?php echo $this->url(array('id' => $label['id'], 'seo' => Jkl_Tools_Url::createUrl($label['name'])), 'label'); ?>">
+              <?php echo $this->escape($label['name']); ?>
+            </a>
+          </td>
+          <td><?php echo $label['album_count']; ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+    </section>
+
+    <!-- Comments Statistics -->
+    <section id="comments" class="stats-section">
+      <h2>💬 Komentarze <a href="#page-container" style="float: right; font-size: 0.8em;">🔝 Do góry</a></h2>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <strong>Wszystkie komentarze:</strong> <?php echo number_format($this->commentStats['total'], 0, ',', ' '); ?>
+        </div>
+        <div class="stat-box">
+          <strong>W tym miesiącu:</strong> <?php echo number_format($this->commentStats['thisMonth'], 0, ',', ' '); ?>
+        </div>
+      </div>
+
+      <h3>Najczęściej komentowane albumy</h3>
+      <table>
+        <tr>
+          <th>Album</th>
+          <th>Liczba komentarzy</th>
+        </tr>
+        <?php foreach ($this->commentStats['mostCommentedAlbums'] as $album): ?>
+        <tr>
+          <td>
+              <a href="<?php echo $this->url(array('id' => $album['id'], 'seo' => Jkl_Tools_Url::createUrl($album['title'])), 'album'); ?>">
+              <?php echo $this->escape($album['title']); ?>
+            </a>
+          </td>
+          <td><?php echo $album['comment_count']; ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+
+      <h3>Najbardziej aktywni komentujący</h3>
+      <table>
+        <tr>
+          <th>Użytkownik</th>
+          <th>Liczba komentarzy</th>
+        </tr>
+        <?php foreach ($this->commentStats['mostActiveCommenters'] as $user): ?>
+        <tr>
+          <td>
+              <a href="<?php echo $this->url(array('id' => $user['usr_id'], 'seo' => Jkl_Tools_Url::createUrl($user['usr_display_name'])), 'user'); ?>">
+              <?php echo $this->escape($user['usr_display_name']); ?>
+            </a>
+          </td>
+          <td><?php echo $user['comment_count']; ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+    </section>
+
+    <!-- Ratings Statistics -->
+    <section id="ratings" class="stats-section">
+      <h2>⭐ Oceny <a href="#page-container" style="float: right; font-size: 0.8em;">🔝 Do góry</a></h2>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <strong>Wszystkie oceny albumów:</strong> <?php echo number_format($this->ratingStats['totalAlbum'], 0, ',', ' '); ?>
+        </div>
+        <div class="stat-box">
+          <strong>Średnia liczba ocen na album:</strong> <?php echo number_format($this->ratingStats['avgRatingsPerAlbum'], 1, ',', ' '); ?>
+        </div>
+      </div>
+
+      <h3>Najwyżej oceniane albumy (minimum 5 ocen)</h3>
+      <table>
+        <tr>
+          <th>Album</th>
+          <th>Ocena</th>
+          <th>Liczba ocen</th>
+        </tr>
+        <?php foreach ($this->ratingStats['highestRatedAlbums'] as $album): ?>
+        <tr>
+          <td>
+              <a href="<?php echo $this->url(array('id' => $album['albumid'], 'seo' => Jkl_Tools_Url::createUrl($album['title'])), 'album'); ?>">
+              <?php echo $this->escape($album['title']); ?>
+            </a>
+          </td>
+          <td><?php echo number_format($album['rating'], 2, ',', ' '); ?>/6</td>
+          <td><?php echo $album['howmany']; ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+
+      <h3>Najczęściej oceniane albumy</h3>
+      <table>
+        <tr>
+          <th>Album</th>
+          <th>Liczba ocen</th>
+          <th>Średnia ocena</th>
+        </tr>
+        <?php foreach ($this->ratingStats['mostRatedAlbums'] as $album): ?>
+        <tr>
+          <td>
+              <a href="<?php echo $this->url(array('id' => $album['albumid'], 'seo' => Jkl_Tools_Url::createUrl($album['title'])), 'album'); ?>">
+              <?php echo $this->escape($album['title']); ?>
+            </a>
+          </td>
+          <td><?php echo $album['howmany']; ?></td>
+          <td><?php echo $album['rating'] ? number_format($album['rating'], 2, ',', ' ') . '/6' : 'brak'; ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+    </section>
+
+    <!-- Content Gaps -->
+    <section id="content-gaps" class="stats-section">
+      <h2>⚠️ Luki w treści</h2>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <strong>Albumy bez utworów:</strong> <?php echo number_format($this->contentGaps['albumsWithoutSongs'], 0, ',', ' '); ?>
+        </div>
+        <div class="stat-box">
+          <strong>Wykonawcy bez albumów:</strong> <?php echo number_format($this->contentGaps['artistsWithoutAlbums'], 0, ',', ' '); ?>
+        </div>
+        <div class="stat-box">
+          <strong>Albumy bez komentarzy:</strong> <?php echo number_format($this->contentGaps['albumsWithoutComments'], 0, ',', ' '); ?>
+        </div>
+        <div class="stat-box">
+          <strong>Albumy bez ocen:</strong> <?php echo number_format($this->contentGaps['albumsWithoutRatings'], 0, ',', ' '); ?>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recent Activity -->
+    <section id="recent-activity" class="stats-section">
+      <h2>🔄 Ostatnia aktywność <a href="#page-container" style="float: right; font-size: 0.8em;">🔝 Do góry</a></h2>
+
+      <h3>Ostatnie komentarze</h3>
+      <table>
+        <tr>
+          <th>Treść</th>
+          <th>Użytkownik</th>
+          <th>Data</th>
+        </tr>
+        <?php foreach ($this->recentActivity['recentComments'] as $comment): ?>
+        <tr>
+          <td><?php echo $this->escape(mb_substr($comment['com_content'], 0, 100)) . (mb_strlen($comment['com_content']) > 100 ? '...' : ''); ?></td>
+          <td>
+            <a href="<?php echo $this->url(array('id' => $comment['usr_id'], 'seo' => Jkl_Tools_Url::createUrl($comment['usr_display_name'])), 'user'); ?>">
+              <?php echo $this->escape($comment['usr_display_name']); ?>
+            </a>
+          </td>
+          <td><?php echo $this->escape($comment['com_added']); ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+
+      <h3>Ostatnie oceny</h3>
+      <table>
+        <tr>
+          <th>Album</th>
+          <th>Ocena</th>
+          <th>Użytkownik</th>
+          <th>Data</th>
+        </tr>
+        <?php foreach ($this->recentActivity['recentRatings'] as $rating): ?>
+        <tr>
+          <td>
+            <a href="<?php echo $this->url(array('id' => $rating['albumid'], 'seo' => Jkl_Tools_Url::createUrl($rating['title'])), 'album'); ?>">
+              <?php echo $this->escape($rating['title']); ?>
+            </a>
+          </td>
+          <td><?php echo $rating['rate']; ?>/6</td>
+          <td>
+            <?php if ($rating['usr_id']): ?>
+              <a href="<?php echo $this->url(array('id' => $rating['usr_id'], 'seo' => Jkl_Tools_Url::createUrl($rating['usr_display_name'])), 'user'); ?>">
+                <?php echo $this->escape($rating['usr_display_name']); ?>
+              </a>
+            <?php else: ?>
+              <em>Usunięty użytkownik</em>
+            <?php endif; ?>
+          </td>
+          <td><?php echo $this->escape($rating['added']); ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+    </section>
+  </div>
+
+  <div id="aside">
+    <div class="stats-nav">
+      <h3>Nawigacja</h3>
+      <ul>
+        <li><a href="#summary">📊 Podsumowanie</a></li>
+        <li><a href="#users">👥 Użytkownicy</a></li>
+        <li><a href="#albums">💿 Albumy</a></li>
+        <li><a href="#artists">🎤 Wykonawcy</a></li>
+        <li><a href="#songs">🎵 Utwory</a></li>
+        <li><a href="#labels">🏢 Wytwórnie</a></li>
+        <li><a href="#comments">💬 Komentarze</a></li>
+        <li><a href="#ratings">⭐ Oceny</a></li>
+        <li><a href="#content-gaps">⚠️ Luki w treści</a></li>
+        <li><a href="#recent-activity">🔄 Ostatnia aktywność</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
