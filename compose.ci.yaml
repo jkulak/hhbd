@@ -2,3 +2,7 @@ services:
   app:
     environment:
       APPLICATION_ENV: production
+
+  db:
+    volumes:
+      - ./database/tests:/docker-entrypoint-initdb.d

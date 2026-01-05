@@ -1,40 +1,116 @@
 # Test Database Fixtures
 
-This directory contains test data for smoke tests and development.
+This directory contains database initialization files organized by context.
+
+## Directory Structure
+
+```
+database/
+├── tests/
+│   ├── schema.sql          # Schema only (no data)
+│   └── test-fixtures.sql   # Deterministic test data
+├── dev/
+│   └── init.sql            # Production-like data for local dev
+└── README.md
+```
 
 ## Files
 
-| File | Description |
-|------|-------------|
-| `schema.sql` | Database schema (structure only, no data) |
-| `test-fixtures.sql` | Test data with deterministic IDs for smoke tests |
-| `init.sql` | Production database backup (reference only) |
-| `2026-01-04-1534-schema.sql` | Schema backup from production |
+| Directory | File | Description | Usage |
+|-----------|------|-------------|-------|
+| `tests/` | `schema.sql` | Database schema (structure only, no data) | CI smoke tests, automated testing |
+| `tests/` | `test-fixtures.sql` | Test data with deterministic IDs for smoke tests | CI smoke tests, automated testing |
+| `dev/` | `init.sql` | Production-like data for local development | Local dev (via compose.override.yaml) |
 
-## Quick Start
+## Initialization Behavior
 
-### Import Test Data
+### Local Development
 
 ```bash
-# Import schema
-docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/schema.sql
+docker compose up -d
+# Imports: database/dev/init.sql (production-like data)
+```
 
-# Import test fixtures
-docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/test-fixtures.sql
+### CI / Testing
+
+```bash
+docker compose -f compose.yaml -f compose.ci.yaml up -d
+# Imports: database/tests/schema.sql + database/tests/test-fixtures.sql
+```
+
+### Manual Import
+
+```bash
+# Import test schema and fixtures
+docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/tests/schema.sql
+docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/tests/test-fixtures.sql
+
+# Import dev data
+docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/dev/init.sql
 
 # Generate test images
 docker compose exec app php app/tools/generate-test-images.php
 ```
 
-### All-in-One Setup
+### Reset Database (Fresh Import)
 
 ```bash
-# Recreate database with test data
-docker compose exec -T db mysql -uroot -proot_password -e "DROP DATABASE IF EXISTS hhbd; CREATE DATABASE hhbd;"
-docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/schema.sql
-docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/test-fixtures.sql
-docker compose exec app php app/tools/generate-test-images.php
+# Delete volume and restart (forces re-import from mounted directory)
+docker compose down -v
+docker compose up -d
 ```
+
+## Local Development Setup
+
+### Option 1: Quick Start with Test Data
+
+For a fresh dev environment with small, deterministic test data:
+
+```bash
+# Clean up any existing data
+docker compose down -v
+
+# Start services with test data
+docker compose -f compose.yaml -f compose.ci.yaml up -d
+
+# Verify
+docker compose logs app | grep "ready"
+```
+
+This imports `database/tests/schema.sql` + `database/tests/test-fixtures.sql` — sufficient for feature development and testing.
+
+### Option 2: Production-Like Data
+
+For development with realistic data volume and content:
+
+1. **Obtain a database dump** from production or a backup
+   - Request from team lead or deployment logs
+   - Or use a recent backup if available
+
+2. **Place it in the right location:**
+
+   ```bash
+   # Copy your dump to database/dev/init.sql
+   cp /path/to/production-backup.sql database/dev/init.sql
+   ```
+
+3. **Start services with dev data:**
+
+   ```bash
+   # Clean up
+   docker compose down -v
+
+   # Start (will import init.sql)
+   docker compose up -d
+   ```
+
+4. **Verify:**
+
+   ```bash
+   docker compose exec db mysql -uhhbd -phhbd_password hhbd -e "SELECT COUNT(*) FROM artists;"
+   ```
+
+**Important**: `database/dev/init.sql` is **git-ignored** and contains sensitive data. Never commit it.
 
 ## Test Data Contents
 
@@ -101,6 +177,7 @@ GitHub Actions workflow (`.github/workflows/smoke-tests.yml`) automatically:
 ## Polish Characters
 
 Test data includes Polish characters (ą, ę, ć, ź, ż, ó, ł, ś, ń) in:
+
 - Artist names
 - Album titles
 - Song lyrics
