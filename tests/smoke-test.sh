@@ -13,6 +13,12 @@ FAILED=0
 PASSED=0
 ERRORS=()  # Array to collect error messages
 
+# Detect if we need to add Host header (for docker service name connections)
+CURL_OPTS=""
+if [[ "$BASE_URL" == *"nginx"* ]] || [[ "$BASE_URL" == *"172.18"* ]]; then
+    CURL_OPTS="-H Host:localhost"
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -36,12 +42,12 @@ test_page() {
 
     # Get HTTP status code
     local status
-    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || echo "000")
+    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 $CURL_OPTS "$url" 2>/dev/null || echo "000")
 
     # Get content if status is 200
     if [[ "$status" == "200" ]]; then
         local content
-        content=$(curl -s --max-time 10 "$url" 2>/dev/null)
+        content=$(curl -s --max-time 10 $CURL_OPTS "$url" 2>/dev/null)
 
         if echo "$content" | grep -qi "$expected"; then
             echo -e "${GREEN}✓${NC} $name"
@@ -70,7 +76,7 @@ test_page_200() {
     local url="${BASE_URL}${path}"
 
     local status
-    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || echo "000")
+    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 $CURL_OPTS "$url" 2>/dev/null || echo "000")
 
     if [[ "$status" == "200" ]]; then
         echo -e "${GREEN}✓${NC} $name"
@@ -93,7 +99,7 @@ wait_for_service() {
     echo -e "${YELLOW}Waiting for service to be ready...${NC}"
 
     while [[ $attempt -le $max_attempts ]]; do
-        status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$BASE_URL" 2>/dev/null || echo "000")
+        status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 $CURL_OPTS "$BASE_URL" 2>/dev/null || echo "000")
         if [[ "$status" == "200" ]]; then
             echo -e "${GREEN}Service is ready!${NC}"
             echo ""
@@ -118,12 +124,12 @@ test_page_multi() {
 
     # Get HTTP status code
     local status
-    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || echo "000")
+    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 $CURL_OPTS "$url" 2>/dev/null || echo "000")
 
     # Get content if status is 200
     if [[ "$status" == "200" ]]; then
         local content
-        content=$(curl -s --max-time 10 "$url" 2>/dev/null)
+        content=$(curl -s --max-time 10 $CURL_OPTS "$url" 2>/dev/null)
 
         for exp in "${expected[@]}"; do
             if ! echo "$content" | grep -qi "$exp"; then
@@ -155,11 +161,11 @@ test_element_count() {
     local url="${BASE_URL}${path}"
 
     local status
-    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || echo "000")
+    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 $CURL_OPTS "$url" 2>/dev/null || echo "000")
 
     if [[ "$status" == "200" ]]; then
         local content
-        content=$(curl -s --max-time 10 "$url" 2>/dev/null)
+        content=$(curl -s --max-time 10 $CURL_OPTS "$url" 2>/dev/null)
         
         local count
         count=$(echo "$content" | grep -o "$pattern" | wc -l)
