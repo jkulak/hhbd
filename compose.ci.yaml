@@ -1,5 +1,7 @@
 services:
   app:
+    build:
+      target: builder  # Use builder stage for test image generation with GD
     environment:
       APPLICATION_ENV: production
 
