@@ -91,6 +91,36 @@ cd app && ./vendor/bin/phpunit -c tests/phpunit.xml
 cd app && ./vendor/bin/phpcs --standard=PSR12 application/
 ```
 
+### Code Refactoring with Rector
+
+Rector is included to help modernize and improve the legacy codebase automatically.
+
+**Dry run (preview changes):**
+
+```bash
+docker compose exec app ./vendor/bin/rector process --dry-run
+```
+
+**Apply changes:**
+
+```bash
+docker compose exec app ./vendor/bin/rector process
+```
+
+**Process specific directory:**
+
+```bash
+docker compose exec app ./vendor/bin/rector process application/models/
+```
+
+Rector is configured in [app/rector.php](app/rector.php) with rules for:
+
+- Code quality improvements
+- Dead code removal
+- Type declarations
+- Early returns
+- Naming conventions
+
 ### Docker Compose
 
 The `compose.override.yaml` file is automatically loaded by Docker Compose and enables development mode:
