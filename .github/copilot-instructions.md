@@ -13,8 +13,8 @@ Big picture
 Development workflow
 - Start/rebuild services: `docker compose up -d --build` then `docker compose exec app composer install` (dev volume overrides vendor).
 - Seed DB (tests/dev):
-  - `docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/schema.sql`
-  - `docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/test-fixtures.sql`
+  - `docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/tests/01-schema.sql`
+  - `docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/tests/02-test-fixtures.sql`
   - Generate images: `docker compose exec app php app/tools/generate-test-images.php`
 - Run unit tests: `docker compose exec app bash -lc 'cd app && ./vendor/bin/phpunit -c tests/phpunit.xml'`.
 - Run smoke tests: `./tests/smoke-test.sh` (assumes services up; optional base URL arg).
@@ -64,7 +64,7 @@ Examples to follow
 
 Testing and CI
 - Unit tests live in [app/tests/unit/](app/tests/unit/) (e.g., `Library/Jkl/DbTest.php`, `ViewHelpers/LoggedInTest.php`). Use the existing bootstrap and config at [app/tests/phpunit.xml](app/tests/phpunit.xml) and [app/tests/bootstrap.php](app/tests/bootstrap.php).
-- Smoke tests script at [tests/smoke-test.sh](tests/smoke-test.sh) expects deterministically seeded data from [database/test-fixtures.sql](database/test-fixtures.sql). Run with `./tests/smoke-test.sh [base-url]`; it waits for HTTP 200 before asserting content.
+- Smoke tests script at [tests/smoke-test.sh](tests/smoke-test.sh) expects deterministically seeded data from [database/tests/02-test-fixtures.sql](database/tests/02-test-fixtures.sql). Run with `./tests/smoke-test.sh [base-url]`; it waits for HTTP 200 before asserting content.
 - GitHub Actions workflows:
   - [.github/workflows/smoke-tests.yml](.github/workflows/smoke-tests.yml): uses `compose.ci.yaml` (production env) + seeds DB + generates test images + runs smoke tests. Tails PHP/app logs on failure.
   - [.github/workflows/unit-tests.yml](.github/workflows/unit-tests.yml): runs PHPUnit inside app container.

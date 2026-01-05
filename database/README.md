@@ -7,8 +7,8 @@ This directory contains database initialization files organized by context.
 ```
 database/
 ├── tests/
-│   ├── schema.sql          # Schema only (no data)
-│   └── test-fixtures.sql   # Deterministic test data
+│   ├── 01-schema.sql       # Schema only (no data)
+│   └── 02-test-fixtures.sql # Deterministic test data
 ├── dev/
 │   └── init.sql            # Production-like data for local dev
 └── README.md
@@ -18,8 +18,8 @@ database/
 
 | Directory | File | Description | Usage |
 |-----------|------|-------------|-------|
-| `tests/` | `schema.sql` | Database schema (structure only, no data) | CI smoke tests, automated testing |
-| `tests/` | `test-fixtures.sql` | Test data with deterministic IDs for smoke tests | CI smoke tests, automated testing |
+| `tests/` | `01-schema.sql` | Database schema (structure only, no data) | CI smoke tests, automated testing |
+| `tests/` | `02-test-fixtures.sql` | Test data with deterministic IDs for smoke tests | CI smoke tests, automated testing |
 | `dev/` | `init.sql` | Production-like data for local development | Local dev (via compose.override.yaml) |
 
 ## Initialization Behavior
@@ -35,15 +35,15 @@ docker compose up -d
 
 ```bash
 docker compose -f compose.yaml -f compose.ci.yaml up -d
-# Imports: database/tests/schema.sql + database/tests/test-fixtures.sql
+# Imports: database/tests/01-schema.sql + database/tests/02-test-fixtures.sql
 ```
 
 ### Manual Import
 
 ```bash
 # Import test schema and fixtures
-docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/tests/schema.sql
-docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/tests/test-fixtures.sql
+docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/tests/01-schema.sql
+docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/tests/02-test-fixtures.sql
 
 # Import dev data
 docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/dev/init.sql
@@ -77,7 +77,7 @@ docker compose -f compose.yaml -f compose.ci.yaml up -d
 docker compose logs app | grep "ready"
 ```
 
-This imports `database/tests/schema.sql` + `database/tests/test-fixtures.sql` — sufficient for feature development and testing.
+This imports `database/tests/01-schema.sql` + `database/tests/02-test-fixtures.sql` — sufficient for feature development and testing.
 
 ### Option 2: Production-Like Data
 
@@ -169,8 +169,8 @@ The test fixtures include specific records required by smoke tests:
 
 GitHub Actions workflow (`.github/workflows/smoke-tests.yml`) automatically:
 
-1. Imports `database/schema.sql`
-2. Imports `database/test-fixtures.sql`
+1. Imports `database/tests/01-schema.sql`
+2. Imports `database/tests/02-test-fixtures.sql`
 3. Generates test images via `app/tools/generate-test-images.php`
 4. Runs smoke tests
 
@@ -188,7 +188,7 @@ Test data includes Polish characters (ą, ę, ć, ź, ż, ó, ł, ś, ń) in:
 
 To add more test data:
 
-1. Edit `database/test-fixtures.sql`
+1. Edit `database/tests/02-test-fixtures.sql`
 2. Maintain deterministic IDs for smoke test requirements
 3. Update image references if needed
 4. Test locally before pushing
