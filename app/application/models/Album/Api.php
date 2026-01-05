@@ -266,7 +266,7 @@ class Model_Album_Api extends Jkl_Model_Api
         $query = 'SELECT *, t1.id AS alb_id, t2.id AS art_id
               FROM albums t1, artists t2, album_artist_lookup t3
               WHERE (t2.id=t3.artistid AND t1.id=t3.albumid AND (
-              ' . implode($condition, ' OR ') . ')
+              ' . implode(' OR ', $condition) . ')
               )' .
                   (($limit != null) ? ' LIMIT ' . $limit : '');
 
@@ -294,7 +294,7 @@ class Model_Album_Api extends Jkl_Model_Api
         $query = 'SELECT *, t1.id AS alb_id, t2.id AS art_id
               FROM albums t1, artists t2, album_artist_lookup t3
               WHERE (t2.id=t3.artistid AND t1.id=t3.albumid AND (
-              ' . implode($condition, ' OR ') . ')
+              ' . implode(' OR ', $condition) . ')
               )' .
                   (($limit != null) ? ' LIMIT ' . $limit : '');
 
@@ -322,7 +322,7 @@ class Model_Album_Api extends Jkl_Model_Api
         $query = 'SELECT *, t1.id AS alb_id, t2.id AS art_id
               FROM albums t1, artists t2, album_artist_lookup t3
               WHERE (t2.id=t3.artistid AND t1.id=t3.albumid AND (
-              ' . implode($condition, ' OR ') . ')
+              ' . implode(' OR ', $condition) . ')
               )' .
                   (($limit != null) ? ' LIMIT ' . $limit : '');
 
