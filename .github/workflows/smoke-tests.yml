@@ -32,19 +32,11 @@ jobs:
           timeout 60 bash -c 'until docker compose exec -T db mysqladmin ping -h localhost -u root -proot_password --silent; do sleep 2; done'
           echo "Database is ready!"
 
-      - name: Import test database
-        run: |
-          echo "Importing schema..."
-          docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/schema.sql
-          echo "Importing test fixtures..."
-          docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/test-fixtures.sql
-          echo "Database imported!"
-
       - name: Generate test images
         run: |
           echo "Generating test cover images..."
           docker compose exec -T app php /var/www/html/app/tools/generate-test-images.php
-          echo "Test images generated!"
+          echo "🖼️ Test images generated!"
 
       - name: Wait for PHP-FPM to be healthy
         run: |
