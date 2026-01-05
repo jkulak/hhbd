@@ -13,6 +13,9 @@
             <li><a href="<?php echo $this->url(array(), 'artists'); ?>">Wykonawcy</a></li>
             <li><a href="<?php echo $this->url(array(), 'labels'); ?>">Wytwórnie</a></li>
             <li><a href="<?php echo $this->baseUrl(); ?>/top10.html">Top 10</a></li>
+            <?php if ($this->LoggedIn() && $this->LoggedIn()->usr_is_admin === 'yes'): ?>
+            <li><a href="<?php echo $this->url(array(), 'adminStats'); ?>">Statystyki</a></li>
+            <?php endif; ?>
           <!-- <li><a href="<?php echo $this->baseUrl(); ?>/teksty.html">Teksty</a></li>  -->
         </ul>
 
