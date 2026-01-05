@@ -11,41 +11,51 @@
 
 class Model_Label_Container
 {
-  
-  public $id;
-  public $name;
-    
-  function __construct($params, $full = false)
-  {
-    
-    $configApp = Zend_Registry::get('Config_App');
-    
-    $this->id = $params['lab_id'];
-    $this->name = $params['name'];
-    $this->url = Jkl_Tools_Url::createUrl($this->name);
-    
-    $this->albumCount = isset($params['album_count']) ? intval($params['album_count']) : 0;
-    $this->website = isset($params['website']) ? strval($params['website']) : null;
-    $this->email = isset($params['email']) ? strval($params['email']) : null;
-    $this->addres = isset($params['addres']) ? strval($params['addres']) : null;
-    $this->description = isset($params['profile']) ? strval($params['profile']) : null;
-    if (!empty($params['logo'])) {
-       $this->logo = $configApp['paths']['labelLogoPath'] . strval($params['logo']);
-    }
-    else
+    public $id;
+    public $name;
+
+    public function __construct($params, $full = false)
     {
-      $this->logo = null;
+        $configApp = Zend_Registry::get('Config_App');
+
+        $this->id = $params['lab_id'];
+        $this->name = $params['name'];
+        $this->url = Jkl_Tools_Url::createUrl($this->name);
+
+        $this->albumCount = isset($params['album_count']) ? intval($params['album_count']) : 0;
+        $this->website = isset($params['website']) ? strval($params['website']) : null;
+        $this->email = isset($params['email']) ? strval($params['email']) : null;
+        $this->addres = isset($params['addres']) ? strval($params['addres']) : null;
+        $this->description = isset($params['profile']) ? strval($params['profile']) : null;
+        if (!empty($params['logo'])) {
+            $this->logo = $configApp['paths']['labelLogoPath'] . strval($params['logo']);
+        } else {
+            $this->logo = null;
+        }
+
+        //user api
+        //$this->addedBy = isset($params['addedBy']) ? intval($params['addedBy']) : null;
+        //user api
+        //$this->updatedBy = isset($params['updatedBy']) ? intval($params['updatedBy']) : null;
+
+        $this->added = isset($params['added']) ? $params['added'] : null;
+        $this->updated = isset($params['updated']) ? $params['updated'] : null;
     }
-    
-    //user api
-    //$this->addedBy = isset($params['addedBy']) ? intval($params['addedBy']) : null;
-    //user api
-    //$this->updatedBy = isset($params['updatedBy']) ? intval($params['updatedBy']) : null;
-    
-    $this->added = isset($params['added']) ? $params['added'] : null;
-    $this->updated = isset($params['updated']) ? $params['updated'] : null;
-    
-  }
+
+    /**
+     * Get full URL path for label
+     *
+     * @return string Full URL path (e.g., /label-name-l123.html)
+     */
+    public function getUrl()
+    {
+        $router = Zend_Controller_Front::getInstance()->getRouter();
+        return $router->assemble(
+            array('id' => $this->id, 'seo' => $this->url),
+            'label',
+            true
+        );
+    }
 }
 
 /*

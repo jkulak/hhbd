@@ -101,4 +101,39 @@ class Model_Song_Container
     {
         return Jkl_Tools_Url::createUrl($this->title);
     }
+
+    /**
+     * Get full URL path for song
+     *
+     * @return string Full URL path (e.g., /artist-song-s123.html)
+     */
+    public function getUrl()
+    {
+        $prefix = !empty($this->artist->items[0]) ? $this->artist->items[0]->url . '-' : '';
+        $router = Zend_Controller_Front::getInstance()->getRouter();
+        return $router->assemble(
+            array('id' => $this->id, 'seo' => $prefix . $this->url()),
+            'song',
+            true
+        );
+    }
+
+    /**
+     * Get full URL path for this song's album
+     *
+     * @return string Full URL path or empty string if no album
+     */
+    public function getAlbumUrl()
+    {
+        if (empty($this->album->url)) {
+            return '';
+        }
+        $prefix = !empty($this->artist->items[0]) ? $this->artist->items[0]->url . '-' : '';
+        $router = Zend_Controller_Front::getInstance()->getRouter();
+        return $router->assemble(
+            array('id' => $this->album->id, 'seo' => $prefix . $this->album->url),
+            'album',
+            true
+        );
+    }
 }
