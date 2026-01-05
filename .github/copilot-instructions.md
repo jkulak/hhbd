@@ -11,15 +11,21 @@ Big picture
 - Frontend assets: jQuery 1.4.4, custom CSS/JS, tipsy tooltips. Main files at [app/public/css/s.css](app/public/css/s.css) and [app/public/js/s.js](app/public/js/s.js).
 
 Development workflow
-- Start/rebuild services: `docker compose up -d --build` then `docker compose exec app composer install` (dev volume overrides vendor).
-- Seed DB (tests/dev):
-  - `docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/tests/01-schema.sql`
-  - `docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/tests/02-test-fixtures.sql`
-  - Generate images: `docker compose exec app php app/tools/generate-test-images.php`
-- Run unit tests: `docker compose exec app bash -lc 'cd app && ./vendor/bin/phpunit -c tests/phpunit.xml'`.
-- Run smoke tests: `./tests/smoke-test.sh` (assumes services up; optional base URL arg).
-- View logs: `docker compose logs -f` or `docker compose logs app`.
-- Code style check: `app/vendor/bin/php-cs-fixer fix --dry-run --diff` (auto-fix: omit `--dry-run`).
+- **Initial setup (new clone)**: 
+  1. Start services: `docker compose up -d --build` (from host, not inside dev container)
+  2. Seed DB: `docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/tests/01-schema.sql` then `< database/tests/02-test-fixtures.sql`
+  3. Generate images: `docker compose exec app php app/tools/generate-test-images.php`
+  4. Open in VS Code → "Reopen in Container" (dev container auto-installs composer deps)
+  5. **Alternative DB setup (production-like data)**: Copy production dump to `database/dev/init.sql` (git-ignored). Docker will auto-import on first start. See [database/README.md](database/README.md) for details.
+- **Dev container networking**: Dev container auto-connects to `hhbd_default` docker network via `postStartCommand`. If tests fail to reach nginx, manually run: `docker network connect hhbd_default $(hostname)`
+- **Run tests from dev container**:
+  - Unit tests: `Cmd+K J U` or `cd app && ./vendor/bin/phpunit -c tests/phpunit.xml`
+  - Smoke tests: `Cmd+K J S` or `bash ./tests/smoke-test.sh http://nginx:80`
+  - All tests: `Cmd+K J A`
+- **Run tests from host/CI**: Use `http://localhost:8080` for smoke tests (port mapping works)
+- View logs: `docker compose logs -f` or `docker compose logs app`
+- Code style check: `app/vendor/bin/php-cs-fixer fix --dry-run --diff` (auto-fix: omit `--dry-run`)
+- **File permissions**: Don't try to `chmod` files in dev container - workspace is mounted from host (macOS). Use `bash script.sh` to run scripts.
 
 Key conventions and patterns
 - MVC with ZF1:
@@ -47,7 +53,10 @@ Configuration and env
 - Content directories (images) are under [content/](content/); not in git, mounted into containers.
 
 Gotchas (do these)
+- **Dev container setup order**: Run `docker compose up` from **host** first (creates `hhbd_default` network), then open in VS Code. Opening VS Code first means dev container can't connect to network on startup.
 - **No local dev tools**: There are no tools like php, python, or node installed locally. All development is done inside Docker containers or the VS Code Dev Container.
+- **Docker-outside-of-docker**: Dev container talks to Docker daemon on host. Paths in `docker compose` commands must be host paths, not `/workspaces/hhbd` paths.
+- **File permissions with mounted volumes**: Dev container workspace is mounted from macOS. Can't `chmod` files - use `bash script.sh` instead of `./script.sh`. Git's `core.fileMode` is set to `true` but chmod may fail silently.
 - **CI bind mount issue**: After `docker compose up` in CI, run `docker compose exec -T app composer install` because bind-mounted `./app` hides the image's vendor/. This is already wired in [.github/workflows/smoke-tests.yml](.github/workflows/smoke-tests.yml).
 - After any container rebuild in dev, run `composer install` (volume hides container vendor).
 - Target PHP 7.4; avoid PHP 8 features. Maintain ZF1 naming/autoloading (PSR-0, `Jkl_` prefix maps to `library/Jkl/`).
@@ -64,9 +73,13 @@ Examples to follow
 
 Testing and CI
 - Unit tests live in [app/tests/unit/](app/tests/unit/) (e.g., `Library/Jkl/DbTest.php`, `ViewHelpers/LoggedInTest.php`). Use the existing bootstrap and config at [app/tests/phpunit.xml](app/tests/phpunit.xml) and [app/tests/bootstrap.php](app/tests/bootstrap.php).
-- Smoke tests script at [tests/smoke-test.sh](tests/smoke-test.sh) expects deterministically seeded data from [database/tests/02-test-fixtures.sql](database/tests/02-test-fixtures.sql). Run with `./tests/smoke-test.sh [base-url]`; it waits for HTTP 200 before asserting content.
+- Smoke tests script at [tests/smoke-test.sh](tests/smoke-test.sh) expects deterministically seeded data from [database/tests/02-test-fixtures.sql](database/tests/02-test-fixtures.sql). 
+  - From dev container: `bash ./tests/smoke-test.sh http://nginx:80` (uses docker service name + Host header)
+  - From host/CI: `bash ./tests/smoke-test.sh http://localhost:8080` (uses port mapping)
+  - Script auto-detects when to add `-H Host:localhost` curl header based on URL
+- **VS Code task keybindings**: `Cmd+K J U` (unit), `Cmd+K J S` (smoke), `Cmd+K J A` (all tests)
 - GitHub Actions workflows:
-  - [.github/workflows/smoke-tests.yml](.github/workflows/smoke-tests.yml): uses `compose.ci.yaml` (production env) + seeds DB + generates test images + runs smoke tests. Tails PHP/app logs on failure.
+  - [.github/workflows/smoke-tests.yml](.github/workflows/smoke-tests.yml): uses `compose.ci.yaml` (production env) + seeds DB + generates test images + runs `bash ./tests/smoke-test.sh`. Tails PHP/app logs on failure.
   - [.github/workflows/unit-tests.yml](.github/workflows/unit-tests.yml): runs PHPUnit inside app container.
 - **APPLICATION_ENV in CI**: compose.ci.yaml sets `production` for smoke tests. If debugging CI failures, temporarily flip to `testing` (but routes.xml must have `<testing extends="production">`).
 - **Always suggest adding tests** for new features or bug fixes (smoke, unit, or other as appropriate).
