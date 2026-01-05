@@ -183,20 +183,6 @@
           <reverse>szukaj.html</reverse>
         </search>
 
-        <redirectPrevUrl type="Zend_Controller_Router_Route_Regex">
-          <route>([anls]{1}|news|album|wytwornia|utwor|wykonawca)/([^/]*).*</route>
-          <defaults>
-            <controller>redirect</controller>
-            <action>index</action>
-          </defaults>
-          <map>
-            <type>1</type>
-            <urlName>2</urlName>
-            <subUrl>3</subUrl>
-          </map>
-          <reverse>www.hhbd.pl</reverse>
-        </redirectPrevUrl>
-        
         <!-- Comments -->
         <comment>
           <route>comments</route>
@@ -221,7 +207,7 @@
         
         <!-- User registration -->
         <userRegistration>
-          <route>użytkownik/rejestracja.html</route>
+          <route>uzytkownik/rejestracja.html</route>
           <defaults>
             <controller>user</controller>
             <action>registration</action>
@@ -230,7 +216,7 @@
         
         <!-- User login -->
         <userLogin>
-          <route>użytkownik/logowanie.html</route>
+          <route>uzytkownik/logowanie.html</route>
           <defaults>
             <controller>user</controller>
             <action>login</action>
@@ -248,7 +234,7 @@
         
         <!-- User not logged in -->
         <userNotLoggedIn>
-          <route>użytkownik/niezalogowany.html</route>
+          <route>uzytkownik/niezalogowany.html</route>
           <defaults>
             <controller>user</controller>
             <action>not-logged-in</action>
@@ -256,7 +242,7 @@
         </userNotLoggedIn>
         
         <user type="Zend_Controller_Router_Route_Regex">
-          <route>użytkownik/(.+),(\d+).html</route>
+          <route>(.+)-u(\d+).html</route>
           <defaults>
             <controller>user</controller>
             <action>view</action>
@@ -265,7 +251,7 @@
             <seo>1</seo>
             <id>2</id>
           </map>
-          <reverse>użytkownik/%s,%d.html</reverse>
+          <reverse>%s-u%d.html</reverse>
         </user>
         
         <!-- sitemaps -->

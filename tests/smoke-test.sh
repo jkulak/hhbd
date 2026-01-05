@@ -190,6 +190,96 @@ test_element_count() {
     fi
 }
 
+# Test that a page returns HTTP 301 redirect
+test_redirect_301() {
+    local name="$1"
+    local path="$2"
+    local expected_location="$3"
+    local url="${BASE_URL}${path}"
+
+    local status
+    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 $CURL_OPTS "$url" 2>/dev/null || echo "000")
+
+    if [[ "$status" == "301" ]]; then
+        # Check if redirect location matches expected (if provided)
+        if [[ -n "$expected_location" ]]; then
+            local location
+            location=$(curl -s -I --max-time 10 $CURL_OPTS "$url" 2>/dev/null | grep -i "^location:" | cut -d' ' -f2 | tr -d '\r')
+            
+            if [[ "$location" == *"$expected_location"* ]]; then
+                echo -e "${GREEN}✓${NC} $name (redirects to $expected_location)"
+                ((PASSED++))
+                return 0
+            else
+                local error="$name - Redirects to '$location', expected '$expected_location'"
+                echo -e "${RED}✗${NC} $error"
+                ERRORS+=("$error")
+                ((FAILED++))
+                return 1
+            fi
+        else
+            echo -e "${GREEN}✓${NC} $name"
+            ((PASSED++))
+            return 0
+        fi
+    else
+        local error="$name - HTTP $status (expected 301)"
+        echo -e "${RED}✗${NC} $error"
+        ERRORS+=("$error")
+        ((FAILED++))
+        return 1
+    fi
+}
+
+# Test that a page contains a canonical meta tag
+test_canonical_tag() {
+    local name="$1"
+    local path="$2"
+    local expected_canonical="$3"
+    local url="${BASE_URL}${path}"
+
+    local status
+    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 $CURL_OPTS "$url" 2>/dev/null || echo "000")
+
+    if [[ "$status" == "200" ]]; then
+        local content
+        content=$(curl -s --max-time 10 $CURL_OPTS "$url" 2>/dev/null)
+        
+        if echo "$content" | grep -qi '<link rel="canonical"'; then
+            # Optionally check if canonical URL matches expected
+            if [[ -n "$expected_canonical" ]]; then
+                if echo "$content" | grep -qi "href=\"[^\"]*$expected_canonical\""; then
+                    echo -e "${GREEN}✓${NC} $name"
+                    ((PASSED++))
+                    return 0
+                else
+                    local error="$name - Canonical tag found but doesn't match '$expected_canonical'"
+                    echo -e "${RED}✗${NC} $error"
+                    ERRORS+=("$error")
+                    ((FAILED++))
+                    return 1
+                fi
+            else
+                echo -e "${GREEN}✓${NC} $name"
+                ((PASSED++))
+                return 0
+            fi
+        else
+            local error="$name - No canonical tag found"
+            echo -e "${RED}✗${NC} $error"
+            ERRORS+=("$error")
+            ((FAILED++))
+            return 1
+        fi
+    else
+        local error="$name - HTTP $status (expected 200)"
+        echo -e "${RED}✗${NC} $error"
+        ERRORS+=("$error")
+        ((FAILED++))
+        return 1
+    fi
+}
+
 # Run tests
 run_tests() {
     echo "Running tests..."
@@ -206,11 +296,11 @@ run_tests() {
 
     # Detail pages (using known data from test database)
     echo "--- Detail Pages ---"
-    test_page "Label Detail (Alkopoligamia)" "/Alkopoligamia-l58.html" "Alkopoligamia"
-    test_page "Artist Detail (Mes)" "/Mes-p35.html" "Piotr  Szmidt"
-    test_page_multi "Album Detail (Wdowa - Superextra)" "/Wdowa+-+Superextra-a535.html" "Wdowa" "Pogoda" "Alkopoligamia"
-    test_page_multi "Song Detail (Wdowa - Pogoda)" "/Wdowa+-+Pogoda-s7329.html" "Dj Technik" "Beatmo"
-    test_page "News Detail" "/ONAR+-+Jak+na+pierwszej+p%C5%82ycie+%5Bwideo%5D-n1877.html" "Onar wraca z nowym singlem"
+    test_page "Label Detail (Alkopoligamia)" "/alkopoligamia-l58.html" "Alkopoligamia"
+    test_page "Artist Detail (Mes)" "/mes-p35.html" "Piotr  Szmidt"
+    test_page_multi "Album Detail (Wdowa - Superextra)" "/wdowa-superextra-a535.html" "Wdowa" "Pogoda" "Alkopoligamia"
+    test_page_multi "Song Detail (Wdowa - Pogoda)" "/pogoda-s7329.html" "Dj Technik" "Beatmo"
+    test_page "News Detail" "/onar-jak-na-pierwszej-plycie-wideo-n1877.html" "Onar wraca z nowym singlem"
     echo ""
 
     # Search functionality
@@ -227,13 +317,27 @@ run_tests() {
 
     # User pages
     echo "--- User Pages ---"
-    test_page "Login Page" "/u%C5%BCytkownik/logowanie.html" "Zaloguj"
+    test_page "Login Page" "/uzytkownik/logowanie.html" "Zaloguj"
     echo ""
 
     # Static pages
     echo "--- Static Pages ---"
     test_page "About Page" "/o-nas.html" "hhbd"
     test_page "Contact Page" "/kontakt.html" "kontakt"
+    echo ""
+
+    # Canonical URL tests
+    echo "--- Canonical URLs (SEO) ---"
+    test_redirect_301 "Album - Wrong slug redirects" "/wrong-slug-a535.html" "/wdowa-superextra-a535.html"
+    test_redirect_301 "Artist - Wrong slug redirects" "/wrong-artist-p35.html" "/mes-p35.html"
+    test_redirect_301 "Song - Wrong slug redirects" "/wrong-song-s7329.html" "/pogoda-s7329.html"
+    test_redirect_301 "Label - Wrong slug redirects" "/wrong-label-l58.html" "/alkopoligamia-l58.html"
+    test_redirect_301 "Album - Uppercase redirects" "/WDOWA-SUPEREXTRA-A535.html" "/wdowa-superextra-a535.html"
+    test_redirect_301 "Artist - Uppercase redirects" "/MES-P35.html" "/mes-p35.html"
+    test_canonical_tag "Album - Has canonical tag" "/wdowa-superextra-a535.html" "/wdowa-superextra-a535.html"
+    test_canonical_tag "Artist - Has canonical tag" "/mes-p35.html" "/mes-p35.html"
+    test_canonical_tag "Song - Has canonical tag" "/pogoda-s7329.html" "/pogoda-s7329.html"
+    test_canonical_tag "Label - Has canonical tag" "/alkopoligamia-l58.html" "/alkopoligamia-l58.html"
     echo ""
 }
 

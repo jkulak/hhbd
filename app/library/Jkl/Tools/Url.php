@@ -16,20 +16,14 @@ class Jkl_Tools_Url
         # code...
     }
 
-    public static function createUrl($string)
-    {
-        // $string = urlencode($string);
-        return str_replace(array('/', '?', '&', '#'), ' ', $string);
-    }
-
     /**
-     * Create ASCII-safe filename from string
-     * Transliterates Polish characters and removes special chars
+     * Create clean URL/filename from string
+     * Transliterates Polish characters, converts to lowercase, removes special chars
      *
      * @param string $string Input string (e.g., "Hemp Gru - Jedność")
-     * @return string Safe filename (e.g., "hemp-gru-jednosc")
+     * @return string Clean URL (e.g., "hemp-gru-jednosc")
      */
-    public static function createSafeFilename($string)
+    public static function createUrl($string)
     {
         // Polish character transliteration
         $polish = array(
@@ -45,13 +39,23 @@ class Jkl_Tools_Url
         // Transliterate Polish characters
         $string = strtr($string, $polish);
 
-        // Replace spaces and special characters with hyphens
+        // Replace spaces and special characters with dashes
         $string = preg_replace('/[^a-z0-9]+/', '-', $string);
 
-        // Remove leading/trailing hyphens and collapse multiple hyphens
+        // Remove leading/trailing dashes and collapse multiple dashes
         $string = trim($string, '-');
         $string = preg_replace('/-+/', '-', $string);
 
         return $string;
+    }
+
+    // TODO: Check if it's used anywhere and consider removing
+    /**
+     * Alias for createUrl() for backwards compatibility
+     * @deprecated Use createUrl() instead
+     */
+    public static function createSafeFilename($string)
+    {
+        return self::createUrl($string);
     }
 }

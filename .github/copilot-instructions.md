@@ -96,3 +96,13 @@ Deployment (GCP)
 - VM: e2-micro in us-central1 (1GB RAM, 30GB disk, 4GB swap).
 - Workflow: `01-setup-gcp.sh` (one-time), `02-setup-server.sh` (on VM), `03-build-push.sh` (build/push images), `04-deploy.sh` (deploy), `05-populate-db.sh` (import DB), `06-upload-content.sh` (upload content).
 - Production compose: [deploy/compose.gcp.yaml](deploy/compose.gcp.yaml).
+
+⚠️ CRITICAL: Database Safety Rule
+- **NEVER modify the main development database `db->hhbd` without explicit prior permission.**
+  - NEVER run migrations, schema changes, or data modifications on `hhbd` without asking first
+  - NEVER reset test data in `hhbd` without explicit permission
+  - ALWAYS ask first and make it VERY CLEAR that you are about to change the main development database
+  - CREATE separate test databases (e.g., `hhbd_tests`, `hhbd_staging`) for testing, migrations, and experimental work
+  - Keep `db->hhbd` pristine and unchanged unless explicitly authorized
+  - Example: Before running any migration script, ask: "I need to test a database migration. Can I create a separate `hhbd_tests` database for this?" or "This requires modifying the schema. I will be making changes to YOUR MAIN DEVELOPMENT DATABASE. Do you authorize this?"
+- Established: 2026-01-05

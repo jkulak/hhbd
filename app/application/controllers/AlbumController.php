@@ -84,8 +84,14 @@ class AlbumController extends Zend_Controller_Action
     {
         $params = $this->getRequest()->getParams();
         $album = Model_Album_Api::getInstance()->find($params['id'], true);
+
+        // Build canonical URL and redirect if current URL doesn't match
+        $canonicalSlug = Jkl_Tools_Url::createUrl($album->artist->name . '+-+' . $album->title . '-a' . $album->id) . '.html';
+        Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
+
         $album->autoDescription = $this->_generateDescription($album);
         $this->view->album = $album;
+        $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . '/' . $canonicalSlug;
         $this->view->artistsAlbums = Model_Album_Api::getInstance()->getArtistsAlbums($album->artist->id, array($album->id), 10);
         $this->view->popularAlbums = Model_Album_Api::getInstance()->getPopular(10);
         $this->view->bestAlbums = Model_Album_Api::getInstance()->getBest(10);

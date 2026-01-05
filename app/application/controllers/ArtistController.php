@@ -38,6 +38,11 @@ class ArtistController extends Zend_Controller_Action
     public function viewAction()
     {
         $artist = Model_Artist_Api::getInstance()->find($this->params['id'], true);
+
+        // Build canonical URL and redirect if current URL doesn't match
+        $canonicalSlug = Jkl_Tools_Url::createUrl($artist->name . '-p' . $artist->id) . '.html';
+        Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
+
         $artist->addAlbums(Model_Album_Api::getInstance()->getArtistsAlbums($artist->id, array(), false, 'year'));
 
         if (!empty($artist->projects->items)) {
@@ -58,6 +63,7 @@ class ArtistController extends Zend_Controller_Action
         $artist->autoDescription = $this->generateDescription($artist);
 
         $this->view->artist = $artist;
+        $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . '/' . $canonicalSlug;
 
         $this->view->comments = Model_Comment_Api::getInstance()->getComments($artist->id, Model_Comment_Container::TYPE_ARTIST);
 

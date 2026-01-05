@@ -83,7 +83,6 @@ DROP TABLE IF EXISTS `album_promomixes`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `album_promomixes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `urlname` varchar(40) NOT NULL DEFAULT '0',
   `promomix` tinytext NOT NULL,
   `size` tinytext NOT NULL,
   `hits` smallint(6) NOT NULL DEFAULT 0,
@@ -137,7 +136,6 @@ CREATE TABLE `albums` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `legal` enum('y','n') NOT NULL DEFAULT 'y',
   `title` tinytext DEFAULT NULL,
-  `urlname` tinytext NOT NULL,
   `labelid` int(11) DEFAULT NULL,
   `year` date DEFAULT NULL,
   `premier` tinytext NOT NULL,
@@ -232,7 +230,6 @@ DROP TABLE IF EXISTS `artists`;
 CREATE TABLE `artists` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(250) DEFAULT NULL,
-  `urlname` varchar(40) NOT NULL DEFAULT '',
   `realname` tinytext DEFAULT NULL,
   `concertinfo` text DEFAULT NULL,
   `since` date DEFAULT NULL,
@@ -479,7 +476,6 @@ DROP TABLE IF EXISTS `labels`;
 CREATE TABLE `labels` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(250) DEFAULT NULL,
-  `urlname` varchar(40) NOT NULL DEFAULT '',
   `website` tinytext DEFAULT NULL,
   `email` tinytext DEFAULT NULL,
   `addres` tinytext DEFAULT NULL,
@@ -703,7 +699,6 @@ DROP TABLE IF EXISTS `songs`;
 CREATE TABLE `songs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` tinytext DEFAULT NULL,
-  `urlname` varchar(40) NOT NULL DEFAULT '',
   `length` int(11) DEFAULT NULL,
   `bpm` float DEFAULT NULL,
   `acapella` tinyint(1) DEFAULT NULL,
@@ -771,7 +766,6 @@ CREATE TABLE `users` (
   `login` varchar(16) DEFAULT NULL,
   `pass` varchar(32) DEFAULT NULL,
   `name` varchar(50) DEFAULT NULL,
-  `urlname` varchar(50) NOT NULL DEFAULT '',
   `email` varchar(50) DEFAULT NULL,
   `www` varchar(50) DEFAULT NULL,
   `place` varchar(50) DEFAULT NULL,
