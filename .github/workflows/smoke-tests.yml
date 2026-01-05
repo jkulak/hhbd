@@ -52,7 +52,7 @@ jobs:
 
       - name: Run smoke tests
         run: |
-          ./tests/smoke-test.sh http://localhost:8080
+          bash ./tests/smoke-test.sh http://localhost:8080
 
       - name: Show logs on failure
         if: failure()
