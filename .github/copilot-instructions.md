@@ -6,6 +6,7 @@ Big picture
 - HHBD (Hip-Hop Database) is a Polish Hip-Hop content management system for music catalog featuring artists, albums, songs, labels, user profiles, comments, ratings, and community features.
 - Legacy PHP 7.4 app using Zend Framework 1 (maintained via shardj/zf1-future) served by Nginx + PHP-FPM.
 - Services (Docker Compose): app (PHP-FPM), nginx (8080), db (MariaDB 10.11), adminer (8082).
+- Dockerfile-php uses multi-stage build: 'builder' stage (with GD for test image generation, used in CI), 'production' stage (minimal runtime, used in dev/GCP).
 - Frontend app lives in [app/](app/); entrypoint is [app/public/index.php](app/public/index.php). Config in [app/application/configs/application.ini](app/application/configs/application.ini) and routes in [app/application/configs/routes.xml](app/application/configs/routes.xml).
 - Backoffice: Admin panel exists in `backoffice/` directory (may be missing in some workspaces) with two sub-apps (`admin/` and `xadmin/`). Uses procedural PHP (not ZF1), connects to same database. Access at http://localhost:8081/admin/
 - Frontend assets: jQuery 1.4.4, custom CSS/JS, tipsy tooltips. Main files at [app/public/css/s.css](app/public/css/s.css) and [app/public/js/s.js](app/public/js/s.js).

@@ -17,6 +17,7 @@ jobs:
 
       - name: Start Docker Compose services
         run: |
+          # compose.ci.yaml overrides to use 'builder' stage which includes GD for test image generation
           docker compose -f compose.yaml -f compose.ci.yaml up -d --build
           echo "Waiting for services to start..."
 

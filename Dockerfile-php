@@ -1,17 +1,18 @@
-FROM php:7.4-fpm
+# =============================================================================
+# Stage 1: Builder/Test - includes GD extension for test image generation
+# =============================================================================
+FROM php:7.4-fpm as builder
 
-# Install system dependencies
+# Install system dependencies including GD libraries
 RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
     libpng-dev \
     libfcgi-bin \
-    unzip \
-    jq \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions
-RUN docker-php-ext-install mysqli pdo pdo_mysql \
+# Install PHP extensions including GD for test image generation
+RUN docker-php-ext-install pdo pdo_mysql \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) gd
 
@@ -42,6 +43,39 @@ COPY app/ ./
 
 # Fix file permissions (ensure files are readable)
 RUN find . -type f -exec chmod 644 {} \; && find . -type d -exec chmod 755 {} \;
+
+# Copy production PHP configuration
+COPY conf/php/production.ini /usr/local/etc/php/conf.d/99-production.ini
+
+# =============================================================================
+# Stage 2: Production - minimal runtime without GD dependencies
+# =============================================================================
+FROM php:7.4-fpm as production
+
+# Install only runtime system dependencies (no GD libraries)
+RUN apt-get update && apt-get install -y \
+    libfcgi-bin \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install only essential PHP extensions (no GD)
+RUN docker-php-ext-install pdo pdo_mysql
+
+# Copy Composer from official image
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Create log directory
+RUN mkdir -p /var/log/hhbd-website && chmod 777 /var/log/hhbd-website
+
+# Copy php-fpm-healthcheck from builder
+COPY --from=builder /usr/local/bin/php-fpm-healthcheck /usr/local/bin/php-fpm-healthcheck
+
+# Copy PHP-FPM configuration from builder
+COPY --from=builder /usr/local/etc/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
+
+WORKDIR /var/www/html
+
+# Copy built application from builder stage (includes vendor/, all code, correct permissions)
+COPY --from=builder /var/www/html/app ./app
 
 # Copy production PHP configuration
 COPY conf/php/production.ini /usr/local/etc/php/conf.d/99-production.ini

@@ -4,6 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile-php
+      target: production
     volumes:
       - ./app:/var/www/html/app
       - ./content:/var/www/html/content
