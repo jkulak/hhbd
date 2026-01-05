@@ -6,7 +6,9 @@
 <?php echo $this->headTitle(); ?>
 <?php $this->headLink()->prependStylesheet($this->baseUrl() . '/css/s.min.css'); ?>
 <?php echo $this->headLink(); ?>
-<?php if (isset($this->headIncludes['jquery'])) $this->headScript()->appendFile($this->baseUrl() . $this->headIncludes['jquery']['path']); ?>
+<?php if (isset($this->headIncludes['jquery'])) {
+    $this->headScript()->appendFile($this->baseUrl() . $this->headIncludes['jquery']['path']);
+} ?>
 <?php $this->headScript()->appendFile($this->baseUrl() . '/js/jquery.tipsy.js') ?>
 <?php echo $this->headScript(); ?>
 <script src="/js/s.min.js" type="text/javascript" charset="utf-8"></script>
@@ -14,7 +16,12 @@
 
 <link rel="search" type="application/opensearchdescription+xml" title="Hhbd.pl" href="/opensearch.xml">
 
-<?php if (!empty($this->og)) { echo $this->og; } ?>
+<?php if (!empty($this->canonicalUrl)): ?>
+<link rel="canonical" href="<?php echo htmlspecialchars($this->canonicalUrl, ENT_QUOTES, 'UTF-8'); ?>" />
+<?php endif; ?>
+<?php if (!empty($this->og)) {
+    echo $this->og;
+} ?>
 <?php echo $this->partial('common/_googleAnalytics.phtml'); ?>
 </head>
 <body>
@@ -54,7 +61,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       // echo $this->navigation()->menu()->setOnlyActiveBranch(true);
 
       //echo $this->navigation()->menu()->render();
-    ?>
+?>
     <!-- <h3><?php echo $this->translate('Breadcrumb') ?></h3> -->
 
     <!-- <div id="breadcrumbs">
@@ -68,8 +75,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <div id="footer">
       <ul>
         <li>&copy; 2004 - <?php echo date('Y'); ?> Hhbd.pl</li>
-        <li><a href="<?php echo $this->url(array(),'contact') ?>">Kontakt</a></li>
-        <li><a href="<?php echo $this->url(array(),'about') ?>">O nas</a></li>
+        <li><a href="<?php echo $this->url(array(), 'contact') ?>">Kontakt</a></li>
+        <li><a href="<?php echo $this->url(array(), 'about') ?>">O nas</a></li>
         <li>realizacja: <a href="http://www.webascrazy.net" target="_blank">www.webascrazy.net</a></li>
       </ul>
       <div id="disclaimer">Hhbd.pl, czyli Hip-Hopowa Baza Danych jest największa encyklopedią polskiego hip-hopu. U nas znajdziesz wszystkie interesujące Cię informacje dotyczące polskich wykonawców, wytwórni i albumów. Mamy informacje o premierach, tekstach, oraz teledyskach. Listę wydanych albumów, biografie i dyskografie raperów i składów. Oprócz tego teksty piosenek, informacje o występach gościnnych, producentach, djach i inne. Jeżeli jesteś zainteresowany współpracą, zapraszamy <a href="/kontakt.html">do kontaktu</a>.</div>

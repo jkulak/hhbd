@@ -15,6 +15,10 @@ class UserController extends Zend_Controller_Action
     {
         $id = $this->_request->get('id');
         $this->view->user = Model_User::getInstance()->findById($id);
+
+        $canonicalSlug = Jkl_Tools_Url::createUrl($this->view->user->getDisplayName() . '-u' . $this->view->user->getId()) . '.html';
+        Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
+        $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . '/' . $canonicalSlug;
     }
 
     public function registrationAction()
