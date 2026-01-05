@@ -156,4 +156,19 @@ class Model_Artist_Container
     {
         return $this->name;
     }
+
+    /**
+     * Get full URL path for artist
+     *
+     * @return string Full URL path (e.g., /artist-name-p123.html)
+     */
+    public function getUrl()
+    {
+        $router = Zend_Controller_Front::getInstance()->getRouter();
+        return $router->assemble(
+            array('id' => $this->id, 'seo' => $this->url),
+            'artist',
+            true
+        );
+    }
 }

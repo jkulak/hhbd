@@ -5,7 +5,7 @@
     <div class="form-message form-success">
       <p>Tekst został zapisany. Zmiany pojawią się na odsłonie piosenki do kilku minut.</p>
       <ul class="list">
-        <li>Wróć do odsłony piosenki <a href="<?php echo $this->url(array('id' => $this->song->id, 'seo' => $this->song->title), 'song') ?>"><?php echo $this->song->title ?></a></li>
+        <li>Wróć do odsłony piosenki <a href="<?php echo $this->song->getUrl(); ?>"><?php echo $this->song->title ?></a></li>
         <li>lub wprowadź kolejne poprawki poniżej.</li>
       </ul>
     </div>
@@ -16,14 +16,14 @@
       <p>Nie wprowadziłeś żadnych zmian.</p>
       <ul class="list">
         <li>Wprowadź tekst/poprawki poniżej</li>
-        <li>lub wróć do odsłony piosenki <a href="<?php echo $this->url(array('id' => $this->song->id, 'seo' => $this->song->title), 'song') ?>"><?php echo $this->song->title ?></a>.</li>
+        <li>lub wróć do odsłony piosenki <a href="<?php echo $this->song->getUrl(); ?>"><?php echo $this->song->title ?></a>.</li>
       </ul>
     </div>
   <?php endif ?>
   
     <div id="lyrics-form" class="form-container">    
       <form action="<?php echo $this->url() ?>" method="post">
-        <textarea name="lyrics" rows="20"><?php echo preg_replace('/<br ?\/?>/',"", $this->song->lyrics) ?></textarea>
+        <textarea name="lyrics" rows="20"><?php echo preg_replace('/<br ?\/?>/', "", $this->song->lyrics) ?></textarea>
         <input class="submit" type="submit" value="Zapisz" />
       </form>
     </div>

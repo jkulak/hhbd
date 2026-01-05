@@ -1,4 +1,4 @@
-<a href="<?php echo $this->url(array('id' => $this->song->id, 'seo' => (((!empty($this->song->artist->items[0]))?$this->song->artist->items[0]->url . ' - ':'') . $this->song->url())), 'song'); ?>">
+<a href="<?php echo $this->song->getUrl(); ?>">
   <?php echo $this->song->title ?>
 </a>
 <?php if ($this->showDuration): ?>

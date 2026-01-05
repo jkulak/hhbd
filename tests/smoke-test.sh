@@ -93,7 +93,7 @@ test_page_200() {
 
 # Wait for service to be ready
 wait_for_service() {
-    local max_attempts=30
+    local max_attempts=5
     local attempt=1
 
     echo -e "${YELLOW}Waiting for service to be ready...${NC}"
@@ -280,6 +280,42 @@ test_canonical_tag() {
     fi
 }
 
+# Test that page doesn't contain + symbols in internal URLs
+test_no_plus_in_urls() {
+    local name="$1"
+    local path="$2"
+    local url="${BASE_URL}${path}"
+
+    # Get HTTP status code
+    local status
+    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 $CURL_OPTS "$url" 2>/dev/null || echo "000")
+
+    if [[ "$status" == "200" ]]; then
+        local content
+        content=$(curl -s --max-time 10 $CURL_OPTS "$url" 2>/dev/null)
+
+        # Check for + symbols in href attributes for entity URLs
+        # Look for patterns like: href="/...-a123.html" or href="/...-p456.html" containing +
+        if echo "$content" | grep -E 'href="[^"]*\+[^"]*-[aps][0-9]+\.html"' > /dev/null; then
+            local error="$name - Contains + symbols in entity URLs"
+            echo -e "${RED}✗${NC} $error"
+            ERRORS+=("$error")
+            ((FAILED++))
+            return 1
+        fi
+
+        echo -e "${GREEN}✓${NC} $name (no + in URLs)"
+        ((PASSED++))
+        return 0
+    else
+        local error="$name - HTTP $status (expected 200)"
+        echo -e "${RED}✗${NC} $error"
+        ERRORS+=("$error")
+        ((FAILED++))
+        return 1
+    fi
+}
+
 # Run tests
 run_tests() {
     echo "Running tests..."
@@ -338,6 +374,14 @@ run_tests() {
     test_canonical_tag "Artist - Has canonical tag" "/mes-p35.html" "/mes-p35.html"
     test_canonical_tag "Song - Has canonical tag" "/pogoda-s7329.html" "/pogoda-s7329.html"
     test_canonical_tag "Label - Has canonical tag" "/alkopoligamia-l58.html" "/alkopoligamia-l58.html"
+    echo ""
+
+    # URL format validation (no spaces or + symbols in generated links)
+    echo "--- URL Format Validation ---"
+    test_no_plus_in_urls "Homepage - Album links" "/"
+    test_no_plus_in_urls "Album List - Album links" "/albumy.html"
+    test_no_plus_in_urls "Album Detail - Song links" "/wdowa-superextra-a535.html"
+    test_no_plus_in_urls "Artist Detail - Album links" "/mes-p35.html"
     echo ""
 }
 

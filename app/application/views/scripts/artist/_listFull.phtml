@@ -2,14 +2,14 @@
   <?php foreach ($this->items as $artist): ?>
     <li>
       <?php if (!empty($artist->photo->items[0])): ?>
-        <a href="<?php echo $this->url(array('id' => $artist->id, 'seo' => $artist->url), 'artist'); ?>">
+        <a href="<?php echo $artist->getUrl(); ?>">
           <img src="<?php echo $artist->photo->items[0]->url ?>" alt="<?php echo $artist->name ?>"
           title="<?php echo $artist->name ?>"
           class="thumb" />
         </a>
       <?php endif ?>
 
-      <span><a href="<?php echo $this->url(array('id' => $artist->id, 'seo' => $artist->url), 'artist'); ?>"><?php echo $artist->name ?></a></span>
+      <span><a href="<?php echo $artist->getUrl(); ?>"><?php echo $artist->name ?></a></span>
       <?php if (!empty($artist->albumCount)): ?>
         <span>albumów: <?php echo $artist->albumCount ?></span>
       <?php endif ?>

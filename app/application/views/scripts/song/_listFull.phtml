@@ -2,19 +2,19 @@
   <?php foreach ($this->items as $key => $song): ?>
     <li>
       <?php if (!empty($song->album->thumbnail)): ?>
-        <a href="<?php echo $this->url(array('id' => $song->id, 'seo' => (((!empty($song->artist->items[0]))?$song->artist->items[0]->url . ' - ':'') . $song->url())), 'song'); ?>">
+        <a href="<?php echo $song->getUrl(); ?>">
           <img src="<?php echo $song->album->thumbnail ?>" alt="Okładka albumu <?php echo $song->album->title ?>"
           title="<?php echo $song->title ?>"
           class="thumb" />
         </a>
       <?php endif ?>
 
-      <span><a href="<?php echo $this->url(array('id' => $song->id, 'seo' => (((!empty($song->artist->items[0]))?$song->artist->items[0]->url . ' - ':'') . $song->url())), 'song'); ?>"><?php echo $song->title ?></a></span>
+      <span><a href="<?php echo $song->getUrl(); ?>"><?php echo $song->title ?></a></span>
       <?php if (!empty($song->artist->items[0])): ?>
-        <span><a href="<?php echo $this->url(array('id' => $song->artist->items[0]->id, 'seo' => $song->artist->items[0]->url), 'artist'); ?>"><?php echo $song->artist->items[0]->name ?></a></span>
+        <span><a href="<?php echo method_exists($song->artist->items[0], 'getUrl') ? $song->artist->items[0]->getUrl() : $this->url(array('id' => $song->artist->items[0]->id, 'seo' => $song->artist->items[0]->url), 'artist'); ?>"><?php echo $song->artist->items[0]->name ?></a></span>
       <?php endif ?>
       <?php if (!empty($song->album->id)): ?>
-        <span><a href="<?php echo $this->url(array('id' => $song->album->id, 'seo' => (((!empty($song->artist->items[0]))?$song->artist->items[0]->url . ' - ':'') . $song->album->url)), 'album'); ?>"><?php echo $song->album->title ?></a></span>
+        <span><a href="<?php echo $song->getAlbumUrl(); ?>"><?php echo $song->album->title ?></a></span>
       <?php endif ?>
       <?php if (!empty($this->showViews) && !empty($song->views)): ?>
         <span class="views"><?php echo number_format($song->views, 0, ',', ' ') ?> wyświetleń</span>

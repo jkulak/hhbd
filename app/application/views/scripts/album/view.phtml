@@ -81,36 +81,36 @@
 
 
             <?php foreach ($song->artist->items as $key => $feat): ?>
-              <!-- <?php echo $this->partial('artist/_link.phtml', array('artist' => $feat)) ?><?php if (sizeof($song->artist->items)-1 > $key): ?>, <?php endif ?> -->
-                <?php echo $feat->name ?><?php if (sizeof($song->artist->items)-1 > $key): ?>, <?php endif ?>
+              <!-- <?php echo $this->partial('artist/_link.phtml', array('artist' => $feat)) ?><?php if (sizeof($song->artist->items) - 1 > $key): ?>, <?php endif ?> -->
+                <?php echo $feat->name ?><?php if (sizeof($song->artist->items) - 1 > $key): ?>, <?php endif ?>
             <?php endforeach ?>
             <?php else: ?>
-              <?php // echo $song->albumArtist->name ?>
+              <?php // echo $song->albumArtist->name?>
             <?php endif ?>
           </td>
           <td>
             <?php echo $this->partial('song/_link.phtml', array('song' => $song)) ?>
-            <a href="<?php echo $this->url(array('id' => $song->id, 'seo' => ($song->url())), 'song'); ?>?autoplay=1#clip" class="play"></a>
+            <a href="<?php echo $song->getUrl(); ?>?autoplay=1#clip" class="play"></a>
             <ul class="feat">
             <?php if (!empty($song->featuring->items)): ?>
               <li>gościnnie:
                 <?php foreach ($song->featuring->items as $key => $feat): ?>
                   <?php echo $this->partial('artist/_link.phtml', array('artist' => $feat)) ?><?php if (!empty($feat->featType)): ?>
-                    (<?php echo $feat->featType ?>)<?php endif ?><?php if (sizeof($song->featuring->items)-1 > $key): ?>, <?php endif ?>
+                    (<?php echo $feat->featType ?>)<?php endif ?><?php if (sizeof($song->featuring->items) - 1 > $key): ?>, <?php endif ?>
                 <?php endforeach ?>
               </li>
             <?php endif ?>
             <?php if (!empty($song->music->items)): ?>
             <li>muzyka:
               <?php foreach ($song->music->items as $key => $feat): ?>
-                <?php echo $this->partial('artist/_link.phtml', array('artist' => $feat)) ?><?php if (sizeof($song->music->items)-1 > $key): ?>, <?php endif ?>
+                <?php echo $this->partial('artist/_link.phtml', array('artist' => $feat)) ?><?php if (sizeof($song->music->items) - 1 > $key): ?>, <?php endif ?>
               <?php endforeach ?>
             </li>
             <?php endif ?>
             <?php if (!empty($song->scratch->items)): ?>
             <li>skrecze:
               <?php foreach ($song->scratch->items as $key => $feat): ?>
-                <?php echo $this->partial('artist/_link.phtml', array('artist' => $feat)) ?><?php if (sizeof($song->scratch->items)-1 > $key): ?>, <?php endif ?>
+                <?php echo $this->partial('artist/_link.phtml', array('artist' => $feat)) ?><?php if (sizeof($song->scratch->items) - 1 > $key): ?>, <?php endif ?>
               <?php endforeach ?>
             </li>
             <?php endif ?>
