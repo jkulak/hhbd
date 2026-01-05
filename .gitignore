@@ -29,8 +29,7 @@ Thumbs.db
 compose.override.yaml
 
 # Database (keep structure, ignore large dumps)
-/database/init.sql
-!/database/.gitkeep
+database/dev/init.sql
 
 # Content (large files - stored separately)
 /content/

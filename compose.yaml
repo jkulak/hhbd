@@ -19,7 +19,7 @@ services:
       # Feature flags
       SHOW_ADS: "true"
     healthcheck:
-      test: ["CMD", "php-fpm-healthcheck"]
+      test: [ "CMD", "php-fpm-healthcheck" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -52,9 +52,8 @@ services:
       MYSQL_PASSWORD: hhbd_password
     volumes:
       - db_data:/var/lib/mysql
-      - ./database:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password" ]
       interval: 10s
       timeout: 5s
       retries: 5
