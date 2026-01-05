@@ -168,7 +168,7 @@ test_element_count() {
         content=$(curl -s --max-time 10 $CURL_OPTS "$url" 2>/dev/null)
         
         local count
-        count=$(echo "$content" | grep -o "$pattern" | wc -l)
+        count=$(echo "$content" | grep -oE "$pattern" | wc -l)
 
         if [[ "$count" -ge "$min_count" ]]; then
              echo -e "${GREEN}✓${NC} $name (Found $count elements, expected >= $min_count)"
@@ -382,6 +382,19 @@ run_tests() {
     test_no_plus_in_urls "Album List - Album links" "/albumy.html"
     test_no_plus_in_urls "Album Detail - Song links" "/wdowa-superextra-a535.html"
     test_no_plus_in_urls "Artist Detail - Album links" "/mes-p35.html"
+    test_no_plus_in_urls "Top 10 - Song links" "/top10.html"
+    test_no_plus_in_urls "Search Results - All entity links" "/szukaj.html?q=tede"
+    test_no_plus_in_urls "Label Detail - Album links" "/alkopoligamia-l58.html"
+    test_no_plus_in_urls "Song Detail - Artist/Album links" "/pogoda-s7329.html"
+    echo ""
+
+    # Entity getUrl() validation - ensure all entity types render their links correctly
+    echo "--- Entity URL Generation ---"
+    test_element_count "Album links contain proper slug format" "/albumy.html" '\-a[0-9]' 10
+    test_element_count "Artist links contain proper slug format" "/wykonawcy.html" '\-p[0-9]' 10
+    test_element_count "Song links on album page" "/wdowa-superextra-a535.html" '\-s[0-9]' 5
+    test_element_count "Label links contain proper slug format" "/wytwornie.html" '\-l[0-9]' 5
+    test_element_count "News links contain proper slug format" "/" '\-n[0-9]' 3
     echo ""
 }
 

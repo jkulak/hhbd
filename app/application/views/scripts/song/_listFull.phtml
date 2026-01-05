@@ -11,7 +11,7 @@
 
       <span><a href="<?php echo $song->getUrl(); ?>"><?php echo $song->title ?></a></span>
       <?php if (!empty($song->artist->items[0])): ?>
-        <span><a href="<?php echo method_exists($song->artist->items[0], 'getUrl') ? $song->artist->items[0]->getUrl() : $this->url(array('id' => $song->artist->items[0]->id, 'seo' => $song->artist->items[0]->url), 'artist'); ?>"><?php echo $song->artist->items[0]->name ?></a></span>
+        <span><a href="<?php echo $song->artist->items[0]->getUrl(); ?>"><?php echo $song->artist->items[0]->name ?></a></span>
       <?php endif ?>
       <?php if (!empty($song->album->id)): ?>
         <span><a href="<?php echo $song->getAlbumUrl(); ?>"><?php echo $song->album->title ?></a></span>
