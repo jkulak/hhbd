@@ -87,7 +87,8 @@ class Model_Song_Container
         }
 
         // Artist data for list display (overwrite string value with proper object)
-        if (!empty($params['art_id'])) {
+        // Only create stdClass artist if we don't already have a proper artist list
+        if (!empty($params['art_id']) && empty($this->artist)) {
             $this->artist = new Jkl_List();
             $artistObj = new stdClass();
             $artistObj->id = $params['art_id'];

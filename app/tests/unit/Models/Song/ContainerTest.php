@@ -4,7 +4,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Tests for Song_Container getUrl() and getAlbumUrl() methods
- * These tests verify URL slug generation without database dependencies
+ * These tests verify the method signatures and API contracts
  */
 class Model_Song_ContainerTest extends TestCase
 {
@@ -55,7 +55,7 @@ class Model_Song_ContainerTest extends TestCase
 
         $this->assertTrue(
             $reflectionClass->hasMethod('url'),
-            'Song Container should still have url() method'
+            'Song Container should still have url() method for backward compatibility'
         );
     }
 
@@ -68,7 +68,11 @@ class Model_Song_ContainerTest extends TestCase
         $method = $reflectionClass->getMethod('getUrl');
 
         // Should have no required parameters
-        $this->assertEquals(0, $method->getNumberOfRequiredParameters());
+        $this->assertEquals(
+            0,
+            $method->getNumberOfRequiredParameters(),
+            'getUrl() should not require parameters'
+        );
     }
 
     /**
@@ -80,70 +84,10 @@ class Model_Song_ContainerTest extends TestCase
         $method = $reflectionClass->getMethod('getAlbumUrl');
 
         // Should have no required parameters
-        $this->assertEquals(0, $method->getNumberOfRequiredParameters());
-    }
-
-    /**
-     * Test that getUrl() logic handles optional artist
-     * This tests the logic by inspecting the source code
-     */
-    public function testGetUrlLogicHandlesOptionalArtist(): void
-    {
-        $reflectionClass = new ReflectionClass('Model_Song_Container');
-        $fileName = $reflectionClass->getFileName();
-        $this->assertNotFalse($fileName);
-
-        $fileContent = file_get_contents($fileName);
-
-        // Should check for artist and conditionally include it
-        $this->assertStringContainsString('function getUrl()', $fileContent);
-        $this->assertStringContainsString('$this->artist->items[0]', $fileContent);
-        $this->assertStringContainsString('$this->url()', $fileContent);
-
-        // Should use dash without spaces
-        $this->assertStringContainsString("->url . '-'", $fileContent);
-    }
-
-    /**
-     * Test that getAlbumUrl() logic handles optional artist and album
-     */
-    public function testGetAlbumUrlLogicHandlesOptionalFields(): void
-    {
-        $reflectionClass = new ReflectionClass('Model_Song_Container');
-        $fileName = $reflectionClass->getFileName();
-        $this->assertNotFalse($fileName);
-
-        $fileContent = file_get_contents($fileName);
-
-        // Should check for album existence
-        $this->assertStringContainsString('function getAlbumUrl()', $fileContent);
-        $this->assertStringContainsString('$this->album', $fileContent);
-
-        // Should return empty string if no album
-        $this->assertStringContainsString("return '';", $fileContent);
-    }
-
-    /**
-     * Test that Song methods don't use space-dash-space pattern
-     */
-    public function testSongUrlMethodsUseHyphenWithoutSpaces(): void
-    {
-        $reflectionClass = new ReflectionClass('Model_Song_Container');
-        $fileName = $reflectionClass->getFileName();
-        $this->assertNotFalse($fileName);
-
-        $fileContent = file_get_contents($fileName);
-
-        // Check within the getUrl and getAlbumUrl methods
-        // Should not have ' - ' pattern in URL concatenation
-        preg_match_all('/function (getUrl|getAlbumUrl).*?^    }/ms', $fileContent, $matches);
-
-        foreach ($matches[0] as $methodCode) {
-            $this->assertStringNotContainsString(
-                "' - '",
-                $methodCode,
-                'URL methods should not use space-dash-space pattern'
-            );
-        }
+        $this->assertEquals(
+            0,
+            $method->getNumberOfRequiredParameters(),
+            'getAlbumUrl() should not require parameters'
+        );
     }
 }

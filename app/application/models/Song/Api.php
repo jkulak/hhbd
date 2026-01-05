@@ -52,6 +52,27 @@ class Model_Song_Api extends Jkl_Model_Api
         return $list;
     }
 
+    /**
+     * Get list of songs with properly populated artist containers
+     * This method extends _getList() by loading artist data for each song
+     *
+     * @param string $query SQL query to fetch songs
+     * @return Jkl_List List of Song containers with populated artists
+     */
+    private function _getListWithArtists($query)
+    {
+        $result = $this->_db->fetchAll($query);
+        $list = new Jkl_List();
+
+        foreach ($result as $params) {
+            // Populate artist data properly using Artist API
+            $params['artist'] = Model_Artist_Api::getInstance()->getSongArtist($params['song_id']);
+            $list->add(new Model_Song_Container($params));
+        }
+
+        return $list;
+    }
+
     public function find($id, $full = false)
     {
         $id = intval($id);
@@ -171,7 +192,7 @@ class Model_Song_Api extends Jkl_Model_Api
                   'GROUP BY t1.id ' .
                   'ORDER BY t1.viewed DESC ' .
                   (($limit) ? 'LIMIT ' . $limit : '');
-        return $this->_getList($query);
+        return $this->_getListWithArtists($query);
     }
 
     /**
