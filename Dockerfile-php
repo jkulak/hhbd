@@ -3,16 +3,19 @@
 # =============================================================================
 FROM php:7.4-fpm as builder
 
-# Install system dependencies including GD libraries
+# Install system dependencies including GD libraries and composer requirements
 RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
     libpng-dev \
     libfcgi-bin \
+    libzip-dev \
+    unzip \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions including GD for test image generation
-RUN docker-php-ext-install pdo pdo_mysql \
+RUN docker-php-ext-install pdo pdo_mysql zip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) gd
 
