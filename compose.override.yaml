@@ -1,8 +1,0 @@
-services:
-  app:
-    environment:
-      APPLICATION_ENV: development
-    volumes:
-      - ./app:/var/www/html/app
-      - ./content:/var/www/html/content
-      - ./conf/php/development.ini:/usr/local/etc/php/conf.d/99-development.ini:ro
