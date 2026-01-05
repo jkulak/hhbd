@@ -30,6 +30,7 @@
         }
     },
     "postCreateCommand": "npm install -g @google/gemini-cli && cd app && composer install",
+    "postStartCommand": "docker network connect hhbd_default $(hostname) 2>/dev/null || true",
     "remoteUser": "root",
     "features": {
         "ghcr.io/devcontainers/features/git:1": {},
