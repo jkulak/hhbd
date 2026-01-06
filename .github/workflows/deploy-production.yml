@@ -139,11 +139,14 @@ jobs:
         run: |
           bash ./tests/smoke-test.sh "https://hhbd.pl"
 
+      - name: Configure Docker authentication
+        if: always()
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
       - name: Promote latest to prod-lkg (success)
         if: steps.smoke.outcome == 'success'
         run: |
-          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
-          
           echo "✅ Smoke tests passed. Tagging images as prod-lkg..."
           gcloud container images tag \
             --quiet \
@@ -162,8 +165,6 @@ jobs:
         run: |
           echo "❌ Smoke tests failed on production!"
           echo "Rolling back to last-known-good (prod-lkg) images..."
-          
-          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
           bash ./deploy/rollback.sh
           
           echo "⚠️  Deployment rolled back. Check logs above for details."
