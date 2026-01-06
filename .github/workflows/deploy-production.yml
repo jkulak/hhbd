@@ -160,22 +160,17 @@ jobs:
         run: |
           echo "✅ Smoke tests passed. Tagging images as prod-lkg..."
           
-          # Use docker pull/tag/push workflow to avoid needing artifactregistry.tags.delete permission
-          # This atomically replaces the prod-lkg tag without leaving a gap
-          
           # Tag app image
-          docker pull "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/app:sha-${{ needs.build.outputs.commit-sha }}"
-          docker tag \
+          gcloud artifacts docker tags add \
             "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/app:sha-${{ needs.build.outputs.commit-sha }}" \
-            "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/app:prod-lkg"
-          docker push "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/app:prod-lkg"
+            "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/app:prod-lkg" \
+            --quiet
           
           # Tag nginx image
-          docker pull "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/nginx:sha-${{ needs.build.outputs.commit-sha }}"
-          docker tag \
+          gcloud artifacts docker tags add \
             "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/nginx:sha-${{ needs.build.outputs.commit-sha }}" \
-            "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/nginx:prod-lkg"
-          docker push "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/nginx:prod-lkg"
+            "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/nginx:prod-lkg" \
+            --quiet
           
           echo "✅ Updated prod-lkg tags to sha-${{ needs.build.outputs.commit-sha }}"
 
