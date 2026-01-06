@@ -38,10 +38,11 @@ jobs:
           # Bind mount hides image-installed vendor, so install deps inside the running container
           docker compose -f compose.yaml -f compose.ci.yaml exec -T app composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Seed database
+      - name: Wait for database to be healthy
         run: |
-          docker compose -f compose.yaml -f compose.ci.yaml exec -T db mysql -uhhbd -phhbd_password hhbd < database/tests/01-schema.sql
-          docker compose -f compose.yaml -f compose.ci.yaml exec -T db mysql -uhhbd -phhbd_password hhbd < database/tests/02-test-fixtures.sql
+          echo "Waiting for database to initialize with test fixtures..."
+          timeout 60 bash -c 'until docker compose -f compose.yaml -f compose.ci.yaml exec -T db mysqladmin ping -h localhost -u root -proot_password --silent; do sleep 2; done'
+          echo "Database is ready!"
 
       - name: Generate test images
         run: |
