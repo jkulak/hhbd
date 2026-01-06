@@ -109,9 +109,9 @@ jobs:
 
       - name: Deploy to GCP VM
         run: |
-          # Export tags for deploy script
-          export APP_TAG=latest
-          export NGINX_TAG=latest
+          # Export SHA-tagged images that were just built and tested
+          export APP_TAG=sha-${{ needs.build.outputs.commit-sha }}
+          export NGINX_TAG=sha-${{ needs.build.outputs.commit-sha }}
           bash ./deploy/04-deploy.sh
         env:
           GCP_PROJECT: ${{ env.PROJECT_ID }}
