@@ -23,6 +23,8 @@ PROJECT_ID="hhbd-483111"
 ZONE="us-central1-a"
 VM_NAME="hhbd-server"
 REMOTE_DIR="/opt/hhbd"
+REGION="us-central1"
+REGISTRY_NAME="hhbd"
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -104,8 +106,6 @@ gcloud config set project "${PROJECT_ID}" --quiet
 # Check if prod-lkg tags exist in Artifact Registry
 log_info "Verifying prod-lkg tags exist in Artifact Registry..."
 
-REGION="us-central1"
-REGISTRY_NAME="hhbd"
 REGISTRY="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REGISTRY_NAME}"
 
 check_tag_exists() {
