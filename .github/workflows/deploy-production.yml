@@ -26,23 +26,17 @@ jobs:
       - name: Run unit tests
         run: |
           # Unit tests don't need database or nginx - just the app container
-          docker compose -f compose.yaml -f compose.ci.yaml run --rm app ./vendor/bin/phpunit -c tests/phpunit.xml
+          docker compose -f compose.yaml -f compose.ci.yaml run --rm --no-deps app ./vendor/bin/phpunit -c tests/phpunit.xml
 
       - name: Start services for smoke tests
         run: |
-          # Start all services (app, nginx, db) for smoke tests
-          docker compose -f compose.yaml -f compose.ci.yaml up -d --wait
+          # Start all required services for smoke tests (app, nginx, db)
+          docker compose -f compose.yaml -f compose.ci.yaml up -d --wait app nginx db
 
       - name: Install composer dependencies
         run: |
           # Bind mount hides image-installed vendor, so install deps inside the running container
           docker compose -f compose.yaml -f compose.ci.yaml exec -T app composer install --no-interaction --prefer-dist --no-progress
-
-      - name: Wait for database to be healthy
-        run: |
-          echo "Waiting for database to initialize with test fixtures..."
-          timeout 60 bash -c 'until docker compose -f compose.yaml -f compose.ci.yaml exec -T db mysqladmin ping -h localhost -u root -proot_password --silent; do sleep 2; done'
-          echo "Database is ready!"
 
       - name: Generate test images
         run: |
