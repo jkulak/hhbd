@@ -134,5 +134,5 @@ If you have questions about AI agent behavior or these guidelines:
 
 ---
 
-**Established**: 2026-01-06  
-**Related Issues**: #9 (firewall warning during rollback script improvements)
+**Related Issues**: #9 (firewall warning during rollback script improvements)  
+**Last Updated**: See git history for this file
