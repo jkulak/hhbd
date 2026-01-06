@@ -81,3 +81,25 @@ The application follows the standard Model-View-Controller (MVC) pattern of Zend
 *   `app/application/configs/application.ini`: Main ZF1 configuration.
 *   `compose.yaml`: Docker services definition.
 *   `app/composer.json`: PHP dependencies.
+
+## AI Agent Guidelines
+
+### When to Access External Web Resources
+
+**Context**: AI coding agents may have tools to fetch external web content. Use these sparingly and only when necessary.
+
+**VALID use cases**:
+- Official API documentation for external services (Google Cloud, Docker Registry, etc.)
+- Researching genuinely unfamiliar technologies not documented in repository
+- External library documentation when not available locally
+
+**INVALID use cases** (work with repository files instead):
+- Making changes to scripts, configs, or workflows already in the repository
+- Implementing features using technologies present in the codebase (PHP, Bash, Docker, ZF1)
+- Looking up common tools or patterns
+
+**Best practices**:
+- Start by exploring repository files using search, grep, and file browsing
+- Follow patterns from similar existing files
+- Only fetch external docs for truly unfamiliar concepts
+- If external access is blocked, work should still be possible using repository context

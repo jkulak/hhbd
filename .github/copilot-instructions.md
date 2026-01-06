@@ -106,3 +106,25 @@ Deployment (GCP)
   - Keep `db->hhbd` pristine and unchanged unless explicitly authorized
   - Example: Before running any migration script, ask: "I need to test a database migration. Can I create a separate `hhbd_tests` database for this?" or "This requires modifying the schema. I will be making changes to YOUR MAIN DEVELOPMENT DATABASE. Do you authorize this?"
 - Established: 2026-01-05
+
+⚠️ CRITICAL: Web Access Guidelines (web_fetch tool)
+- **The web_fetch tool should be used sparingly and only when absolutely necessary.**
+- **VALID use cases** (when external documentation is genuinely needed):
+  - Looking up official API documentation for external services (e.g., Google Cloud Platform APIs, Docker Registry APIs)
+  - Researching unfamiliar technologies or tools not documented in the repository
+  - Checking external library documentation when the repository doesn't have inline docs
+  - Verifying syntax or options for CLI tools when man pages aren't available
+- **INVALID use cases** (DO NOT use web_fetch for these):
+  - Working with local code, scripts, configs, or any files in the repository
+  - Making changes to deployment scripts, Docker configs, or CI/CD workflows
+  - Implementing features using technologies already present in the codebase
+  - Looking up common programming patterns or well-known tools (bash, Docker, gcloud)
+  - "Just checking" documentation when you already know the approach
+- **Best practices**:
+  - ALWAYS try to solve the problem using repository files and existing patterns first
+  - Use `view`, `grep`, `glob` tools to understand existing implementations
+  - Look at similar files in the repository to follow established patterns
+  - Only fetch external docs when you encounter something genuinely unfamiliar
+  - If blocked by firewall rules, reassess whether web access is actually needed
+- **Why this matters**: External web access may be blocked in sandboxed environments. Work should be self-contained using repository context.
+- Established: 2026-01-06
