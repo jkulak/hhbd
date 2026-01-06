@@ -96,6 +96,10 @@ cd "$PROJECT_ROOT"
 # Target platform for GCP (AMD64)
 PLATFORM="linux/amd64"
 
+# Get commit SHA
+COMMIT_SHA=$(git rev-parse --short HEAD)
+log_info "Building for commit: ${COMMIT_SHA}"
+
 # Track built images
 BUILT_IMAGES=()
 
@@ -104,13 +108,17 @@ if [ "$BUILD_APP" = true ]; then
     log_info "Building app image for ${PLATFORM}..."
     docker build ${NO_CACHE} \
         --platform "${PLATFORM}" \
-        -t "${REGISTRY}/app:latest" \
+        -t "${REGISTRY}/app:sha-${COMMIT_SHA}" \
         -f Dockerfile-php \
         .
 
-    log_info "Pushing app image..."
+    log_info "Tagging app:latest..."
+    docker tag "${REGISTRY}/app:sha-${COMMIT_SHA}" "${REGISTRY}/app:latest"
+
+    log_info "Pushing app images..."
+    docker push "${REGISTRY}/app:sha-${COMMIT_SHA}"
     docker push "${REGISTRY}/app:latest"
-    BUILT_IMAGES+=("${REGISTRY}/app:latest")
+    BUILT_IMAGES+=("${REGISTRY}/app:sha-${COMMIT_SHA}")
 fi
 
 # Build and push Nginx image
@@ -118,13 +126,17 @@ if [ "$BUILD_NGINX" = true ]; then
     log_info "Building nginx image for ${PLATFORM}..."
     docker build ${NO_CACHE} \
         --platform "${PLATFORM}" \
-        -t "${REGISTRY}/nginx:latest" \
+        -t "${REGISTRY}/nginx:sha-${COMMIT_SHA}" \
         -f Dockerfile-nginx \
         .
 
-    log_info "Pushing nginx image..."
+    log_info "Tagging nginx:latest..."
+    docker tag "${REGISTRY}/nginx:sha-${COMMIT_SHA}" "${REGISTRY}/nginx:latest"
+
+    log_info "Pushing nginx images..."
+    docker push "${REGISTRY}/nginx:sha-${COMMIT_SHA}"
     docker push "${REGISTRY}/nginx:latest"
-    BUILT_IMAGES+=("${REGISTRY}/nginx:latest")
+    BUILT_IMAGES+=("${REGISTRY}/nginx:sha-${COMMIT_SHA}")
 fi
 
 # Print summary

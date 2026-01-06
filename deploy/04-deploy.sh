@@ -106,6 +106,12 @@ fi
 
 
 
+# Determine image tags (default to 'latest')
+APP_TAG=${APP_TAG:-latest}
+NGINX_TAG=${NGINX_TAG:-latest}
+
+log_info "Using image tags: app=${APP_TAG}, nginx=${NGINX_TAG}"
+
 # Deploy on server
 log_info "Deploying containers..."
 gcloud compute ssh "${VM_NAME}" --zone="${ZONE}" --command="
@@ -115,8 +121,12 @@ gcloud compute ssh "${VM_NAME}" --zone="${ZONE}" --command="
     echo 'Authenticating with Artifact Registry...'
     gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
+    # Set environment variables for docker compose
+    export APP_TAG=${APP_TAG}
+    export NGINX_TAG=${NGINX_TAG}
+
     # Pull specified images
-    echo 'Pulling images: ${SERVICES}...'
+    echo 'Pulling images: ${SERVICES} (tags: app=${APP_TAG}, nginx=${NGINX_TAG})...'
     docker compose -f compose.gcp.yaml pull ${SERVICES}
 
     # Start/restart specified containers
