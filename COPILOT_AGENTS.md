@@ -14,9 +14,9 @@ AI coding agents have access to a `web_fetch` tool that can retrieve external we
 2. **Check Google Cloud Artifact Registry documentation** - To ensure correct API usage
 3. **Look up best practices** - For Docker image tag verification
 
-### Was This Necessary?
+### Was External Access Necessary in This Case?
 
-**No**, it was not necessary in this case. Here's why:
+**No**, it was not necessary. Here's why:
 
 - **Local patterns exist**: The repository already has multiple deployment scripts (`deploy/01-setup-gcp.sh`, `deploy/03-build-push.sh`, etc.) that show `gcloud` command usage
 - **Common tools**: `gcloud` CLI and Docker commands are well-established tools with predictable syntax
@@ -85,7 +85,7 @@ Look at how the repository solves similar problems:
 - **Testing**: Study existing tests in `app/tests/unit/` or `tests/smoke-test.sh`
 - **Configuration**: Review `app/application/configs/application.ini` and `compose.yaml`
 
-### 3. When External Access Is Genuinely Blocked
+### 3. When External Access Is Blocked by Firewall
 
 If external web access is blocked by firewall rules:
 
@@ -134,5 +134,8 @@ If you have questions about AI agent behavior or these guidelines:
 
 ---
 
-**Related Issues**: #9 (firewall warning during rollback script improvements)  
+**Related Issues**: 
+- Issue #10 (this issue - asking about the firewall warning)
+- PR #9 (where the firewall warning occurred during rollback script improvements)
+
 **Last Updated**: See git history for this file
