@@ -90,7 +90,9 @@ jobs:
         id: vars
         run: |
           echo "commit-sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "commit-message=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
+          echo "commit-message<<EOF" >> $GITHUB_OUTPUT
+          git log -1 --pretty=%B >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Build and push app image
         uses: docker/build-push-action@v5
