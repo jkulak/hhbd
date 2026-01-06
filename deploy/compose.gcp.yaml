@@ -60,9 +60,9 @@ services:
   db:
     image: mariadb:10.11.8
     restart: unless-stopped
-    # Critical: Limit memory usage for e2-micro
+    # Read-optimized for 23MB database (writes ~100/week)
     command: >
-      --innodb-buffer-pool-size=128M --max-connections=20 --innodb-log-file-size=32M --innodb-flush-log-at-trx-commit=2 --innodb-flush-method=O_DIRECT --skip-name-resolve
+      --innodb-buffer-pool-size=96M --innodb-buffer-pool-dump-at-shutdown=1 --innodb-buffer-pool-load-at-startup=1 --max-connections=20 --innodb-log-file-size=16M --innodb-flush-log-at-trx-commit=2 --innodb-read-io-threads=4 --innodb-write-io-threads=1 --table-open-cache=400 --innodb-stats-on-metadata=0 --transaction-isolation=READ-COMMITTED --skip-name-resolve
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
       MYSQL_DATABASE: ${DB_NAME:-hhbd}
@@ -73,7 +73,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 320M
     healthcheck:
       test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
       interval: 30s
