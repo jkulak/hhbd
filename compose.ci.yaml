@@ -1,10 +1,13 @@
 services:
   app:
     build:
-      target: builder  # Use builder stage for test image generation with GD
+      target: builder # Use builder stage for test image generation with GD
     environment:
       APPLICATION_ENV: production
 
   db:
+    # Read-optimized for 23MB database (matches production)
+    command: >
+      --innodb-buffer-pool-size=96M --innodb-buffer-pool-dump-at-shutdown=1 --innodb-buffer-pool-load-at-startup=1 --max-connections=20 --innodb-log-file-size=16M --innodb-flush-log-at-trx-commit=2 --innodb-read-io-threads=4 --innodb-write-io-threads=1 --table-open-cache=400 --innodb-stats-on-metadata=0 --transaction-isolation=READ-COMMITTED --skip-name-resolve
     volumes:
       - ./database/tests:/docker-entrypoint-initdb.d
