@@ -222,3 +222,26 @@ Runs on every push and pull request.
 - **Database**: MariaDB 10.11, credentials in environment variables
 - **Content directory**: User uploads stored in `content/` - excluded from git, shared across services via Docker volumes
 - **Polish language**: Many UI strings, comments, and routes are in Polish
+
+## AI Agent Guidelines
+
+### When to Access External URLs
+
+**Context**: AI coding agents may have access to tools for fetching external web content. Use these tools judiciously.
+
+**VALID use cases** (when external documentation is genuinely needed):
+- Official API documentation for external services (e.g., Google Cloud Platform, Docker Registry)
+- Researching unfamiliar technologies or tools not documented in the repository
+- External library documentation when repository lacks inline docs
+
+**INVALID use cases** (work with local repository content instead):
+- Making changes to deployment scripts, configs, or CI/CD workflows
+- Implementing features using technologies already present in the codebase (PHP, Bash, Docker, ZF1)
+- Looking up common patterns or well-known tools
+- General "checking" of documentation when approach is already known
+
+**Best practices**:
+- ALWAYS try repository files and existing patterns first (use `grep`, `view`, file browsing)
+- Study similar files to follow established patterns (e.g., look at other deployment scripts)
+- Only fetch external docs for genuinely unfamiliar concepts
+- If external access is blocked, reassess whether it's actually needed - most work should be self-contained
