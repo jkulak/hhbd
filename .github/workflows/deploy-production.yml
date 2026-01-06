@@ -35,8 +35,8 @@ jobs:
 
       - name: Start services for smoke tests
         run: |
-          # Start all required services for smoke tests (app, nginx, db)
-          docker compose -f compose.yaml -f compose.ci.yaml up -d --wait app nginx db
+          # Start nginx (automatically starts app and db via depends_on)
+          docker compose -f compose.yaml -f compose.ci.yaml up -d --wait nginx
 
       - name: Install production dependencies for smoke tests
         run: |
