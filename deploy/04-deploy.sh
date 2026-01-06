@@ -93,13 +93,13 @@ log_info "Services: ${SERVICES}"
 
 # Copy compose file and env to server
 log_info "Uploading configuration files..."
-gcloud compute scp --zone="${ZONE}" \
+gcloud compute scp --zone="${ZONE}" --quiet \
     "${SCRIPT_DIR}/compose.gcp.yaml" \
     "${VM_NAME}:${REMOTE_DIR}/"
 
 # Copy .env if it exists
 if [ -f "${SCRIPT_DIR}/.env.production" ]; then
-    gcloud compute scp --zone="${ZONE}" \
+    gcloud compute scp --zone="${ZONE}" --quiet \
         "${SCRIPT_DIR}/.env.production" \
         "${VM_NAME}:${REMOTE_DIR}/.env"
 fi
@@ -114,7 +114,7 @@ log_info "Using image tags: app=${APP_TAG}, nginx=${NGINX_TAG}"
 
 # Deploy on server
 log_info "Deploying containers..."
-gcloud compute ssh "${VM_NAME}" --zone="${ZONE}" --command="
+gcloud compute ssh "${VM_NAME}" --zone="${ZONE}" --quiet --command="
     cd ${REMOTE_DIR}
 
     # Authenticate Docker with Artifact Registry
