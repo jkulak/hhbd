@@ -126,6 +126,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ env.PROJECT_ID }}
+          export_default_credentials: true
+
       - name: Run smoke tests against production
         id: smoke
         continue-on-error: true
