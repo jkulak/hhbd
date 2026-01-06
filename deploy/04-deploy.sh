@@ -117,6 +117,9 @@ log_info "Deploying containers..."
 gcloud compute ssh "${VM_NAME}" --zone="${ZONE}" --quiet --command="
     cd ${REMOTE_DIR}
 
+    # Ensure docker access for current user
+    source ./ensure-docker-access.sh
+
     # Authenticate Docker with Artifact Registry
     echo 'Authenticating with Artifact Registry...'
     gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
@@ -125,22 +128,29 @@ gcloud compute ssh "${VM_NAME}" --zone="${ZONE}" --quiet --command="
     export APP_TAG=${APP_TAG}
     export NGINX_TAG=${NGINX_TAG}
 
+    # Determine docker command prefix
+    if [ \"\$USE_SUDO\" = \"1\" ]; then
+        DOCKER='sudo docker'
+    else
+        DOCKER='docker'
+    fi
+
     # Pull specified images
     echo 'Pulling images: ${SERVICES} (tags: app=${APP_TAG}, nginx=${NGINX_TAG})...'
-    sudo docker compose -f compose.gcp.yaml pull ${SERVICES}
+    \$DOCKER compose -f compose.gcp.yaml pull ${SERVICES}
 
     # Start/restart specified containers
     echo 'Starting containers: ${SERVICES}...'
-    sudo docker compose -f compose.gcp.yaml up -d --remove-orphans ${SERVICES}
+    \$DOCKER compose -f compose.gcp.yaml up -d --remove-orphans ${SERVICES}
 
     # Clean up old images to save disk space
     echo 'Cleaning up old images...'
-    sudo docker system prune -f
+    \$DOCKER system prune -f
 
     # Show status
     echo ''
     echo 'Container status:'
-    sudo docker compose -f compose.gcp.yaml ps
+    \$DOCKER compose -f compose.gcp.yaml ps
 "
 
 

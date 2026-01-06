@@ -121,14 +121,38 @@ chown -R "$SUDO_USER_NAME:$SUDO_USER_NAME" "${APP_DIR}"
 log_info "Configuring Artifact Registry authentication..."
 gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
 
+# Create a helper script to ensure user is in docker group
+cat > "${APP_DIR}/ensure-docker-access.sh" << 'EOF'
+#!/bin/bash
+# Ensure current user has docker access
+if ! groups | grep -q docker; then
+    echo "Adding $(whoami) to docker group..."
+    sudo usermod -aG docker "$(whoami)"
+    echo "User added to docker group. Note: New group membership takes effect on next login."
+    echo "For this session, using sudo for docker commands."
+    export USE_SUDO=1
+else
+    echo "User $(whoami) already in docker group."
+    export USE_SUDO=0
+fi
+EOF
+chmod +x "${APP_DIR}/ensure-docker-access.sh"
+
 # Create a simple deployment helper script
 cat > "${APP_DIR}/quick-deploy.sh" << 'EOF'
 #!/bin/bash
 # Quick deploy helper - pulls latest images and restarts
 cd /opt/hhbd
-docker compose -f compose.gcp.yaml pull
-docker compose -f compose.gcp.yaml up -d --remove-orphans
-docker system prune -f
+source ./ensure-docker-access.sh
+if [ "$USE_SUDO" = "1" ]; then
+    sudo docker compose -f compose.gcp.yaml pull
+    sudo docker compose -f compose.gcp.yaml up -d --remove-orphans
+    sudo docker system prune -f
+else
+    docker compose -f compose.gcp.yaml pull
+    docker compose -f compose.gcp.yaml up -d --remove-orphans
+    docker system prune -f
+fi
 echo "Deployment complete!"
 EOF
 chmod +x "${APP_DIR}/quick-deploy.sh"
