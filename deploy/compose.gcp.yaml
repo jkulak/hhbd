@@ -11,7 +11,7 @@
 services:
   # PHP-FPM Application Server
   app:
-    image: us-central1-docker.pkg.dev/hhbd-483111/hhbd/app:latest
+    image: us-central1-docker.pkg.dev/hhbd-483111/hhbd/app:${APP_TAG:-latest}
     restart: unless-stopped
     depends_on:
       db:
@@ -34,7 +34,7 @@ services:
         limits:
           memory: 256M
     healthcheck:
-      test: ["CMD", "php-fpm-healthcheck"]
+      test: [ "CMD", "php-fpm-healthcheck" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -42,7 +42,7 @@ services:
 
   # Nginx Web Server
   nginx:
-    image: us-central1-docker.pkg.dev/hhbd-483111/hhbd/nginx:latest
+    image: us-central1-docker.pkg.dev/hhbd-483111/hhbd/nginx:${NGINX_TAG:-latest}
     restart: unless-stopped
     ports:
       - "80:80"
@@ -62,12 +62,7 @@ services:
     restart: unless-stopped
     # Critical: Limit memory usage for e2-micro
     command: >
-      --innodb-buffer-pool-size=128M
-      --max-connections=20
-      --innodb-log-file-size=32M
-      --innodb-flush-log-at-trx-commit=2
-      --innodb-flush-method=O_DIRECT
-      --skip-name-resolve
+      --innodb-buffer-pool-size=128M --max-connections=20 --innodb-log-file-size=32M --innodb-flush-log-at-trx-commit=2 --innodb-flush-method=O_DIRECT --skip-name-resolve
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
       MYSQL_DATABASE: ${DB_NAME:-hhbd}
@@ -80,7 +75,7 @@ services:
         limits:
           memory: 384M
     healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
       interval: 30s
       timeout: 10s
       retries: 5
