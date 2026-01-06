@@ -172,7 +172,7 @@ jobs:
           echo "Rolling back to last-known-good (prod-lkg) images..."
           
           gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
-          bash ./deploy/rollback.sh
+          bash ./deploy/rollback.sh --yes
           
           echo "⚠️  Deployment rolled back. Check logs above for details."
           exit 1
