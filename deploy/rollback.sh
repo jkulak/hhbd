@@ -101,6 +101,66 @@ fi
 # Set project
 gcloud config set project "${PROJECT_ID}" --quiet
 
+# Check if prod-lkg tags exist in Artifact Registry
+log_info "Verifying prod-lkg tags exist in Artifact Registry..."
+
+REGION="us-central1"
+REGISTRY_NAME="hhbd"
+REGISTRY="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REGISTRY_NAME}"
+
+check_tag_exists() {
+    local image_name=$1
+    local tag=$2
+    
+    # Try to get image manifest for the prod-lkg tag
+    if gcloud container images describe "${REGISTRY}/${image_name}:${tag}" --quiet > /dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+MISSING_TAGS=()
+
+if [ "$ROLLBACK_APP" = true ]; then
+    if ! check_tag_exists "app" "prod-lkg"; then
+        MISSING_TAGS+=("app:prod-lkg")
+    fi
+fi
+
+if [ "$ROLLBACK_NGINX" = true ]; then
+    if ! check_tag_exists "nginx" "prod-lkg"; then
+        MISSING_TAGS+=("nginx:prod-lkg")
+    fi
+fi
+
+if [ ${#MISSING_TAGS[@]} -gt 0 ]; then
+    log_error "Cannot rollback: prod-lkg tags do not exist in Artifact Registry"
+    log_error "Missing tags: ${MISSING_TAGS[*]}"
+    echo ""
+    log_warn "This typically happens on the first production deployment."
+    log_warn "The prod-lkg tags are created after the first successful deployment"
+    log_warn "when smoke tests pass."
+    echo ""
+    log_info "To establish prod-lkg baseline:"
+    log_info "  1. Ensure you have a working deployment with 'latest' tags"
+    log_info "  2. Run smoke tests to verify the deployment"
+    log_info "  3. Manually tag the working images as prod-lkg:"
+    echo ""
+    for tag in "${MISSING_TAGS[@]}"; do
+        image_name="${tag%%:*}"
+        echo "     gcloud container images add-tag --quiet \\"
+        echo "       ${REGISTRY}/${image_name}:latest \\"
+        echo "       ${REGISTRY}/${tag}"
+        echo ""
+    done
+    log_info "  Or wait for the CI/CD pipeline to automatically create prod-lkg tags"
+    log_info "  after a successful deployment with passing smoke tests."
+    exit 1
+fi
+
+log_info "✓ All required prod-lkg tags found"
+
 # Get VM external IP
 VM_IP=$(gcloud compute instances describe "${VM_NAME}" --zone="${ZONE}" --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
 log_info "Rolling back on ${VM_NAME} (${VM_IP})..."
