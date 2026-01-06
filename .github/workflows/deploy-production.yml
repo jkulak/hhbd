@@ -23,6 +23,11 @@ jobs:
         run: |
           docker compose -f compose.yaml -f compose.ci.yaml build app
 
+      - name: Install dev dependencies for unit tests
+        run: |
+          # Bind mount hides image vendor, install with dev deps (PHPUnit needed)
+          docker compose -f compose.yaml -f compose.ci.yaml run --rm --no-deps app composer install --no-interaction --prefer-dist --no-progress
+
       - name: Run unit tests
         run: |
           # Unit tests don't need database or nginx - just the app container
@@ -33,10 +38,10 @@ jobs:
           # Start all required services for smoke tests (app, nginx, db)
           docker compose -f compose.yaml -f compose.ci.yaml up -d --wait app nginx db
 
-      - name: Install composer dependencies
+      - name: Install production dependencies for smoke tests
         run: |
-          # Bind mount hides image-installed vendor, so install deps inside the running container
-          docker compose -f compose.yaml -f compose.ci.yaml exec -T app composer install --no-interaction --prefer-dist --no-progress
+          # Bind mount hides image vendor, install without dev deps (no PHPUnit needed)
+          docker compose -f compose.yaml -f compose.ci.yaml exec -T app composer install --no-dev --no-interaction --prefer-dist --no-progress
 
       - name: Generate test images
         run: |
