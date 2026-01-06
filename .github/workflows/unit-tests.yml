@@ -22,13 +22,25 @@ jobs:
           extensions: mbstring, xml, pdo, pdo_mysql
           coverage: xdebug
 
+      - name: Cache Composer cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-cache-${{ runner.os }}-${{ hashFiles('app/composer.lock') }}
+          restore-keys: |
+            composer-cache-${{ runner.os }}-
+
+      - name: Cache vendor directory
+        uses: actions/cache@v4
+        with:
+          path: app/vendor
+          key: composer-vendor-${{ runner.os }}-${{ hashFiles('app/composer.lock') }}
+          restore-keys: |
+            composer-vendor-${{ runner.os }}-
+
       - name: Install Composer dependencies
         working-directory: app
         run: composer install --prefer-dist --no-progress
-
-      - name: Run PHPUnit tests
-        working-directory: app
-        run: ./vendor/bin/phpunit -c tests/phpunit.xml --testdox
 
       - name: Run PHPUnit with coverage
         working-directory: app
