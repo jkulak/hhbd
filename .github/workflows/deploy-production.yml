@@ -183,18 +183,21 @@ jobs:
         with:
           script: |
             const status = '${{ steps.smoke.outcome }}' === 'success' ? 'success' : 'failure';
-            const description = status === 'success' 
-              ? '✅ Deployment successful & smoke tests passed' 
+            const description = status === 'success'
+              ? '✅ Deployment successful & smoke tests passed'
               : '❌ Smoke tests failed - rolled back to prod-lkg';
-            
-            github.rest.repos.createDeploymentStatus({
+
+            github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              deployment_id: context.payload.deployment?.id || context.run_id,
+              sha: context.sha,
               state: status,
               description: description,
-              environment_url: 'https://hhbd.pl'
-            }).catch(err => console.log('Note: deployment status creation skipped'));
+              context: 'production-deploy',
+              target_url: 'https://hhbd.pl'
+            }).catch(err => {
+              console.log('Note: commit status creation skipped', err.message || err);
+            });
 
       - name: Slack notification (optional)
         if: always()
