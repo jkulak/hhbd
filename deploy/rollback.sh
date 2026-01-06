@@ -11,9 +11,14 @@
 #   - prod-lkg tags exist in Artifact Registry
 #
 # Usage:
-#   ./rollback.sh                   # Rollback app and nginx
+#   ./rollback.sh                   # Rollback app and nginx (interactive)
+#   ./rollback.sh --yes             # Rollback app and nginx (skip confirmation)
 #   ./rollback.sh app               # Rollback only app
 #   ./rollback.sh nginx             # Rollback only nginx
+#   ./rollback.sh app nginx --yes   # Rollback both (skip confirmation)
+#
+# Flags:
+#   --yes, --force, -y              Skip interactive confirmation (useful for CI/CD)
 #
 
 set -euo pipefail
@@ -23,6 +28,8 @@ PROJECT_ID="hhbd-483111"
 ZONE="us-central1-a"
 VM_NAME="hhbd-server"
 REMOTE_DIR="/opt/hhbd"
+REGION="us-central1"
+REGISTRY_NAME="hhbd"
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -31,6 +38,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROLLBACK_APP=false
 ROLLBACK_NGINX=false
 SERVICES_SPECIFIED=false
+SKIP_CONFIRMATION=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -44,9 +52,13 @@ while [[ $# -gt 0 ]]; do
             SERVICES_SPECIFIED=true
             shift
             ;;
+        --yes|--force|-y)
+            SKIP_CONFIRMATION=true
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [app] [nginx]"
+            echo "Usage: $0 [app] [nginx] [--yes|--force|-y]"
             exit 1
             ;;
     esac
@@ -90,16 +102,79 @@ fi
 log_warn "⚠️  This will redeploy to the last-known-good (prod-lkg) images"
 log_warn "Services: ${SERVICES}"
 echo ""
-log_action "Confirm rollback? (type 'yes' to proceed): "
-read -r CONFIRM
 
-if [ "$CONFIRM" != "yes" ]; then
-    log_error "Rollback cancelled."
-    exit 0
+if [ "$SKIP_CONFIRMATION" = false ]; then
+    log_action "Confirm rollback? (type 'yes' to proceed): "
+    read -r CONFIRM
+
+    if [ "$CONFIRM" != "yes" ]; then
+        log_error "Rollback cancelled."
+        exit 0
+    fi
+else
+    log_info "Skipping confirmation (--yes flag provided)"
 fi
 
 # Set project
 gcloud config set project "${PROJECT_ID}" --quiet
+
+# Check if prod-lkg tags exist in Artifact Registry
+log_info "Verifying prod-lkg tags exist in Artifact Registry..."
+
+REGISTRY="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REGISTRY_NAME}"
+
+check_tag_exists() {
+    local image_name=$1
+    local tag=$2
+    
+    # Try to get image manifest for the prod-lkg tag
+    if gcloud container images describe "${REGISTRY}/${image_name}:${tag}" --quiet > /dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+MISSING_TAGS=()
+
+if [ "$ROLLBACK_APP" = true ]; then
+    if ! check_tag_exists "app" "prod-lkg"; then
+        MISSING_TAGS+=("app:prod-lkg")
+    fi
+fi
+
+if [ "$ROLLBACK_NGINX" = true ]; then
+    if ! check_tag_exists "nginx" "prod-lkg"; then
+        MISSING_TAGS+=("nginx:prod-lkg")
+    fi
+fi
+
+if [ ${#MISSING_TAGS[@]} -gt 0 ]; then
+    log_error "Cannot rollback: prod-lkg tags do not exist in Artifact Registry"
+    log_error "Missing tags: ${MISSING_TAGS[*]}"
+    echo ""
+    log_warn "This typically happens on the first production deployment."
+    log_warn "The prod-lkg tags are created after the first successful deployment"
+    log_warn "when smoke tests pass."
+    echo ""
+    log_info "To establish prod-lkg baseline:"
+    log_info "  1. Ensure you have a working deployment with 'latest' tags"
+    log_info "  2. Run smoke tests to verify the deployment"
+    log_info "  3. Manually tag the working images as prod-lkg:"
+    echo ""
+    for tag in "${MISSING_TAGS[@]}"; do
+        image_name="${tag%%:*}"
+        echo "     gcloud container images add-tag --quiet \\"
+        echo "       ${REGISTRY}/${image_name}:latest \\"
+        echo "       ${REGISTRY}/${tag}"
+        echo ""
+    done
+    log_info "  Or wait for the CI/CD pipeline to automatically create prod-lkg tags"
+    log_info "  after a successful deployment with passing smoke tests."
+    exit 1
+fi
+
+log_info "✓ All required prod-lkg tags found"
 
 # Get VM external IP
 VM_IP=$(gcloud compute instances describe "${VM_NAME}" --zone="${ZONE}" --format='get(networkInterfaces[0].accessConfigs[0].natIP)')

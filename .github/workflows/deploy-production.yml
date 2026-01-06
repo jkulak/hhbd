@@ -117,8 +117,23 @@ jobs:
           GCP_PROJECT: ${{ env.PROJECT_ID }}
 
       - name: Wait for services to be healthy
-        run: sleep 10
+        run: |
+          timeout=60
+          url="https://hhbd.pl"
+          end=$((SECONDS + timeout))
 
+          echo "Waiting for service at ${url} to become healthy (timeout: ${timeout}s)..."
+          while [ "${SECONDS}" -lt "${end}" ]; do
+            if curl -k -sSf "${url}" > /dev/null 2>&1; then
+              echo "Service is healthy."
+              exit 0
+            fi
+            echo "Service not yet healthy, retrying in 5 seconds..."
+            sleep 5
+          done
+
+          echo "Service did not become healthy within ${timeout} seconds."
+          exit 1
   smoke-tests-production:
     name: Smoke Tests on Production
     needs: [build, deploy]
@@ -131,6 +146,7 @@ jobs:
         with:
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           project_id: ${{ env.PROJECT_ID }}
+          export_default_credentials: true
 
       - name: Run smoke tests against production
         id: smoke
@@ -138,11 +154,14 @@ jobs:
         run: |
           bash ./tests/smoke-test.sh "https://hhbd.pl"
 
+      - name: Configure Docker authentication
+        if: always()
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
       - name: Promote latest to prod-lkg (success)
         if: steps.smoke.outcome == 'success'
         run: |
-          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
-          
           echo "✅ Smoke tests passed. Tagging images as prod-lkg..."
           gcloud container images tag \
             --quiet \
@@ -161,10 +180,7 @@ jobs:
         run: |
           echo "❌ Smoke tests failed on production!"
           echo "Rolling back to last-known-good (prod-lkg) images..."
-          
-          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
-          bash ./deploy/rollback.sh
-          
+          bash ./deploy/rollback.sh -yes
           echo "⚠️  Deployment rolled back. Check logs above for details."
           exit 1
 
@@ -174,18 +190,21 @@ jobs:
         with:
           script: |
             const status = '${{ steps.smoke.outcome }}' === 'success' ? 'success' : 'failure';
-            const description = status === 'success' 
-              ? '✅ Deployment successful & smoke tests passed' 
+            const description = status === 'success'
+              ? '✅ Deployment successful & smoke tests passed'
               : '❌ Smoke tests failed - rolled back to prod-lkg';
-            
-            github.rest.repos.createDeploymentStatus({
+
+            github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              deployment_id: context.payload.deployment?.id || context.run_id,
+              sha: context.sha,
               state: status,
               description: description,
-              environment_url: 'https://hhbd.pl'
-            }).catch(err => console.log('Note: deployment status creation skipped'));
+              context: 'production-deploy',
+              target_url: 'https://hhbd.pl'
+            }).catch(err => {
+              console.log('Note: commit status creation skipped', err.message || err);
+            });
 
       - name: Slack notification (optional)
         if: always()
