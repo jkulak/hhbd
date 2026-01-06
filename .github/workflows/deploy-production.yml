@@ -117,8 +117,23 @@ jobs:
           GCP_PROJECT: ${{ env.PROJECT_ID }}
 
       - name: Wait for services to be healthy
-        run: sleep 10
+        run: |
+          timeout=60
+          url="https://hhbd.pl"
+          end=$((SECONDS + timeout))
 
+          echo "Waiting for service at ${url} to become healthy (timeout: ${timeout}s)..."
+          while [ "${SECONDS}" -lt "${end}" ]; do
+            if curl -k -sSf "${url}" > /dev/null 2>&1; then
+              echo "Service is healthy."
+              exit 0
+            fi
+            echo "Service not yet healthy, retrying in 5 seconds..."
+            sleep 5
+          done
+
+          echo "Service did not become healthy within ${timeout} seconds."
+          exit 1
   smoke-tests-production:
     name: Smoke Tests on Production
     needs: [build, deploy]
