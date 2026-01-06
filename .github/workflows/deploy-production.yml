@@ -109,9 +109,9 @@ jobs:
 
       - name: Deploy to GCP VM
         run: |
-          # Export tags for deploy script
-          export APP_TAG=latest
-          export NGINX_TAG=latest
+          # Export SHA-tagged images that were just built and tested
+          export APP_TAG=sha-${{ needs.build.outputs.commit-sha }}
+          export NGINX_TAG=sha-${{ needs.build.outputs.commit-sha }}
           bash ./deploy/04-deploy.sh
         env:
           GCP_PROJECT: ${{ env.PROJECT_ID }}
@@ -165,15 +165,15 @@ jobs:
           echo "✅ Smoke tests passed. Tagging images as prod-lkg..."
           gcloud container images tag \
             --quiet \
-            "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/app:latest" \
+            "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/app:sha-${{ needs.build.outputs.commit-sha }}" \
             "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/app:prod-lkg"
           
           gcloud container images tag \
             --quiet \
-            "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/nginx:latest" \
+            "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/nginx:sha-${{ needs.build.outputs.commit-sha }}" \
             "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/nginx:prod-lkg"
           
-          echo "✅ Updated prod-lkg tags"
+          echo "✅ Updated prod-lkg tags to sha-${{ needs.build.outputs.commit-sha }}"
 
       - name: Rollback if smoke tests fail
         if: steps.smoke.outcome == 'failure'
