@@ -197,7 +197,7 @@ jobs:
             }).catch(err => console.log('Note: deployment status creation skipped'));
 
       - name: Slack notification (optional)
-        if: always()
+        if: always() && secrets.SLACK_WEBHOOK_URL != ''
         uses: slackapi/slack-github-action@v1.24.0
         with:
           payload: |
