@@ -38,7 +38,7 @@ The deployment uses a multi-tag strategy to ensure safe and traceable deployment
 
 3. Smoke Test Stage:
    - Runs smoke tests against production
-   - If successful: Promotes latest → prod-lkg
+   - If successful: Promotes sha-<commit> → prod-lkg
    - If failed: Rolls back to prod-lkg
 ```
 

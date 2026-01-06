@@ -132,23 +132,23 @@ jobs:
         run: |
           bash ./tests/smoke-test.sh "https://hhbd.pl"
 
-      - name: Promote latest to prod-lkg (success)
+      - name: Promote SHA to prod-lkg (success)
         if: steps.smoke.outcome == 'success'
         run: |
           gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
           
-          echo "✅ Smoke tests passed. Tagging images as prod-lkg..."
+          echo "✅ Smoke tests passed. Promoting sha-${{ needs.build.outputs.commit-sha }} to prod-lkg..."
           gcloud container images tag \
             --quiet \
-            "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/app:latest" \
+            "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/app:sha-${{ needs.build.outputs.commit-sha }}" \
             "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/app:prod-lkg"
           
           gcloud container images tag \
             --quiet \
-            "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/nginx:latest" \
+            "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/nginx:sha-${{ needs.build.outputs.commit-sha }}" \
             "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/nginx:prod-lkg"
           
-          echo "✅ Updated prod-lkg tags"
+          echo "✅ Updated prod-lkg tags to sha-${{ needs.build.outputs.commit-sha }}"
 
       - name: Rollback if smoke tests fail
         if: steps.smoke.outcome == 'failure'
