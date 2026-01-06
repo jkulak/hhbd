@@ -159,7 +159,7 @@ jobs:
 
           echo "Waiting for service at ${url} to become healthy (timeout: ${timeout}s)..."
           while [ "${SECONDS}" -lt "${end}" ]; do
-            if curl -k -sSf "${url}" > /dev/null 2>&1; then
+            if curl -sSf "${url}" > /dev/null 2>&1; then
               echo "Service is healthy."
               exit 0
             fi
@@ -217,7 +217,7 @@ jobs:
         run: |
           echo "❌ Smoke tests failed on production!"
           echo "Rolling back to last-known-good (prod-lkg) images..."
-          bash ./deploy/rollback.sh -yes
+          bash ./deploy/rollback.sh --yes
           echo "⚠️  Deployment rolled back. Check logs above for details."
           exit 1
 
