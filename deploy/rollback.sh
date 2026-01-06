@@ -127,8 +127,8 @@ check_tag_exists() {
     local image_name=$1
     local tag=$2
     
-    # Try to get image manifest for the prod-lkg tag
-    if gcloud container images describe "${REGISTRY}/${image_name}:${tag}" --quiet > /dev/null 2>&1; then
+    # Try to list tags to check if the tag exists
+    if gcloud artifacts docker tags list "${REGISTRY}/${image_name}" --filter="tag:${tag}" --quiet > /dev/null 2>&1; then
         return 0
     else
         return 1
@@ -164,9 +164,10 @@ if [ ${#MISSING_TAGS[@]} -gt 0 ]; then
     echo ""
     for tag in "${MISSING_TAGS[@]}"; do
         image_name="${tag%%:*}"
-        echo "     gcloud container images add-tag --quiet \\"
+        echo "     gcloud artifacts docker tags add \\"
         echo "       ${REGISTRY}/${image_name}:latest \\"
-        echo "       ${REGISTRY}/${tag}"
+        echo "       ${REGISTRY}/${tag} \\"
+        echo "       --quiet"
         echo ""
     done
     log_info "  Or wait for the CI/CD pipeline to automatically create prod-lkg tags"
