@@ -127,20 +127,20 @@ gcloud compute ssh "${VM_NAME}" --zone="${ZONE}" --quiet --command="
 
     # Pull specified images
     echo 'Pulling images: ${SERVICES} (tags: app=${APP_TAG}, nginx=${NGINX_TAG})...'
-    docker compose -f compose.gcp.yaml pull ${SERVICES}
+    sudo docker compose -f compose.gcp.yaml pull ${SERVICES}
 
     # Start/restart specified containers
     echo 'Starting containers: ${SERVICES}...'
-    docker compose -f compose.gcp.yaml up -d --remove-orphans ${SERVICES}
+    sudo docker compose -f compose.gcp.yaml up -d --remove-orphans ${SERVICES}
 
     # Clean up old images to save disk space
     echo 'Cleaning up old images...'
-    docker system prune -f
+    sudo docker system prune -f
 
     # Show status
     echo ''
     echo 'Container status:'
-    docker compose -f compose.gcp.yaml ps
+    sudo docker compose -f compose.gcp.yaml ps
 "
 
 
