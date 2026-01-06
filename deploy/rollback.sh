@@ -11,9 +11,14 @@
 #   - prod-lkg tags exist in Artifact Registry
 #
 # Usage:
-#   ./rollback.sh                   # Rollback app and nginx
+#   ./rollback.sh                   # Rollback app and nginx (interactive)
+#   ./rollback.sh --yes             # Rollback app and nginx (skip confirmation)
 #   ./rollback.sh app               # Rollback only app
 #   ./rollback.sh nginx             # Rollback only nginx
+#   ./rollback.sh app nginx --yes   # Rollback both (skip confirmation)
+#
+# Flags:
+#   --yes, --force, -y              Skip interactive confirmation (useful for CI/CD)
 #
 
 set -euo pipefail
@@ -31,6 +36,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROLLBACK_APP=false
 ROLLBACK_NGINX=false
 SERVICES_SPECIFIED=false
+SKIP_CONFIRMATION=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -44,9 +50,13 @@ while [[ $# -gt 0 ]]; do
             SERVICES_SPECIFIED=true
             shift
             ;;
+        --yes|--force|-y)
+            SKIP_CONFIRMATION=true
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [app] [nginx]"
+            echo "Usage: $0 [app] [nginx] [--yes|--force|-y]"
             exit 1
             ;;
     esac
@@ -90,12 +100,17 @@ fi
 log_warn "⚠️  This will redeploy to the last-known-good (prod-lkg) images"
 log_warn "Services: ${SERVICES}"
 echo ""
-log_action "Confirm rollback? (type 'yes' to proceed): "
-read -r CONFIRM
 
-if [ "$CONFIRM" != "yes" ]; then
-    log_error "Rollback cancelled."
-    exit 0
+if [ "$SKIP_CONFIRMATION" = false ]; then
+    log_action "Confirm rollback? (type 'yes' to proceed): "
+    read -r CONFIRM
+
+    if [ "$CONFIRM" != "yes" ]; then
+        log_error "Rollback cancelled."
+        exit 0
+    fi
+else
+    log_info "Skipping confirmation (--yes flag provided)"
 fi
 
 # Set project
