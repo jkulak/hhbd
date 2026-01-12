@@ -1,7 +1,9 @@
 -- ============================================================================
 -- Migration: Fix Old URLs in Database
--- Description: Updates old URL formats (e.g., hhbd.pl/n/slug) to new SEO-friendly
---              format (e.g., hhbd.pl/slug-pXX.html, hhbd.pl/slug-lXX.html)
+-- Description: Updates old URL formats (e.g., hhbd.pl/n/slug) by removing the
+--              /n/ prefix. The resulting URLs (e.g., hhbd.pl/slug) will be
+--              handled by the application's routing system, which redirects
+--              them to proper SEO-friendly URLs (e.g., hhbd.pl/slug-pXX.html)
 -- Date: 2026-01-12
 -- Database: MariaDB 10.11
 -- ============================================================================

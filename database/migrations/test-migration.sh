@@ -11,6 +11,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Database connection parameters (override with environment variables)
+# NOTE: For production, use a secure method (e.g., ~/.my.cnf) to avoid
+# exposing passwords in process lists or shell history
 DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-3306}"
 DB_USER="${DB_USER:-root}"
@@ -53,10 +55,13 @@ echo ""
 # Step 3: Insert test data
 echo -e "${YELLOW}[3/5] Inserting test data with old URLs...${NC}"
 
+# Use a distinctive test ID that's unlikely to conflict with real data
+TEST_LAB_ID=999999
+
 # Create a test label with old URL in profile
 run_query "
 INSERT INTO labels (lab_id, name, profile, addedby, added) 
-VALUES (9999, 'Test Label', 'Test label with link <a href=\"https://hhbd.pl/n/test-artist\">Test Artist</a>', 1, NOW())
+VALUES ($TEST_LAB_ID, 'Test Label', 'Test label with link <a href=\"https://hhbd.pl/n/test-artist\">Test Artist</a>', 1, NOW())
 ON DUPLICATE KEY UPDATE 
     profile = 'Test label with link <a href=\"https://hhbd.pl/n/test-artist\">Test Artist</a>',
     updated = NOW();
@@ -87,12 +92,12 @@ echo -e "${YELLOW}[5/5] Testing UPDATE syntax...${NC}"
 run_query "
 UPDATE labels 
 SET profile = REPLACE(profile, 'https://hhbd.pl/n/', 'https://hhbd.pl/')
-WHERE lab_id = 9999 AND profile LIKE '%https://hhbd.pl/n/%';
+WHERE lab_id = $TEST_LAB_ID AND profile LIKE '%https://hhbd.pl/n/%';
 " && echo -e "${GREEN}  ✓ UPDATE syntax is valid${NC}" || echo -e "${RED}  ✗ UPDATE syntax error${NC}"
 
 # Verify the update
 echo -e "${YELLOW}Verifying update result...${NC}"
-RESULT=$(run_query "SELECT profile FROM labels WHERE lab_id = 9999" | tail -n 1)
+RESULT=$(run_query "SELECT profile FROM labels WHERE lab_id = $TEST_LAB_ID" | tail -n 1)
 if echo "$RESULT" | grep -q "https://hhbd.pl/test-artist"; then
     echo -e "${GREEN}  ✓ URL was correctly updated${NC}"
     echo -e "    Before: https://hhbd.pl/n/test-artist"
@@ -105,7 +110,7 @@ echo ""
 
 # Cleanup
 echo -e "${YELLOW}Cleaning up test data...${NC}"
-run_query "DELETE FROM labels WHERE lab_id = 9999;" 2>/dev/null || true
+run_query "DELETE FROM labels WHERE lab_id = $TEST_LAB_ID;" 2>/dev/null || true
 echo -e "${GREEN}  ✓ Cleanup complete${NC}"
 echo ""
 
