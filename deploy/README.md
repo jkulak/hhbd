@@ -2,7 +2,7 @@
 
 Production is moving from Google Cloud to the shared OVH host. The OVH side follows
 `CONTRACT.md` in `jkulak/gcloud-ovh-migrate` at
-[`4354975`](https://github.com/jkulak/gcloud-ovh-migrate/blob/4354975630ac7362ba470d33d8f5c85671079c65/CONTRACT.md);
+[`5f9a189`](https://github.com/jkulak/gcloud-ovh-migrate/blob/5f9a1895db6c3d3670482fdfb0486dbf89f7b610/CONTRACT.md);
 the Google side below stays until the soak after the cutover is over.
 
 ## OVH host

@@ -1,5 +1,5 @@
 # Which keys can read what. Public keys only, safe to commit. Copied from the creation rule
-# for *.enc.env in jkulak/gcloud-ovh-migrate's .sops.yaml at 4354975 (CONTRACT.md §4).
+# for *.enc.env in jkulak/gcloud-ovh-migrate's .sops.yaml at 5f9a189 (CONTRACT.md §4).
 #
 # Two recipients in one key group, so either private key opens a file on its own:
 #   host      private half only at /etc/sops/age.key on the OVH host; it decrypts

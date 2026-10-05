@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copied from jkulak/gcloud-ovh-migrate at 4354975, so this repo runs the same gate and the
+# Copied from jkulak/gcloud-ovh-migrate at 5f9a189, so this repo runs the same gate and the
 # same helper as the platform does (CONTRACT.md §4). Keep it in step with that file.
 #
 # Refuse the things that must never reach a commit. This is the "nothing secret in the
