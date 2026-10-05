@@ -45,3 +45,6 @@ WARP.md
 coverage.xml
 app/.php-cs-fixer.cache
 .php-cs-fixer.cache
+
+# Working notes, one file per task
+/tasks/
