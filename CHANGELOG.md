@@ -9,7 +9,7 @@ decision; nothing tags on its own.
 
 ### Added
 - Production can run on the shared OVH host, following `CONTRACT.md` in
-  `jkulak/gcloud-ovh-migrate` at `4354975`: `deploy/compose.ovh.yaml` with nothing published
+  `jkulak/gcloud-ovh-migrate` at `5f9a189`: `deploy/compose.ovh.yaml` with nothing published
   and no adminer, the edge snippet `deploy/hhbd.pl.caddyfile`, and `make ovh-install` to put
   both on the host with the secrets.
 - Releases from CalVer tags: both images built under one tag, pushed privately to

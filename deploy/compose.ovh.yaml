@@ -1,7 +1,7 @@
 #
 # HHBD - production on the shared OVH host
 #
-# Follows CONTRACT.md §2 in jkulak/gcloud-ovh-migrate at 4354975. `make ovh-install` copies
+# Follows CONTRACT.md §2 in jkulak/gcloud-ovh-migrate at 5f9a189. `make ovh-install` copies
 # it to /srv/hhbd/compose.yaml; the host's ci-deploy rolls it with IMAGE_TAG set and the
 # values of hhbd.enc.env in the environment, and waits for every container to be healthy.
 #
