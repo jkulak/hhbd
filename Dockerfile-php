@@ -28,9 +28,6 @@ RUN docker-php-ext-install pdo pdo_mysql zip \
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Create log directory
-RUN mkdir -p /var/log/hhbd-website && chmod 777 /var/log/hhbd-website
-
 # Install php-fpm-healthcheck
 RUN curl -o /usr/local/bin/php-fpm-healthcheck \
     https://raw.githubusercontent.com/renatomefi/php-fpm-healthcheck/master/php-fpm-healthcheck \
@@ -38,6 +35,9 @@ RUN curl -o /usr/local/bin/php-fpm-healthcheck \
 
 # Enable status endpoint for healthcheck
 RUN echo "pm.status_path = /status" >> /usr/local/etc/php-fpm.d/zz-docker.conf
+
+# Logs to the container's stderr, never to files inside it
+COPY conf/php/fpm-logging.conf /usr/local/etc/php-fpm.d/zz-hhbd-logging.conf
 
 WORKDIR /var/www/html/app
 
@@ -75,14 +75,12 @@ RUN docker-php-ext-install pdo pdo_mysql
 # Copy Composer from official image
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Create log directory
-RUN mkdir -p /var/log/hhbd-website && chmod 777 /var/log/hhbd-website
-
 # Copy php-fpm-healthcheck from builder
 COPY --from=builder /usr/local/bin/php-fpm-healthcheck /usr/local/bin/php-fpm-healthcheck
 
 # Copy PHP-FPM configuration from builder
 COPY --from=builder /usr/local/etc/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
+COPY --from=builder /usr/local/etc/php-fpm.d/zz-hhbd-logging.conf /usr/local/etc/php-fpm.d/zz-hhbd-logging.conf
 
 WORKDIR /var/www/html
 
