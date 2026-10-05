@@ -1,0 +1,102 @@
+#
+# HHBD - production on the shared OVH host
+#
+# Follows CONTRACT.md §2 in jkulak/gcloud-ovh-migrate at 4354975. `make ovh-install` copies
+# it to /srv/hhbd/compose.yaml; the host's ci-deploy rolls it with IMAGE_TAG set and the
+# values of hhbd.enc.env in the environment, and waits for every container to be healthy.
+#
+# Nothing is published: the shared edge reaches nginx over the `edge` network as hhbd-web,
+# and the database is reached over ssh with `docker exec`. No adminer: if one is ever needed,
+# it runs ad hoc on 127.0.0.1 and is removed after.
+#
+name: hhbd
+
+services:
+  nginx:
+    image: ghcr.io/jkulak/hhbd-nginx:${IMAGE_TAG:?}
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    volumes:
+      - content:/var/www/html/content:ro
+    networks:
+      default: {}
+      edge:
+        aliases: [hhbd-web]
+    healthcheck:
+      # The home page, through nginx, PHP and the database. A release that starts but cannot
+      # render a page is not healthy, and ci-deploy takes it back to the tag before. By IPv4
+      # with the Host header set, since nginx listens on IPv4 only and "localhost" may
+      # resolve to ::1 first.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "--header", "Host: localhost", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  app:
+    image: ghcr.io/jkulak/hhbd-app:${IMAGE_TAG:?}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APPLICATION_ENV: production
+      DB_HOST: db
+      DB_NAME: hhbd
+      DB_USER: hhbd
+      DB_PASSWORD: ${DB_PASSWORD:?}
+      SHOW_ADS: "true"
+    healthcheck:
+      # PHP-FPM answers its status page over FastCGI.
+      test: ["CMD", "php-fpm-healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  db:
+    image: mariadb:10.11.8
+    restart: unless-stopped
+    # Read-optimized for a 23 MB database (writes ~100/week), as tuned on main in 887938f
+    command: >
+      --innodb-buffer-pool-size=96M --innodb-buffer-pool-dump-at-shutdown=1 --innodb-buffer-pool-load-at-startup=1 --max-connections=20 --innodb-log-file-size=16M --innodb-flush-log-at-trx-commit=2 --innodb-read-io-threads=4 --innodb-write-io-threads=1 --table-open-cache=400 --innodb-stats-on-metadata=0 --transaction-isolation=READ-COMMITTED --skip-name-resolve
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?}
+      MYSQL_DATABASE: hhbd
+      MYSQL_USER: hhbd
+      MYSQL_PASSWORD: ${DB_PASSWORD:?}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      # Accepts connections and InnoDB has finished starting.
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 320M
+
+volumes:
+  # The database. Backed up as a dump of hhbd-db-1:hhbd, not as a volume.
+  db_data:
+  # Covers, photos and logos, hhbd_content on the host. Only nginx reads it; nothing in the
+  # stack writes it since the backoffice was archived. Backed up as a volume.
+  content:
+
+networks:
+  edge:
+    external: true
+    name: edge
