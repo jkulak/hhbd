@@ -3,6 +3,12 @@
 # =============================================================================
 FROM php:7.4-fpm as builder
 
+# php:7.4 is built on Debian 11 (bullseye), which is past its long-term support, and its
+# packages are moving to archive.debian.org: by October 2026 the regular mirrors still listed
+# libfcgi's security fix but no longer served the file, which failed every build. The archive
+# holds all three bullseye suites.
+RUN sed -i 's|http://deb.debian.org|http://archive.debian.org|g' /etc/apt/sources.list
+
 # Install system dependencies including GD libraries and composer requirements
 RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
@@ -54,6 +60,9 @@ COPY conf/php/production.ini /usr/local/etc/php/conf.d/99-production.ini
 # Stage 2: Production - minimal runtime without GD dependencies
 # =============================================================================
 FROM php:7.4-fpm as production
+
+# Bullseye's packages from the archive, as in the builder stage
+RUN sed -i 's|http://deb.debian.org|http://archive.debian.org|g' /etc/apt/sources.list
 
 # Install only runtime system dependencies (no GD libraries)
 RUN apt-get update && apt-get install -y \
