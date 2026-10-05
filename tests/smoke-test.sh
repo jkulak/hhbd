@@ -7,15 +7,19 @@
 #   ./tests/smoke-test.sh              # Test localhost:8080
 #   ./tests/smoke-test.sh http://example.com  # Test custom URL
 #
+#   # A host the name does not point at yet, e.g. a new origin before the DNS moves:
+#   SMOKE_CURL_OPTS="--connect-to hhbd.pl:443:<host>:443 --insecure" ./tests/smoke-test.sh https://hhbd.pl
+#
 
 BASE_URL="${1:-http://localhost:8080}"
 FAILED=0
 PASSED=0
 ERRORS=()  # Array to collect error messages
 
-# Detect if we need to add Host header (for docker service name connections)
-CURL_OPTS=""
-if [[ "$BASE_URL" == *"nginx"* ]] || [[ "$BASE_URL" == *"172.18"* ]]; then
+# Extra curl options from the environment, word-split on purpose so several can be given.
+# Without them, detect if we need to add Host header (for docker service name connections)
+CURL_OPTS="${SMOKE_CURL_OPTS:-}"
+if [[ -z "$CURL_OPTS" ]] && { [[ "$BASE_URL" == *"nginx"* ]] || [[ "$BASE_URL" == *"172.18"* ]]; }; then
     CURL_OPTS="-H Host:localhost"
 fi
 
