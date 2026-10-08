@@ -59,6 +59,9 @@ echo "> make reset-db, then status"
 if make -s reset-db >"$T/out" 2>&1; then ok "make reset-db succeeds ($(last | sed 's/^ok //'))"; else bad "make reset-db succeeds"; cat "$T/out"; exit 1; fi
 first=$(counts)
 baseline_tables=$(grep -c '^CREATE TABLE' database/migrations/0001-baseline.up.sql)
+# How many migrations exist, and the version the next one gets.
+migration_count=$(find database/migrations -name '[0-9][0-9][0-9][0-9]-*.up.sql' | wc -l | tr -d ' ')
+next_version=$(printf '%04d' $((migration_count + 1)))
 migrate status
 check "status shows nothing pending after a reset" "0 pending" "$(summary | grep -o '0 pending')"
 check "status lists the baseline with the time it was applied" "0001 baseline applied" \
@@ -109,7 +112,7 @@ if migrate up; then bad "up on it is refused"; else check "up on it is refused a
 check "and changed nothing" "$first" "$(counts)"
 if migrate baseline; then ok "baseline records 0001 without running it ($(last | sed 's/^ok [^:]*: //'))"; else bad "baseline records 0001 without running it"; cat "$T/out"; fi
 migrate status
-check "status shows it applied" "0 pending" "$(summary | grep -oE '[0-9]+ pending')"
+check "status shows the baseline applied and only what came after it pending" "1 applied, $((migration_count - 1)) pending" "$(summary)"
 if migrate baseline; then bad "a second baseline is refused"; else check "a second baseline is refused" "already records" "$(has 'already records')"; fi
 sql "DROP TABLE schema_migrations; ALTER TABLE albums ADD COLUMN not_in_any_migration INT"
 migrate baseline
@@ -121,7 +124,7 @@ echo "> what the files must look like"
 copy new
 if MIGRATIONS_DIR="$T/new" ./scripts/migrate.sh new 'Bad Slug' >"$T/out" 2>&1; then bad "a bad slug is refused"; else ok "a bad slug is refused"; fi
 MIGRATIONS_DIR="$T/new" ./scripts/migrate.sh new add-thing >"$T/out" 2>&1
-check "new writes the next version's two files" "0002-add-thing.down.sql 0002-add-thing.up.sql" "$(cd "$T/new" && printf '%s\n' 0002-* | tr '\n' ' ' | sed 's/ $//')"
+check "new writes the next version's two files" "$next_version-add-thing.down.sql $next_version-add-thing.up.sql" "$(cd "$T/new" && printf '%s\n' "$next_version"-* | tr '\n' ' ' | sed 's/ $//')"
 copy nodown
 printf 'SELECT 1;\n' >"$T/nodown/0002-no-down.up.sql"
 if MIGRATIONS_DIR="$T/nodown" ./scripts/migrate.sh status >"$T/out" 2>&1; then bad "a migration without a down is refused"; else check "a migration without a down is refused" "has no 0002-no-down.down.sql" "$(has 'has no 0002-no-down.down.sql')"; fi
