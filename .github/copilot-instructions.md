@@ -8,7 +8,7 @@ Big picture
 - Services (Docker Compose): app (PHP-FPM), nginx (8080), db (MariaDB 10.11), adminer (8082).
 - Dockerfile-php uses multi-stage build: 'builder' stage (with GD for test image generation, used in CI), 'production' stage (minimal runtime, used in dev and on the OVH host).
 - Frontend app lives in [app/](app/); entrypoint is [app/public/index.php](app/public/index.php). Config in [app/application/configs/application.ini](app/application/configs/application.ini) and routes in [app/application/configs/routes.xml](app/application/configs/routes.xml).
-- Backoffice: none on `main`. The procedural PHP admin panels (`admin/`, `xadmin/`) are archived on the branch `backoffice-archive`, and nothing runs them.
+- Backoffice: none on `main`. The procedural PHP admin panels (`admin/`, `xadmin/`) are archived on the branch `backoffice-archive`, nothing runs them, and they will not be revived or kept compatible; a future backoffice gets written from scratch.
 - Frontend assets: jQuery 1.4.4, custom CSS/JS, tipsy tooltips. Main files at [app/public/css/s.css](app/public/css/s.css) and [app/public/js/s.js](app/public/js/s.js).
 
 Development workflow
