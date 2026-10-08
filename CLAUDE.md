@@ -53,21 +53,19 @@ VS Code Dev Container provides PHP 7.4 environment with Xdebug, Composer, and PH
 After starting Docker services:
 
 ```bash
-# Import database (first time only)
-docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/_backup/2016-06-30-hhbd.sql
+# The database: the schema from database/migrations/, the smoke-test fixtures on top
+make reset-db
 
 # Install dependencies
 docker compose exec app composer install
 ```
 
-### Resetting the local database
+For production-like data instead, load a dump and record the baseline with `make migrate-baseline`; see [database/README.md](database/README.md).
 
-```bash
-# Drop the local hhbd database and load database/tests/ again (schema + smoke-test fixtures)
-make reset-db
-```
+### The database
 
-Run it before and after a piece of work. It acts only on the running db container of this checkout's compose project on the local Docker engine, and refuses anything else; see [database/README.md](database/README.md).
+- `make reset-db` drops the local `hhbd` database and builds it again from the migrations and the fixtures. Run it before and after a piece of work. It acts only on the running db container of this checkout's compose project on the local Docker engine, and refuses anything else.
+- Every schema or data change is a migration in `database/migrations/`, `NNNN-slug.up.sql` with its `.down.sql`: `make migrate-new NAME=...`, `make migrate`, `make migrate-down`, `make migrate-status`. Keep each one small and compatible with the release that is running. Production gets them with `make ovh-migrate` before the release that needs them ([deploy/README.md](deploy/README.md)). Details in [database/README.md](database/README.md).
 
 ## Common Commands
 
