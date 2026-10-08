@@ -1,0 +1,16 @@
+# Which keys can read what. Public keys only, safe to commit. Copied from the creation rule
+# for *.enc.env in jkulak/gcloud-ovh-migrate's .sops.yaml at 5f9a189 (CONTRACT.md §4).
+#
+# Two recipients in one key group, so either private key opens a file on its own:
+#   host      private half only at /etc/sops/age.key on the OVH host; it decrypts
+#             deploy/hhbd.enc.env when ci-deploy rolls the stack.
+#   personal  private half on Kuba's Mac, with a copy in the password manager; it is what
+#             edits secrets (make secrets-set), and what recovers them if the host is lost.
+#
+# No encrypted_regex: every value is encrypted, which scripts/secrets-check.sh enforces.
+creation_rules:
+  - path_regex: \.enc\.env$
+    key_groups:
+      - age:
+          - age1exkyfdx2f5rw6awdymzxawacqxmmt98xahupyjqp4fqn8xyc9psq0cjdgq  # host
+          - age1u340n9vw4amnu6clpl98n2aeeg3qrdf9sr0fey40x6dc3lyk349s8uq76k  # personal

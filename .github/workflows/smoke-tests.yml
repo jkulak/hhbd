@@ -1,11 +1,15 @@
 name: Smoke Tests
 
+# Pull requests only: the merge result is tested on the pull request, so a push to main
+# would only run the same thing again.
 on:
-  push:
-    branches: [main, master]
   pull_request:
     branches: [main, master]
   workflow_dispatch:  # Allow manual trigger
+
+concurrency:
+  group: smoke-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   smoke-tests:
@@ -86,10 +90,8 @@ jobs:
       - name: Show logs on failure
         if: failure()
         run: |
-          echo "=== Docker Compose Logs ==="
-          docker compose logs --tail=100
-          echo "\n=== PHP error logs (app) ==="
-          docker compose exec -T app sh -lc 'for f in /var/log/php-errors.log /var/log/hhbd-website/*.log; do [ -f "$f" ] && echo "--- $f ---" && tail -n 200 "$f"; done || true'
+          # PHP, the application and nginx all log to the containers' stdout and stderr.
+          docker compose logs --tail=200
 
       - name: Cleanup
         if: always()
