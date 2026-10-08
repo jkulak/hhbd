@@ -5,6 +5,14 @@ month (`2026.10.0`, `2026.10.1`, `2026.11.0`). A release is the git tag `vYYYY.M
 pushing it is what deploys it (`.github/workflows/release.yml`). Tagging is a person's
 decision; nothing tags on its own.
 
+## Unreleased
+
+### Changed
+- `hhbd.pl` and `www.hhbd.pl` are served from the shared OVH host since 2026-10-08, behind
+  Cloudflare in Full (strict), with a Let's Encrypt certificate at the origin and every
+  connection that does not come from Cloudflare dropped. The Google VM's app and nginx are
+  stopped and stay until the soak is over.
+
 ## 2026.10.0 — 2026-10-08
 
 The first release to the shared OVH host. Production keeps running on Google until the move.
