@@ -54,7 +54,7 @@ to() {
 
 # Runs inside a database container, as root with the container's own password.
 in_db() { # in_db <container> <shell command>
-    printf "%s docker exec -i %s sh -c 'export MYSQL_PWD=\"\$MYSQL_ROOT_PASSWORD\"; %s'" "$SUDO" "$1" "$2"
+    printf "%s docker exec -i %s sh -c 'export MYSQL_PWD=\"\${MYSQL_ROOT_PASSWORD:?}\"; %s'" "$SUDO" "$1" "$2"
 }
 
 db() {

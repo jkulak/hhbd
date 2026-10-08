@@ -32,7 +32,7 @@ edge's fixed address 172.30.0.2 only.
 There is no adminer and no backoffice. The database is reached over ssh:
 
 ```bash
-ssh ubuntu@$OVH_HOST 'sudo docker exec -it hhbd-db-1 sh -c "MYSQL_PWD=\"\$MYSQL_ROOT_PASSWORD\" mariadb -uroot hhbd"'
+ssh ubuntu@$OVH_HOST 'sudo docker exec -it hhbd-db-1 sh -c "MYSQL_PWD=\"\${MYSQL_ROOT_PASSWORD:?}\" mariadb -uroot hhbd"'
 ```
 
 ### Secrets
@@ -78,15 +78,15 @@ In the window:
    Point `hhbd.pl` at the host with `flarectl`, still proxied; `www` follows as a CNAME. Watch
    the staging certificate issue, then remove the `tls` block and `make ovh-install` again for
    the real one.
-6. Switch Cloudflare's SSL mode for the zone to **Full (strict)**. Until then Flexible loops on
-   the edge's redirect to HTTPS: that loop is the break.
+6. Switch Cloudflare's SSL mode for the zone to **Full (strict)**. The switch is the moment of
+   the break.
 7. Check through Cloudflare, then add `import cloudflare_only` to the snippet,
    `make ovh-install`, and check that a direct request is dropped. From here a direct request
    cannot reach the host: `gh variable delete SMOKE_VIA_ORIGIN`.
 8. Smoke-test the public name: `make smoke URL=https://hhbd.pl`.
 
 After: a week of soak with the Google VM stopped, not deleted. Going back is `flarectl` to
-35.209.126.165 and starting the VM.
+the VM's address, recorded in jkulak/gcloud-ovh-migrate#42, and starting the VM.
 
 ### Tests
 

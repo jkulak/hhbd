@@ -37,6 +37,10 @@ decision; nothing tags on its own.
 - `deploy/05-populate-db.sh` uses the database container's own credentials instead of a
   password written in the script.
 
+- The unit and smoke test workflows run on pull requests only, not again on the push to
+  `main` that a merge makes, and a newer push to a pull request cancels the older run.
+- `make test-ovh-release` runs the release flow's test.
+
 ### Fixed
 - The PHP image builds again. Its base, Debian 11, is past long-term support, and the regular
   mirrors had stopped serving the libfcgi security fix that their index still listed; the image

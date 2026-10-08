@@ -81,6 +81,10 @@ smoke: ## Smoke-test the local stack (docker compose up first): make smoke URL=h
 test-ovh-data: ## Run the data move against two throwaway local databases and check it
 	./tests/ovh-data-test.sh
 
+.PHONY: test-ovh-release
+test-ovh-release: ## Run every path of a release against a stand-in ci-deploy (no Docker, no network)
+	./tests/ovh-release-test.sh
+
 .PHONY: test-ovh-stack
 test-ovh-stack: ## Run deploy/compose.ovh.yaml locally behind a stand-in edge and check it
 	./tests/ovh-stack-test.sh
