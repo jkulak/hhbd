@@ -87,9 +87,11 @@ to production through a stand-in. CI runs it after the smoke test.
 
 ### The baseline
 
-`0001-baseline` is the schema as it was when the migrations began: 45 tables, from a
-`mysqldump --no-data` taken on 2026-01-04. It runs only on an empty database. A database that
-already has that schema, production first of all, records it instead:
+`0001-baseline` is the schema as it was when the migrations began: 45 tables and 286 columns,
+as production had them on 2026-10-08, when it recorded the baseline. The file is the
+`mysqldump --no-data` of 2026-01-04 the tests used to load, completed with the six `urlname`
+columns that dump lacked and production has. It runs only on an empty database. A database
+that already has that schema records it instead:
 
 ```bash
 make migrate-baseline        # the local database
