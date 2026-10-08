@@ -40,6 +40,9 @@ decision; nothing tags on its own.
 - The unit and smoke test workflows run on pull requests only, not again on the push to
   `main` that a merge makes, and a newer push to a pull request cancels the older run.
 - `make test-ovh-release` runs the release flow's test.
+- `make gcp-ps`, `make gcp-stop-writers` and `make gcp-start` are the only ways this repo
+  touches the Google VM besides the data move: look, stop the writers for the final copy, and
+  start them again as the way back.
 
 ### Fixed
 - The PHP image builds again. Its base, Debian 11, is past long-term support, and the regular
