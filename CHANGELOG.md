@@ -7,6 +7,14 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
+### Fixed
+- `added` keeps the time a row was added. In eleven tables it was `ON UPDATE
+  current_timestamp()`, so any update rewrote it; `artists_photos` had already lost 58 of 120
+  dates that way. The catalog's `added` defaults to the current time, and nothing defaults to a
+  zero date any more. The catalog's `updated` stays without an automatic value, since page
+  views update those rows. Migrations 0002 to 0004, each with a down; `database/README.md` says
+  what every audit column means, and `make test-schema` checks it in CI (#48).
+
 ### Added
 - Database migrations: plain SQL in `database/migrations/`, an `up` and a `down` each, applied
   in order and recorded in the database by `scripts/migrate.sh`. `make migrate`,

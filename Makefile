@@ -125,3 +125,7 @@ test-reset-db: ## Check make reset-db against the running local stack: make test
 .PHONY: test-migrate
 test-migrate: ## Check the migration runner against the running local stack: make test-migrate URL=http://localhost:8080
 	./tests/migrate-test.sh $(or $(URL),http://localhost:8080)
+
+.PHONY: test-schema
+test-schema: ## Check the audit-column rules (added, updated) on the running local stack: make test-schema URL=http://localhost:8080
+	./tests/schema-test.sh $(or $(URL),http://localhost:8080)

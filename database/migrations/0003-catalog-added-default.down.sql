@@ -1,0 +1,7 @@
+-- 0003 catalog-added-default: down. Back to no default.
+ALTER TABLE `albums` ALTER COLUMN `added` SET DEFAULT NULL;
+ALTER TABLE `artists` ALTER COLUMN `added` SET DEFAULT NULL;
+ALTER TABLE `songs` ALTER COLUMN `added` SET DEFAULT NULL;
+ALTER TABLE `labels` ALTER COLUMN `added` SET DEFAULT NULL;
+ALTER TABLE `cities` ALTER COLUMN `added` SET DEFAULT NULL;
+ALTER TABLE `news` ALTER COLUMN `added` SET DEFAULT NULL;
