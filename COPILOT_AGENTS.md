@@ -1,5 +1,7 @@
 # AI Coding Agents: Understanding and Guidelines
 
+> The Google Cloud scripts the story below cites (`rollback.sh`, `01-setup-gcp.sh`, `03-build-push.sh`) were removed in October 2026, when production moved to the OVH host (#32). The guidance stands; the examples further down use today's scripts.
+
 ## About Issue #9 Firewall Warning
 
 ### What Happened?
@@ -66,21 +68,21 @@ AI coding agents have access to a `web_fetch` tool that can retrieve external we
 
 ```bash
 # Search for similar code patterns
-grep -r "gcloud container images" deploy/
+grep -r "ci-deploy" deploy/
 
 # Find files with similar functionality
 find deploy/ -name "*.sh" -type f
 
 # Study existing implementations
-cat deploy/03-build-push.sh
-cat deploy/04-deploy.sh
+cat deploy/ovh-release.sh
+cat deploy/ovh-install.sh
 ```
 
 ### 2. Pattern Recognition
 
 Look at how the repository solves similar problems:
 
-- **Deployment scripts**: Check `deploy/` directory for gcloud patterns
+- **Deployment scripts**: Check `deploy/` directory for ssh and `ci-deploy` patterns
 - **PHP features**: Look at similar controllers, models, or library classes
 - **Testing**: Study existing tests in `app/tests/unit/` or `tests/smoke-test.sh`
 - **Configuration**: Review `app/application/configs/application.ini` and `compose.yaml`

@@ -91,11 +91,10 @@ When implementing features
 - Add/adjust routes in routes.xml for SEO URL shapes; ensure IDs are extracted consistently with existing patterns.
 - Keep images/paths aligned with `app.paths.*` in `application.ini`; generate dev placeholders via the test-images tool.
 
-Deployment (GCP)
-- Scripts in [deploy/](deploy/) handle Google Cloud deployment to GCP project `hhbd-483111`.
-- VM: e2-micro in us-central1 (1GB RAM, 30GB disk, 4GB swap).
-- Workflow: `01-setup-gcp.sh` (one-time), `02-setup-server.sh` (on VM), `03-build-push.sh` (build/push images), `04-deploy.sh` (deploy), `05-populate-db.sh` (import DB), `06-upload-content.sh` (upload content).
-- Production compose: [deploy/compose.gcp.yaml](deploy/compose.gcp.yaml).
+Deployment (OVH)
+- Production runs on the shared OVH host behind its Caddy edge and Cloudflare; see [deploy/README.md](deploy/README.md).
+- A release is a CalVer tag `vYYYY.MM.N`: [release.yml](.github/workflows/release.yml) builds both images to GHCR and [deploy/ovh-release.sh](deploy/ovh-release.sh) rolls them out through the host's `ci-deploy`, rolling back on a failed smoke test.
+- Configuration reaches the host only through `make ovh-install` ([deploy/ovh-install.sh](deploy/ovh-install.sh)); the production compose is [deploy/compose.ovh.yaml](deploy/compose.ovh.yaml), secrets are in `deploy/hhbd.enc.env` (SOPS).
 
 ⚠️ CRITICAL: Database Safety Rule
 - **NEVER modify the main development database `db->hhbd` without explicit prior permission.**
