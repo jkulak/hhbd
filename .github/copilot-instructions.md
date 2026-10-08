@@ -14,10 +14,10 @@ Big picture
 Development workflow
 - **Initial setup (new clone)**: 
   1. Start services: `docker compose up -d --build` (from host, not inside dev container)
-  2. Seed DB: `docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/tests/01-schema.sql` then `< database/tests/02-test-fixtures.sql`
+  2. Seed DB: `make reset-db` (the schema from `database/migrations/`, the fixtures from `database/tests/fixtures.sql`)
   3. Generate images: `docker compose exec app php app/tools/generate-test-images.php`
   4. Open in VS Code → "Reopen in Container" (dev container auto-installs composer deps)
-  5. **Alternative DB setup (production-like data)**: Copy production dump to `database/dev/init.sql` (git-ignored). Docker will auto-import on first start. See [database/README.md](database/README.md) for details.
+  5. **Alternative DB setup (production-like data)**: Copy production dump to `database/dev/init.sql` (git-ignored). Docker will auto-import on first start; then `make migrate-baseline`. See [database/README.md](database/README.md) for details.
 - **Dev container networking**: Dev container auto-connects to `hhbd_default` docker network via `postStartCommand`. If tests fail to reach nginx, manually run: `docker network connect hhbd_default $(hostname)`
 - **Run tests from dev container**:
   - Unit tests: `Cmd+K J U` or `cd app && ./vendor/bin/phpunit -c tests/phpunit.xml`
@@ -75,7 +75,7 @@ Examples to follow
 
 Testing and CI
 - Unit tests live in [app/tests/unit/](app/tests/unit/) (e.g., `Library/Jkl/DbTest.php`, `ViewHelpers/LoggedInTest.php`). Use the existing bootstrap and config at [app/tests/phpunit.xml](app/tests/phpunit.xml) and [app/tests/bootstrap.php](app/tests/bootstrap.php).
-- Smoke tests script at [tests/smoke-test.sh](tests/smoke-test.sh) expects deterministically seeded data from [database/tests/02-test-fixtures.sql](database/tests/02-test-fixtures.sql). 
+- Smoke tests script at [tests/smoke-test.sh](tests/smoke-test.sh) expects deterministically seeded data from [database/tests/fixtures.sql](database/tests/fixtures.sql). 
   - From dev container: `bash ./tests/smoke-test.sh http://nginx:80` (uses docker service name + Host header)
   - From host/CI: `bash ./tests/smoke-test.sh http://localhost:8080` (uses port mapping)
   - Script auto-detects when to add `-H Host:localhost` curl header based on URL

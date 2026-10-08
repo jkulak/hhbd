@@ -1,12 +1,9 @@
 -- ============================================
 -- HHBD Test Fixtures for Smoke Tests
 -- ============================================
--- This file contains deterministic test data with specific IDs
--- required by smoke tests. Run after 01-schema.sql.
---
--- Usage:
---   mysql -u hhbd -p hhbd < database/tests/01-schema.sql
---   mysql -u hhbd -p hhbd < database/tests/02-test-fixtures.sql
+-- Deterministic test data with the IDs the smoke test expects, written for the baseline
+-- schema (database/migrations/0001-baseline.up.sql). `make reset-db` loads it onto that
+-- baseline and then runs every later migration over it, the way production's data lives.
 -- ============================================
 
 SET NAMES utf8mb4;

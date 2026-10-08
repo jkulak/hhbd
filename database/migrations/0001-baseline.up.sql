@@ -1,9 +1,8 @@
 /*!999999\- enable the sandbox mode */ 
--- MariaDB dump 10.19  Distrib 10.11.8-MariaDB, for debian-linux-gnu (aarch64)
---
--- Host: localhost    Database: hhbd
--- ------------------------------------------------------
--- Server version	10.11.8-MariaDB-ubu2204
+-- 0001 baseline: up. The schema as it was when the migrations began: 45 tables, dumped with
+-- mysqldump --no-data on 2026-01-04 from MariaDB 10.11.8, without the DROP TABLE lines a dump
+-- carries. It runs on an empty database only; a database that already has this schema records
+-- it with `make migrate-baseline` instead (scripts/migrate.sh).
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -28,7 +27,6 @@ USE `hhbd`;
 -- Table structure for table `album_artist_lookup`
 --
 
-DROP TABLE IF EXISTS `album_artist_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `album_artist_lookup` (
@@ -43,7 +41,6 @@ CREATE TABLE `album_artist_lookup` (
 -- Table structure for table `album_lookup`
 --
 
-DROP TABLE IF EXISTS `album_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `album_lookup` (
@@ -59,7 +56,6 @@ CREATE TABLE `album_lookup` (
 -- Table structure for table `album_prices`
 --
 
-DROP TABLE IF EXISTS `album_prices`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `album_prices` (
@@ -78,7 +74,6 @@ CREATE TABLE `album_prices` (
 -- Table structure for table `album_promomixes`
 --
 
-DROP TABLE IF EXISTS `album_promomixes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `album_promomixes` (
@@ -96,7 +91,6 @@ CREATE TABLE `album_promomixes` (
 -- Table structure for table `album_ratings`
 --
 
-DROP TABLE IF EXISTS `album_ratings`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `album_ratings` (
@@ -109,7 +103,6 @@ CREATE TABLE `album_ratings` (
 -- Table structure for table `album_reviews`
 --
 
-DROP TABLE IF EXISTS `album_reviews`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `album_reviews` (
@@ -129,7 +122,6 @@ CREATE TABLE `album_reviews` (
 -- Table structure for table `albums`
 --
 
-DROP TABLE IF EXISTS `albums`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `albums` (
@@ -167,7 +159,6 @@ CREATE TABLE `albums` (
 -- Table structure for table `altnames_lookup`
 --
 
-DROP TABLE IF EXISTS `altnames_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `altnames_lookup` (
@@ -182,7 +173,6 @@ CREATE TABLE `altnames_lookup` (
 -- Table structure for table `artist_city_lookup`
 --
 
-DROP TABLE IF EXISTS `artist_city_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `artist_city_lookup` (
@@ -196,7 +186,6 @@ CREATE TABLE `artist_city_lookup` (
 -- Table structure for table `artist_concert_lookup`
 --
 
-DROP TABLE IF EXISTS `artist_concert_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `artist_concert_lookup` (
@@ -209,7 +198,6 @@ CREATE TABLE `artist_concert_lookup` (
 -- Table structure for table `artist_lookup`
 --
 
-DROP TABLE IF EXISTS `artist_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `artist_lookup` (
@@ -224,7 +212,6 @@ CREATE TABLE `artist_lookup` (
 -- Table structure for table `artists`
 --
 
-DROP TABLE IF EXISTS `artists`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `artists` (
@@ -255,7 +242,6 @@ CREATE TABLE `artists` (
 -- Table structure for table `artists_everyweek`
 --
 
-DROP TABLE IF EXISTS `artists_everyweek`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `artists_everyweek` (
@@ -271,7 +257,6 @@ CREATE TABLE `artists_everyweek` (
 -- Table structure for table `artists_photos`
 --
 
-DROP TABLE IF EXISTS `artists_photos`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `artists_photos` (
@@ -292,7 +277,6 @@ CREATE TABLE `artists_photos` (
 -- Table structure for table `band_lookup`
 --
 
-DROP TABLE IF EXISTS `band_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `band_lookup` (
@@ -308,7 +292,6 @@ CREATE TABLE `band_lookup` (
 -- Table structure for table `cities`
 --
 
-DROP TABLE IF EXISTS `cities`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `cities` (
@@ -329,7 +312,6 @@ CREATE TABLE `cities` (
 -- Table structure for table `city_artist_lookup`
 --
 
-DROP TABLE IF EXISTS `city_artist_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `city_artist_lookup` (
@@ -343,7 +325,6 @@ CREATE TABLE `city_artist_lookup` (
 -- Table structure for table `city_label_lookup`
 --
 
-DROP TABLE IF EXISTS `city_label_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `city_label_lookup` (
@@ -357,7 +338,6 @@ CREATE TABLE `city_label_lookup` (
 -- Table structure for table `collection`
 --
 
-DROP TABLE IF EXISTS `collection`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `collection` (
@@ -373,7 +353,6 @@ CREATE TABLE `collection` (
 -- Table structure for table `feattypes`
 --
 
-DROP TABLE IF EXISTS `feattypes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `feattypes` (
@@ -388,7 +367,6 @@ CREATE TABLE `feattypes` (
 -- Table structure for table `feature_lookup`
 --
 
-DROP TABLE IF EXISTS `feature_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `feature_lookup` (
@@ -404,7 +382,6 @@ CREATE TABLE `feature_lookup` (
 -- Table structure for table `hhb_comments`
 --
 
-DROP TABLE IF EXISTS `hhb_comments`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `hhb_comments` (
@@ -427,7 +404,6 @@ CREATE TABLE `hhb_comments` (
 -- Table structure for table `hhb_user_lyrics_edit`
 --
 
-DROP TABLE IF EXISTS `hhb_user_lyrics_edit`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `hhb_user_lyrics_edit` (
@@ -446,7 +422,6 @@ CREATE TABLE `hhb_user_lyrics_edit` (
 -- Table structure for table `hhb_users`
 --
 
-DROP TABLE IF EXISTS `hhb_users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `hhb_users` (
@@ -470,7 +445,6 @@ CREATE TABLE `hhb_users` (
 -- Table structure for table `labels`
 --
 
-DROP TABLE IF EXISTS `labels`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `labels` (
@@ -497,7 +471,6 @@ CREATE TABLE `labels` (
 -- Table structure for table `music_lookup`
 --
 
-DROP TABLE IF EXISTS `music_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `music_lookup` (
@@ -512,7 +485,6 @@ CREATE TABLE `music_lookup` (
 -- Table structure for table `news`
 --
 
-DROP TABLE IF EXISTS `news`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `news` (
@@ -533,7 +505,6 @@ CREATE TABLE `news` (
 -- Table structure for table `news_album_lookup`
 --
 
-DROP TABLE IF EXISTS `news_album_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `news_album_lookup` (
@@ -546,7 +517,6 @@ CREATE TABLE `news_album_lookup` (
 -- Table structure for table `news_artist_lookup`
 --
 
-DROP TABLE IF EXISTS `news_artist_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `news_artist_lookup` (
@@ -559,7 +529,6 @@ CREATE TABLE `news_artist_lookup` (
 -- Table structure for table `news_city_lookup`
 --
 
-DROP TABLE IF EXISTS `news_city_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `news_city_lookup` (
@@ -572,7 +541,6 @@ CREATE TABLE `news_city_lookup` (
 -- Table structure for table `news_concert_lookup`
 --
 
-DROP TABLE IF EXISTS `news_concert_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `news_concert_lookup` (
@@ -585,7 +553,6 @@ CREATE TABLE `news_concert_lookup` (
 -- Table structure for table `news_label_lookup`
 --
 
-DROP TABLE IF EXISTS `news_label_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `news_label_lookup` (
@@ -598,7 +565,6 @@ CREATE TABLE `news_label_lookup` (
 -- Table structure for table `ratings`
 --
 
-DROP TABLE IF EXISTS `ratings`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `ratings` (
@@ -615,7 +581,6 @@ CREATE TABLE `ratings` (
 -- Table structure for table `ratings_avg`
 --
 
-DROP TABLE IF EXISTS `ratings_avg`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `ratings_avg` (
@@ -629,7 +594,6 @@ CREATE TABLE `ratings_avg` (
 -- Table structure for table `remix_lookup`
 --
 
-DROP TABLE IF EXISTS `remix_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `remix_lookup` (
@@ -644,7 +608,6 @@ CREATE TABLE `remix_lookup` (
 -- Table structure for table `scratch_lookup`
 --
 
-DROP TABLE IF EXISTS `scratch_lookup`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `scratch_lookup` (
@@ -659,7 +622,6 @@ CREATE TABLE `scratch_lookup` (
 -- Table structure for table `searches`
 --
 
-DROP TABLE IF EXISTS `searches`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `searches` (
@@ -675,7 +637,6 @@ CREATE TABLE `searches` (
 -- Table structure for table `song_samples`
 --
 
-DROP TABLE IF EXISTS `song_samples`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `song_samples` (
@@ -693,7 +654,6 @@ CREATE TABLE `song_samples` (
 -- Table structure for table `songs`
 --
 
-DROP TABLE IF EXISTS `songs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `songs` (
@@ -722,7 +682,6 @@ CREATE TABLE `songs` (
 -- Table structure for table `submision_errors`
 --
 
-DROP TABLE IF EXISTS `submision_errors`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `submision_errors` (
@@ -741,7 +700,6 @@ CREATE TABLE `submision_errors` (
 -- Table structure for table `submision_recommendations`
 --
 
-DROP TABLE IF EXISTS `submision_recommendations`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `submision_recommendations` (
@@ -758,7 +716,6 @@ CREATE TABLE `submision_recommendations` (
 -- Table structure for table `users`
 --
 
-DROP TABLE IF EXISTS `users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `users` (
@@ -788,7 +745,6 @@ CREATE TABLE `users` (
 -- Table structure for table `users_activations`
 --
 
-DROP TABLE IF EXISTS `users_activations`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `users_activations` (
@@ -801,7 +757,6 @@ CREATE TABLE `users_activations` (
 -- Table structure for table `users_admins`
 --
 
-DROP TABLE IF EXISTS `users_admins`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `users_admins` (
@@ -825,7 +780,6 @@ CREATE TABLE `users_admins` (
 -- Table structure for table `wishlist`
 --
 
-DROP TABLE IF EXISTS `wishlist`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `wishlist` (

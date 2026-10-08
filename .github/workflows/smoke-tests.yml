@@ -65,6 +65,12 @@ jobs:
           timeout 60 bash -c 'until docker compose exec -T db mysqladmin ping -h localhost -u root -proot_password --silent; do sleep 2; done'
           echo "Database is ready!"
 
+      - name: Load the schema and the fixtures
+        run: |
+          # The schema from the migrations, the fixtures onto the baseline, the later migrations
+          # over that data: the one way a database is set up here, locally and in CI alike.
+          make reset-db
+
       - name: Generate test images
         run: |
           echo "Generating test cover images..."
@@ -92,6 +98,12 @@ jobs:
           # On the stack the smoke test just used: resets, row counts, the smoke test again after
           # a reset, and the cases it must refuse.
           ./tests/reset-db-test.sh http://localhost:8080
+
+      - name: Check the migration runner
+        run: |
+          # Up, down, a failing migration, the baseline, the refusals, and the ssh path through
+          # a stand-in, all on the same stack; it ends with a reset and the smoke test again.
+          ./tests/migrate-test.sh http://localhost:8080
 
       - name: Show logs on failure
         if: failure()
