@@ -54,8 +54,26 @@ docker compose exec app php app/tools/generate-test-images.php
 
 ### Reset Database (Fresh Import)
 
+With the stack running, `make reset-db` drops the `hhbd` database and loads it again from
+`database/tests/`: the schema and the fixtures the smoke test runs on. It takes a few seconds
+and leaves the containers and the volume alone. Run it before and after a piece of work, so the
+database never carries what the last one left.
+
 ```bash
-# Delete volume and restart (forces re-import from mounted directory)
+make reset-db
+```
+
+It acts only on the running db container of this checkout's compose project, on the local
+Docker engine, and refuses anything else before a statement reaches a database: a Docker
+context or `DOCKER_HOST` that is not a local socket, a project with no running db, or a db
+container started from another directory or from `deploy/compose.ovh.yaml`.
+`make test-reset-db` checks all of that against the running stack; CI runs it after the smoke
+test.
+
+To start over from whatever the mounted directory imports instead (for instance
+`database/dev/init.sql`), delete the volume and restart:
+
+```bash
 docker compose down -v
 docker compose up -d
 ```

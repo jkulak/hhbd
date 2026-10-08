@@ -60,6 +60,15 @@ docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/_backup/2
 docker compose exec app composer install
 ```
 
+### Resetting the local database
+
+```bash
+# Drop the local hhbd database and load database/tests/ again (schema + smoke-test fixtures)
+make reset-db
+```
+
+Run it before and after a piece of work. It acts only on the running db container of this checkout's compose project on the local Docker engine, and refuses anything else; see [database/README.md](database/README.md).
+
 ## Common Commands
 
 ### Testing
