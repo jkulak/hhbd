@@ -189,6 +189,8 @@ Parse logic extracts ID from URL suffix before `.html`.
 
 There is none on `main`. The procedural PHP admin panels (`admin/` and `xadmin/`) that once added artists, albums, covers and photos are archived on the branch `backoffice-archive`. Production has no admin panel; its database is reached over ssh (see [deploy/README.md](deploy/README.md)).
 
+The archived panels are abandoned for good (decided 2026-10-09): they are not updated, not revived, and schema or code changes do not have to stay compatible with them. Their code is a historical record only, for what a column once meant. If hhbd needs a backoffice again, it gets written from scratch.
+
 ## Development vs Production
 
 In **development mode** (`compose.override.yaml` loaded automatically):

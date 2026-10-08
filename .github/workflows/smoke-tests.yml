@@ -105,10 +105,10 @@ jobs:
           # a stand-in, all on the same stack; it ends with a reset and the smoke test again.
           ./tests/migrate-test.sh http://localhost:8080
 
-      - name: Check the audit-column rules
+      - name: Check the schema rules
         run: |
-          # added never changes on update, the catalog's added has a default, no zero-date
-          # defaults, and a page view leaves added and updated alone (#48).
+          # Every table InnoDB (#45); added never changes on update, the catalog's added has a
+          # default, no zero-date defaults, and a page view leaves added and updated alone (#48).
           ./tests/schema-test.sh http://localhost:8080
 
       - name: Show logs on failure
