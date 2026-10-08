@@ -5,7 +5,9 @@ month (`2026.10.0`, `2026.10.1`, `2026.11.0`). A release is the git tag `vYYYY.M
 pushing it is what deploys it (`.github/workflows/release.yml`). Tagging is a person's
 decision; nothing tags on its own.
 
-## Unreleased
+## 2026.10.0 — 2026-10-08
+
+The first release to the shared OVH host. Production keeps running on Google until the move.
 
 ### Added
 - Production can run on the shared OVH host, following `CONTRACT.md` in
