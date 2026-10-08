@@ -1,9 +1,8 @@
 # HHBD Deployment Scripts
 
-Production is moving from Google Cloud to the shared OVH host. The OVH side follows
-`CONTRACT.md` in `jkulak/gcloud-ovh-migrate` at
-[`5f9a189`](https://github.com/jkulak/gcloud-ovh-migrate/blob/5f9a1895db6c3d3670482fdfb0486dbf89f7b610/CONTRACT.md);
-the Google side below stays until the soak after the cutover is over.
+Production runs on the shared OVH host since 2026-10-08. The OVH side follows `CONTRACT.md`
+in `jkulak/gcloud-ovh-migrate`; the Google side below stays, stopped, until a week of soak is
+over, and then goes (#32).
 
 ## OVH host
 
@@ -49,44 +48,28 @@ make secrets-show                    # key names, never values
 
 The release workflow needs the repository secrets `OVH_HOST`, `OVH_HOST_KEY` (the host's
 `known_hosts` line) and `OVH_DEPLOY_SSH_KEY` (a key made for this pipeline alone, pinned on the
-host to `ci-deploy`), and the repository variable `SMOKE_VIA_ORIGIN` while it is needed (below).
+host to `ci-deploy`). The repository variable `SMOKE_VIA_ORIGIN=true` sends a release's smoke
+test straight to the host; it is needed only before `hhbd.pl` points there, and is unset now.
 
-### Moving production
+### How production moved
 
-The order is CONTRACT.md §10. A break of up to an hour is accepted.
+On 2026-10-08, following CONTRACT.md §10, with no failed request:
 
-Before the window, nothing users see changes. It starts once the platform has applied this
-repo's hand-back: the deploy key, the `deployable_services` line and the backup targets.
+1. `make ovh-install`, `make ovh-db-up`, `make ovh-data`, then the first release, `v2026.10.0`,
+   smoke-tested straight at the host with `SMOKE_VIA_ORIGIN=true`.
+2. A preview at `new.hhbd.pl`, not proxied, with its own certificate. nginx knows only
+   `hhbd.pl` and `www.hhbd.pl`, so the preview block sent `Host: hhbd.pl` upstream. 40 pages
+   matched Google on status, title and text.
+3. A temporary `http://hhbd.pl, http://www.hhbd.pl` block, so Cloudflare, still in Flexible,
+   reached the site over HTTP; then the DNS record moved, still proxied, at 21:49.
+4. `tls internal` went, the edge obtained the certificates through Cloudflare, and the zone went
+   to Full (strict).
+5. The final snippet: no `http://` block, `import cloudflare_only`. The preview went, the
+   smoke test passed on `https://hhbd.pl`, `SMOKE_VIA_ORIGIN` was unset, and
+   `make gcp-stop-writers` stopped the app and nginx on Google.
 
-1. `make ovh-install` puts the configuration on the host; `make edge-smoke` in
-   gcloud-ovh-migrate lints the snippet.
-2. `make ovh-db-up` starts the database alone, and `make ovh-data` copies the database and
-   `content/` from Google and verifies both. The home page needs data, so the data comes
-   before the first deploy.
-3. `gh variable set SMOKE_VIA_ORIGIN --body true`, so the release's smoke test goes to the host
-   directly. Then push a release tag; `make ovh-ps` shows the containers healthy and
-   `make ovh-smoke` runs the smoke test against the host by hand.
-
-In the window:
-
-4. Stop the writers on Google:
-   `make gcp-stop-writers`.
-   Then `make ovh-data` again, for the final copy. It must end with every table matching on
-   `count(*)` and every file on its sha256.
-5. In `deploy/hhbd.pl.caddyfile`, replace `tls internal` with
-   `tls { ca https://acme-staging-v02.api.letsencrypt.org/directory }` and `make ovh-install`.
-   Point `hhbd.pl` at the host with `flarectl`, still proxied; `www` follows as a CNAME. Watch
-   the staging certificate issue, then remove the `tls` block and `make ovh-install` again for
-   the real one.
-6. Switch Cloudflare's SSL mode for the zone to **Full (strict)**. The switch is the moment of
-   the break.
-7. Check through Cloudflare, then add `import cloudflare_only` to the snippet,
-   `make ovh-install`, and check that a direct request is dropped. From here a direct request
-   cannot reach the host: `gh variable delete SMOKE_VIA_ORIGIN`.
-8. Smoke-test the public name: `make smoke URL=https://hhbd.pl`.
-
-After: a week of soak with the Google VM stopped, not deleted. Going back is `flarectl` to
-the VM's address, recorded in jkulak/gcloud-ovh-migrate#42, and starting the VM.
+Going back, during the soak: the DNS record to the VM's address (recorded in
+jkulak/gcloud-ovh-migrate#42), the zone back to Flexible, and `make gcp-start`.
 
 ### Tests
 
