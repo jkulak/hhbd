@@ -70,7 +70,7 @@ repo's hand-back: the deploy key, the `deployable_services` line and the backup 
 In the window:
 
 4. Stop the writers on Google:
-   `gcloud compute ssh hhbd-server --project=hhbd-483111 --zone=us-central1-a --command='sudo docker stop hhbd-nginx-1 hhbd-app-1'`.
+   `make gcp-stop-writers`.
    Then `make ovh-data` again, for the final copy. It must end with every table matching on
    `count(*)` and every file on its sha256.
 5. In `deploy/hhbd.pl.caddyfile`, replace `tls internal` with
