@@ -33,6 +33,14 @@ if docker network inspect edge >/dev/null 2>&1; then
     echo "x a Docker network called edge exists already; this test makes its own and will not touch that one" >&2
     exit 1
 fi
+# Docker hands out 172.17-31.0.0/16 to compose projects' default networks, so on a machine with
+# many of them one may hold the edge's range already.
+taken=$(docker network ls -q | xargs docker network inspect --format '{{.Name}} {{range .IPAM.Config}}{{.Subnet}} {{end}}' \
+    | awk '$2 ~ /^172\.30\./ { print $1 " (" $2 ")" }')
+if [ -n "$taken" ]; then
+    echo "x the edge's range 172.30.0.0/24 is taken by: $taken; remove that network, or stop its project, and run again" >&2
+    exit 1
+fi
 
 cleanup() {
     compose down -v --remove-orphans >/dev/null 2>&1 || true
