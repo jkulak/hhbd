@@ -7,6 +7,13 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
+### Added
+- `make reset-db` drops the local `hhbd` database and loads it again from `database/tests/`, in
+  a few seconds and without touching the containers or the volume. It refuses a Docker engine
+  that is not local, a project with no running db, and a db container started from another
+  directory or from production's compose file. `make test-reset-db` checks it, and CI runs that
+  after the smoke test (#38).
+
 ### Removed
 - Everything that deployed to Google Cloud: the `env-prod` workflow, `deploy/compose.gcp.yaml`, the
   `deploy/0*.sh` setup and deploy scripts, `deploy/rollback.sh` with its `prod-lkg` tags, and the

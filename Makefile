@@ -62,6 +62,12 @@ secrets-show: ## List the variable names in deploy/hhbd.enc.env, never their val
 secrets-edit: ## Edit deploy/hhbd.enc.env in place (vi in a container)
 	./scripts/secrets.sh edit $(SECRETS_FILE)
 
+# --- The local database -------------------------------------------------------------------
+
+.PHONY: reset-db
+reset-db: ## Drop the local hhbd database and load it again from database/tests/ (local stack only)
+	./scripts/reset-db.sh
+
 # --- Tests --------------------------------------------------------------------------------
 
 .PHONY: smoke
@@ -75,3 +81,7 @@ test-ovh-release: ## Run every path of a release against a stand-in ci-deploy (n
 .PHONY: test-ovh-stack
 test-ovh-stack: ## Run deploy/compose.ovh.yaml locally behind a stand-in edge and check it
 	./tests/ovh-stack-test.sh
+
+.PHONY: test-reset-db
+test-reset-db: ## Check make reset-db against the running local stack: make test-reset-db URL=http://localhost:8080
+	./tests/reset-db-test.sh $(or $(URL),http://localhost:8080)
