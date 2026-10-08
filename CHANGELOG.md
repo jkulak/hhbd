@@ -12,8 +12,10 @@ decision; nothing tags on its own.
   in order and recorded in the database by `scripts/migrate.sh`. `make migrate`,
   `make migrate-down`, `make migrate-status` and `make migrate-new` for the local database;
   `make ovh-migrate` and its siblings for production, where `make ovh-migrate-baseline` once
-  records the schema production already has. `0001-baseline` is that schema, the dump the tests
-  loaded until now. `make migrate` refuses a database that has tables but no record, and
+  records the schema production already has. `0001-baseline` is that schema: the dump the tests
+  loaded until now, completed with the six `urlname` columns production has and the dump
+  lacked, which the first `baseline` on production brought to light. `make migrate` refuses a
+  database that has tables but no record, and
   `baseline` checks every column it would create is there. `make test-migrate` exercises the
   runner against the live stack, and CI runs it after the smoke test (#42).
 - `make reset-db` drops the local `hhbd` database and builds it again the way production's is:
