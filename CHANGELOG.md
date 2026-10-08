@@ -7,6 +7,13 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
+### Removed
+- Everything that deployed to Google Cloud: the `env-prod` workflow, `deploy/compose.gcp.yaml`, the
+  `deploy/0*.sh` setup and deploy scripts, `deploy/rollback.sh` with its `prod-lkg` tags, and the
+  `GCP_SA_KEY` secret. The Google project was deleted on 2026-10-08, the day production moved.
+- The one-off data move from Google (`deploy/ovh-data.sh`, its test and `make ovh-data`) and the
+  `make gcp-*` targets, which had nothing left to act on.
+
 ### Changed
 - `hhbd.pl` and `www.hhbd.pl` are served from the shared OVH host since 2026-10-08, behind
   Cloudflare in Full (strict), with a Let's Encrypt certificate at the origin and every

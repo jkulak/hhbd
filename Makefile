@@ -31,36 +31,9 @@ ovh-ps: ## Show hhbd's containers on the OVH host and their health
 	ssh -o BatchMode=yes "$${OVH_SSH_USER:-ubuntu}@$${OVH_HOST:?OVH_HOST is not set}" \
 	  'sudo docker ps -a --filter label=com.docker.compose.project=hhbd --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"'
 
-.PHONY: ovh-data
-ovh-data: ## Copy the database and content/ from the Google VM to the OVH host, then verify both
-	./deploy/ovh-data.sh all
-
-.PHONY: ovh-data-check
-ovh-data-check: ## Compare the database (exact counts) and content/ (files, bytes) on Google and OVH
-	./deploy/ovh-data.sh db-check
-	./deploy/ovh-data.sh content-check
-
 .PHONY: ovh-smoke
 ovh-smoke: ## Smoke-test hhbd.pl on the OVH host directly, before the DNS points at it
 	SMOKE_CURL_OPTS="--connect-to hhbd.pl:443:$${OVH_HOST:?OVH_HOST is not set}:443 --insecure" ./tests/smoke-test.sh https://hhbd.pl
-
-# --- The Google VM, until it is deleted ---------------------------------------------------
-# The same project, zone and VM as deploy/ovh-data.sh. Only these three touch it, so what can
-# happen to the old production is written down here and nowhere else.
-
-GCP_SSH := gcloud compute ssh hhbd-server --project=hhbd-483111 --zone=us-central1-a --quiet --command
-
-.PHONY: gcp-ps
-gcp-ps: ## Show what runs on the Google VM (read-only)
-	$(GCP_SSH) 'sudo docker ps -a --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"'
-
-.PHONY: gcp-stop-writers
-gcp-stop-writers: ## Stop nginx and the app on the Google VM for the final copy; the database stays up to be read
-	$(GCP_SSH) 'sudo docker stop hhbd-nginx-1 hhbd-app-1'
-
-.PHONY: gcp-start
-gcp-start: ## Start nginx and the app on the Google VM again: the way back while it still exists
-	$(GCP_SSH) 'sudo docker start hhbd-app-1 hhbd-nginx-1'
 
 # --- Secrets ------------------------------------------------------------------------------
 
@@ -94,10 +67,6 @@ secrets-edit: ## Edit deploy/hhbd.enc.env in place (vi in a container)
 .PHONY: smoke
 smoke: ## Smoke-test the local stack (docker compose up first): make smoke URL=http://localhost:8080
 	./tests/smoke-test.sh $(or $(URL),http://localhost:8080)
-
-.PHONY: test-ovh-data
-test-ovh-data: ## Run the data move against two throwaway local databases and check it
-	./tests/ovh-data-test.sh
 
 .PHONY: test-ovh-release
 test-ovh-release: ## Run every path of a release against a stand-in ci-deploy (no Docker, no network)
