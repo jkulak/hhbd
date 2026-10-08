@@ -58,7 +58,9 @@ sleep 15
 log_info "Importing database..."
 gcloud compute ssh "${VM_NAME}" --zone="${ZONE}" --command="
     cd ${REMOTE_DIR}
-    docker compose -f compose.gcp.yaml exec -T db mysql -u hhbd -phhbd_password hhbd < init.sql
+    # The credentials are the database container's own, so none is written here or would
+    # silently fall back to a default.
+    docker compose -f compose.gcp.yaml exec -T db sh -c 'MYSQL_PWD=\"\${MYSQL_PASSWORD:?}\" exec mysql -u \"\${MYSQL_USER:?}\" \"\${MYSQL_DATABASE:?}\"' < init.sql
     rm init.sql
     echo 'Database import complete!'
 "

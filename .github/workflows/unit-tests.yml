@@ -1,11 +1,15 @@
 name: Unit Tests
 
+# Pull requests only: the merge result is tested on the pull request, so a push to main
+# would only run the same thing again.
 on:
-  push:
-    branches: [main, master]
   pull_request:
     branches: [main, master]
   workflow_dispatch:
+
+concurrency:
+  group: unit-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   unit-tests:

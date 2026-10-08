@@ -3,6 +3,12 @@
 # =============================================================================
 FROM php:7.4-fpm as builder
 
+# php:7.4 is built on Debian 11 (bullseye), which is past its long-term support, and its
+# packages are moving to archive.debian.org: by October 2026 the regular mirrors still listed
+# libfcgi's security fix but no longer served the file, which failed every build. The archive
+# holds all three bullseye suites.
+RUN sed -i 's|http://deb.debian.org|http://archive.debian.org|g' /etc/apt/sources.list
+
 # Install system dependencies including GD libraries and composer requirements
 RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
@@ -22,9 +28,6 @@ RUN docker-php-ext-install pdo pdo_mysql zip \
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Create log directory
-RUN mkdir -p /var/log/hhbd-website && chmod 777 /var/log/hhbd-website
-
 # Install php-fpm-healthcheck
 RUN curl -o /usr/local/bin/php-fpm-healthcheck \
     https://raw.githubusercontent.com/renatomefi/php-fpm-healthcheck/master/php-fpm-healthcheck \
@@ -32,6 +35,9 @@ RUN curl -o /usr/local/bin/php-fpm-healthcheck \
 
 # Enable status endpoint for healthcheck
 RUN echo "pm.status_path = /status" >> /usr/local/etc/php-fpm.d/zz-docker.conf
+
+# Logs to the container's stderr, never to files inside it
+COPY conf/php/fpm-logging.conf /usr/local/etc/php-fpm.d/zz-hhbd-logging.conf
 
 WORKDIR /var/www/html/app
 
@@ -55,6 +61,9 @@ COPY conf/php/production.ini /usr/local/etc/php/conf.d/99-production.ini
 # =============================================================================
 FROM php:7.4-fpm as production
 
+# Bullseye's packages from the archive, as in the builder stage
+RUN sed -i 's|http://deb.debian.org|http://archive.debian.org|g' /etc/apt/sources.list
+
 # Install only runtime system dependencies (no GD libraries)
 RUN apt-get update && apt-get install -y \
     libfcgi-bin \
@@ -66,14 +75,12 @@ RUN docker-php-ext-install pdo pdo_mysql
 # Copy Composer from official image
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Create log directory
-RUN mkdir -p /var/log/hhbd-website && chmod 777 /var/log/hhbd-website
-
 # Copy php-fpm-healthcheck from builder
 COPY --from=builder /usr/local/bin/php-fpm-healthcheck /usr/local/bin/php-fpm-healthcheck
 
 # Copy PHP-FPM configuration from builder
 COPY --from=builder /usr/local/etc/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
+COPY --from=builder /usr/local/etc/php-fpm.d/zz-hhbd-logging.conf /usr/local/etc/php-fpm.d/zz-hhbd-logging.conf
 
 WORKDIR /var/www/html
 

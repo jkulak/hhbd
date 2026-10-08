@@ -75,7 +75,7 @@ The application follows the standard Model-View-Controller (MVC) pattern of Zend
 *   **Configuration:**
     *   Uses `application.ini` for application-level config.
     *   Sensitive credentials and environment-specific settings are injected via **Environment Variables** (`DB_HOST`, `DB_USER`, `SHOW_ADS`).
-*   **Logging:** Application logs to `/var/log/hhbd-website/` inside the container.
+*   **Logging:** PHP, the application and nginx log to the containers' stdout and stderr; nothing is written to log files inside a container.
 
 ## Key Configuration Files
 *   `app/application/configs/application.ini`: Main ZF1 configuration.
