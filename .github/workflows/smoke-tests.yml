@@ -87,6 +87,12 @@ jobs:
         run: |
           bash ./tests/smoke-test.sh http://localhost:8080
 
+      - name: Check make reset-db
+        run: |
+          # On the stack the smoke test just used: resets, row counts, the smoke test again after
+          # a reset, and the cases it must refuse.
+          ./tests/reset-db-test.sh http://localhost:8080
+
       - name: Show logs on failure
         if: failure()
         run: |
