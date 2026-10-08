@@ -80,11 +80,12 @@ CADDY
 docker run -d --name "$EDGE" --network edge --ip 172.30.0.2 -p "127.0.0.1:$PORT:80" \
     -v "$T/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2.11.4-alpine >/dev/null
 
-echo "> the database alone, seeded with the test fixtures, as before a first deploy"
+echo "> the database alone, migrated from scratch and seeded with the test fixtures, as before a first deploy"
 compose up -d --wait --wait-timeout 180 db
-for f in database/tests/01-schema.sql database/tests/02-test-fixtures.sql; do
-    docker exec -i "$PROJECT-db-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -uroot "$MYSQL_DATABASE"' <"$f"
-done
+migrate() { MIGRATE_TARGET=container MIGRATE_CONTAINER="$PROJECT-db-1" ./scripts/migrate.sh "$@" >/dev/null; }
+migrate up 0001
+docker exec -i "$PROJECT-db-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -uroot --default-character-set=utf8mb4 "$MYSQL_DATABASE"' <database/tests/fixtures.sql
+migrate up
 
 echo "> the whole stack"
 if compose up -d --wait --wait-timeout 180; then

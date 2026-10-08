@@ -9,5 +9,5 @@ services:
     # Read-optimized for 23MB database (matches production)
     command: >
       --innodb-buffer-pool-size=96M --innodb-buffer-pool-dump-at-shutdown=1 --innodb-buffer-pool-load-at-startup=1 --max-connections=20 --innodb-log-file-size=16M --innodb-flush-log-at-trx-commit=2 --innodb-read-io-threads=4 --innodb-write-io-threads=1 --table-open-cache=400 --innodb-stats-on-metadata=0 --transaction-isolation=READ-COMMITTED --skip-name-resolve
-    volumes:
-      - ./database/tests:/docker-entrypoint-initdb.d
+    # No init scripts: the schema comes from the migrations and the data from the fixtures,
+    # through `make reset-db`, the one way a database is set up here, locally and in CI alike.

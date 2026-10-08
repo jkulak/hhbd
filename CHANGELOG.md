@@ -8,11 +8,20 @@ decision; nothing tags on its own.
 ## Unreleased
 
 ### Added
-- `make reset-db` drops the local `hhbd` database and loads it again from `database/tests/`, in
-  a few seconds and without touching the containers or the volume. It refuses a Docker engine
-  that is not local, a project with no running db, and a db container started from another
-  directory or from production's compose file. `make test-reset-db` checks it, and CI runs that
-  after the smoke test (#38).
+- Database migrations: plain SQL in `database/migrations/`, an `up` and a `down` each, applied
+  in order and recorded in the database by `scripts/migrate.sh`. `make migrate`,
+  `make migrate-down`, `make migrate-status` and `make migrate-new` for the local database;
+  `make ovh-migrate` and its siblings for production, where `make ovh-migrate-baseline` once
+  records the schema production already has. `0001-baseline` is that schema, the dump the tests
+  loaded until now. `make migrate` refuses a database that has tables but no record, and
+  `baseline` checks every column it would create is there. `make test-migrate` exercises the
+  runner against the live stack, and CI runs it after the smoke test (#42).
+- `make reset-db` drops the local `hhbd` database and builds it again the way production's is:
+  the baseline from the migrations, the fixtures onto it, every later migration over that data.
+  It takes a few seconds, leaves the containers and the volume alone, and refuses a Docker
+  engine that is not local, a project with no running db, and a db container started from
+  another directory or from production's compose file. `make test-reset-db` checks it, and CI
+  runs that after the smoke test (#38).
 
 ### Removed
 - Everything that deployed to Google Cloud: the `env-prod` workflow, `deploy/compose.gcp.yaml`, the
@@ -28,6 +37,9 @@ decision; nothing tags on its own.
 - The docs describe the repo as it is: the backoffice is archived on the branch
   `backoffice-archive` and nothing runs it, the dev stack has four services, CI runs on pull
   requests, and production runs on the OVH host (#36).
+- CI sets its database up with `make reset-db`, like a developer does, instead of through
+  MariaDB's init scripts; `database/tests/01-schema.sql` became the baseline migration and
+  `02-test-fixtures.sql` is `database/tests/fixtures.sql` (#42).
 
 ## 2026.10.0 — 2026-10-08
 

@@ -13,7 +13,7 @@ SECRETS_FILE := deploy/hhbd.enc.env
 .PHONY: help
 help: ## List every target
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) \
-	  | awk 'BEGIN{FS=":.*?## "}{printf "  \033[1m%-18s\033[0m %s\n", $$1, $$2}'
+	  | awk 'BEGIN{FS=":.*?## "}{printf "  \033[1m%-22s\033[0m %s\n", $$1, $$2}'
 
 # --- The OVH host -------------------------------------------------------------------------
 
@@ -34,6 +34,22 @@ ovh-ps: ## Show hhbd's containers on the OVH host and their health
 .PHONY: ovh-smoke
 ovh-smoke: ## Smoke-test hhbd.pl on the OVH host directly, before the DNS points at it
 	SMOKE_CURL_OPTS="--connect-to hhbd.pl:443:$${OVH_HOST:?OVH_HOST is not set}:443 --insecure" ./tests/smoke-test.sh https://hhbd.pl
+
+.PHONY: ovh-migrate-status
+ovh-migrate-status: ## Show which migrations production's database on the OVH host has applied
+	MIGRATE_TARGET=ovh ./scripts/migrate.sh status
+
+.PHONY: ovh-migrate
+ovh-migrate: ## Apply the pending migrations to production's database, before the release that needs them
+	MIGRATE_TARGET=ovh ./scripts/migrate.sh up
+
+.PHONY: ovh-migrate-down
+ovh-migrate-down: ## Revert the last applied migration on production's database, after typing a confirmation; N=2 for two
+	MIGRATE_TARGET=ovh ./scripts/migrate.sh down $(or $(N),1)
+
+.PHONY: ovh-migrate-baseline
+ovh-migrate-baseline: ## Once: record the baseline on production's database, which already has its schema
+	MIGRATE_TARGET=ovh ./scripts/migrate.sh baseline
 
 # --- Secrets ------------------------------------------------------------------------------
 
@@ -65,8 +81,28 @@ secrets-edit: ## Edit deploy/hhbd.enc.env in place (vi in a container)
 # --- The local database -------------------------------------------------------------------
 
 .PHONY: reset-db
-reset-db: ## Drop the local hhbd database and load it again from database/tests/ (local stack only)
+reset-db: ## Drop the local hhbd database, migrate it from scratch and load the test fixtures (local stack only)
 	./scripts/reset-db.sh
+
+.PHONY: migrate
+migrate: ## Apply the pending migrations to the local database
+	./scripts/migrate.sh up
+
+.PHONY: migrate-down
+migrate-down: ## Revert the last applied migration on the local database; N=2 for the last two, N=all for every one
+	./scripts/migrate.sh down $(or $(N),1)
+
+.PHONY: migrate-status
+migrate-status: ## Show which migrations the local database has applied and which are pending
+	./scripts/migrate.sh status
+
+.PHONY: migrate-new
+migrate-new: ## Create the next migration's up and down files: make migrate-new NAME=add-album-isrc
+	./scripts/migrate.sh new "$(NAME)"
+
+.PHONY: migrate-baseline
+migrate-baseline: ## Record the baseline on a local database that already has the schema, such as a loaded production dump
+	./scripts/migrate.sh baseline
 
 # --- Tests --------------------------------------------------------------------------------
 
@@ -85,3 +121,7 @@ test-ovh-stack: ## Run deploy/compose.ovh.yaml locally behind a stand-in edge an
 .PHONY: test-reset-db
 test-reset-db: ## Check make reset-db against the running local stack: make test-reset-db URL=http://localhost:8080
 	./tests/reset-db-test.sh $(or $(URL),http://localhost:8080)
+
+.PHONY: test-migrate
+test-migrate: ## Check the migration runner against the running local stack: make test-migrate URL=http://localhost:8080
+	./tests/migrate-test.sh $(or $(URL),http://localhost:8080)
