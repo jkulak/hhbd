@@ -127,5 +127,5 @@ test-migrate: ## Check the migration runner against the running local stack: mak
 	./tests/migrate-test.sh $(or $(URL),http://localhost:8080)
 
 .PHONY: test-schema
-test-schema: ## Check the audit-column rules (added, updated) on the running local stack: make test-schema URL=http://localhost:8080
+test-schema: ## Check the rules the migrations put on the schema (engines, audit columns) on the running local stack: make test-schema URL=http://localhost:8080
 	./tests/schema-test.sh $(or $(URL),http://localhost:8080)

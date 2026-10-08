@@ -7,6 +7,15 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
+### Changed
+- Every table is InnoDB; 44 of 45 were MyISAM (#45). Migration 0005, with a down, converted a
+  copy of production's data in a second with the data identical byte for byte. It brings crash
+  recovery, row locks instead of table locks, and a consistent snapshot for the nightly
+  `mysqldump --single-transaction`. `make test-schema` holds every table to it.
+- The archived admin panels (`admin/`, `xadmin/` on `backoffice-archive`) are abandoned for
+  good: not updated, not revived, and nothing has to stay compatible with them. A future
+  backoffice gets written from scratch.
+
 ### Fixed
 - `added` keeps the time a row was added. In eleven tables it was `ON UPDATE
   current_timestamp()`, so any update rewrote it; `artists_photos` had already lost 58 of 120
