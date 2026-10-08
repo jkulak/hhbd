@@ -1,8 +1,10 @@
 /*!999999\- enable the sandbox mode */ 
--- 0001 baseline: up. The schema as it was when the migrations began: 45 tables, dumped with
--- mysqldump --no-data on 2026-01-04 from MariaDB 10.11.8, without the DROP TABLE lines a dump
--- carries. It runs on an empty database only; a database that already has this schema records
--- it with `make migrate-baseline` instead (scripts/migrate.sh).
+-- 0001 baseline: up. The schema as it was when the migrations began: 45 tables and 286 columns,
+-- as production had them on 2026-10-08. The body is the mysqldump --no-data of 2026-01-04
+-- without the DROP TABLE lines a dump carries, completed with the six `urlname` columns that
+-- dump lacked and production has (albums, artists, songs, labels, users, album_promomixes).
+-- It runs on an empty database only; a database that already has this schema records it with
+-- `make migrate-baseline` instead (scripts/migrate.sh).
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -78,6 +80,7 @@ CREATE TABLE `album_prices` (
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `album_promomixes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `urlname` varchar(40) NOT NULL DEFAULT '0',
   `promomix` tinytext NOT NULL,
   `size` tinytext NOT NULL,
   `hits` smallint(6) NOT NULL DEFAULT 0,
@@ -128,6 +131,7 @@ CREATE TABLE `albums` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `legal` enum('y','n') NOT NULL DEFAULT 'y',
   `title` tinytext DEFAULT NULL,
+  `urlname` tinytext NOT NULL,
   `labelid` int(11) DEFAULT NULL,
   `year` date DEFAULT NULL,
   `premier` tinytext NOT NULL,
@@ -217,6 +221,7 @@ CREATE TABLE `artist_lookup` (
 CREATE TABLE `artists` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(250) DEFAULT NULL,
+  `urlname` varchar(40) NOT NULL DEFAULT '',
   `realname` tinytext DEFAULT NULL,
   `concertinfo` text DEFAULT NULL,
   `since` date DEFAULT NULL,
@@ -450,6 +455,7 @@ CREATE TABLE `hhb_users` (
 CREATE TABLE `labels` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(250) DEFAULT NULL,
+  `urlname` varchar(40) NOT NULL DEFAULT '',
   `website` tinytext DEFAULT NULL,
   `email` tinytext DEFAULT NULL,
   `addres` tinytext DEFAULT NULL,
@@ -659,6 +665,7 @@ CREATE TABLE `song_samples` (
 CREATE TABLE `songs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` tinytext DEFAULT NULL,
+  `urlname` varchar(40) NOT NULL DEFAULT '',
   `length` int(11) DEFAULT NULL,
   `bpm` float DEFAULT NULL,
   `acapella` tinyint(1) DEFAULT NULL,
@@ -723,6 +730,7 @@ CREATE TABLE `users` (
   `login` varchar(16) DEFAULT NULL,
   `pass` varchar(32) DEFAULT NULL,
   `name` varchar(50) DEFAULT NULL,
+  `urlname` varchar(50) NOT NULL DEFAULT '',
   `email` varchar(50) DEFAULT NULL,
   `www` varchar(50) DEFAULT NULL,
   `place` varchar(50) DEFAULT NULL,
