@@ -5,7 +5,7 @@
 
 The project is built on **Zend Framework 1** (specifically the `shardj/zf1-future` fork for PHP 8 compatibility) and runs in a **Dockerized** environment with Nginx, PHP-FPM, and MariaDB.
 
-**Note:** The documentation references a `backoffice` component (Admin Panel), but the directory is currently missing from this workspace.
+**Note:** The old admin panel (`backoffice/`) is archived on the branch `backoffice-archive`; nothing runs it. Production runs on the shared OVH host (see `deploy/README.md`).
 
 ## Technology Stack
 *   **Language:** PHP 7.4+ (Targeting PHP 8.x compatibility)
