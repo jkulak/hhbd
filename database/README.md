@@ -76,6 +76,10 @@ Rules the runner (`scripts/migrate.sh`) enforces:
 - Files run as root inside the db container with `--default-character-set=utf8mb4`; a migration
   that writes Polish text needs no `SET NAMES` of its own.
 
+And one rule `make test-schema` holds: **every table is InnoDB**, since 0005 (#45). A new table
+says `ENGINE=InnoDB`; MyISAM has no crash recovery, locks a whole table per write, and gives the
+nightly `mysqldump --single-transaction` no consistent snapshot.
+
 The fixtures are written for the baseline schema. `make reset-db` loads them onto the baseline
 and then runs the later migrations over them, exactly as production's data lives, so a migration
 that cannot cope with real rows fails here first. A migration that changes a table the fixtures
