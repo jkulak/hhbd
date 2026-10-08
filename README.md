@@ -16,7 +16,7 @@ hhbd-new/
 └── compose.yaml          # Docker services configuration
 ```
 
-The old admin panel (`backoffice/`) is archived on the branch `backoffice-archive`; nothing runs it.
+The old admin panel (`backoffice/`) is archived on the branch `backoffice-archive`; nothing runs it, and it will not be revived: a future backoffice gets written from scratch.
 
 Production runs on the shared OVH host, behind its Caddy edge and Cloudflare, since 2026-10-08. A release is a CalVer tag `vYYYY.MM.N`; see [deploy/README.md](deploy/README.md).
 
