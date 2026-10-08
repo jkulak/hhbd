@@ -109,6 +109,37 @@ Production's database is migrated from the Mac, over ssh into `hhbd-db-1` on the
 `make ovh-migrate` before the release that needs the change; `make ovh-migrate-down` asks for a
 typed confirmation. [deploy/README.md](../deploy/README.md) has the order.
 
+## Audit columns
+
+What the columns that record a row's history mean, and how they are kept (#48). The names
+predate any convention (`addedby` here, `com_updated_by` there) and stay as they are:
+renaming them across 45 tables would risk more than it would clear up.
+
+| Column | Means | Kept by |
+|---|---|---|
+| `added` | when the row was added | the database: `DEFAULT current_timestamp()`, and **never** `ON UPDATE`, so an update cannot rewrite it |
+| `addedby` | who added it: an `ID` in the old `users` table; `0` means unknown | whoever inserts; the archived backoffice did |
+| `updated` | when the row was last **edited**, by a person | whoever edits; nothing automatic |
+| `updatedby` | who edited it, an `ID` in `users` | whoever edits |
+| `status` | `999` published, counted by the site; `0` not published (the only two values production holds) | the editor |
+| `viewed` | page views | the application, on every view (`/stat`) |
+
+The catalog tables (`albums`, `artists`, `songs`, `labels`, `news`) have no automatic
+`updated` on purpose: the application bumps `viewed` on every page view, and an `ON UPDATE`
+would turn "last edited" into "last viewed". `make test-schema` holds all of this to account,
+and CI runs it.
+
+For migrations that follow from it:
+
+- **A data fix leaves `updated` and `updatedby` alone.** Repairing encodings or links (#24, #27)
+  is not an edit by a person; which migration changed what is recorded in `schema_migrations`.
+- **A new table records its own history**: `added timestamp NOT NULL DEFAULT current_timestamp()`,
+  and an `updated` that only its writers set.
+- **No column defaults to a zero date** (`'0000-00-00 …'`): strict SQL modes reject it.
+
+One thing is known lost and cannot be recovered from the database: 58 of the 120 `added`
+values in `artists_photos`, overwritten in one mass update while `added` still had `ON UPDATE`.
+
 ## Test fixtures
 
 `database/tests/fixtures.sql` holds deterministic data with the IDs the smoke test expects,
