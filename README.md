@@ -7,12 +7,18 @@ Polish Hip-Hop Database application.
 ```bash
 hhbd-new/
 ├── app/                  # Frontend Zend Framework application
-├── backoffice/           # Admin panel (admin + xadmin)
 ├── content/              # User-uploaded images (artists, albums, news)
 ├── database/             # SQL dumps for database initialization
-├── conf/                 # Nginx and other configuration
+├── conf/                 # Nginx and PHP configuration
+├── deploy/               # Production on the shared OVH host
+├── scripts/              # Secrets gate and SOPS helper
+├── tests/                # Smoke test, production stack and release tests
 └── compose.yaml          # Docker services configuration
 ```
+
+The old admin panel (`backoffice/`) is archived on the branch `backoffice-archive`; nothing runs it.
+
+Production runs on the shared OVH host, behind its Caddy edge and Cloudflare, since 2026-10-08. A release is a CalVer tag `vYYYY.MM.N`; see [deploy/README.md](deploy/README.md).
 
 ## Quick Start
 
@@ -36,7 +42,6 @@ hhbd-new/
 
 4. Access the applications:
    - Frontend: <http://localhost:8080>
-   - Backoffice: <http://localhost:8081/admin/>
    - Adminer (DB): <http://localhost:8082>
 
 5. Stop services:
@@ -51,7 +56,6 @@ hhbd-new/
 | --------- | ------ | ------------- |
 | nginx | 8080 | Frontend web server |
 | app | 9000 | PHP-FPM application server |
-| backoffice | 8081 | Backoffice admin panel (Apache) |
 | adminer | 8082 | Database management |
 | db | 3306 | MariaDB database |
 
@@ -205,7 +209,6 @@ HHBD is a content management system for Polish hip-hop music featuring:
 - **User System**: Registration, login, profiles, comments
 - **Community Features**: Lyrics editing, ratings, popularity tracking
 - **SEO**: XML sitemaps, Open Graph, friendly URLs (`album-name-a123.html`)
-- **Admin Panel**: Backoffice for content management
 
 ### Technology Stack
 
@@ -215,7 +218,6 @@ HHBD is a content management system for Polish hip-hop music featuring:
 | Language   | PHP 7.4+                              |
 | Database   | MariaDB 10.11                         |
 | Web Server | Nginx + PHP-FPM                       |
-| Admin      | Apache (backoffice)                   |
 
 ### Architecture
 
@@ -281,7 +283,10 @@ The tests cover:
 
 ### CI/CD
 
-Tests run automatically on GitHub Actions for every push and pull request:
+Tests run on GitHub Actions for every pull request, and not again on the push a merge makes to `main`:
 
 - **Unit Tests**: `.github/workflows/unit-tests.yml` - PHPUnit tests with coverage
 - **Smoke Tests**: `.github/workflows/smoke-tests.yml` - Integration tests with Docker
+- **Deploy checks**: `.github/workflows/deploy-checks.yml` - the secrets gate, the release flow, and the production stack behind a stand-in edge
+
+A pushed release tag `vYYYY.MM.N` runs `.github/workflows/release.yml`, which builds both images and deploys them to the OVH host.
