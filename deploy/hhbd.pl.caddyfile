@@ -1,15 +1,13 @@
 # hhbd on the shared edge, installed by `make ovh-install` as /srv/edge/sites/hhbd.pl.caddyfile.
 # The imports are defined by the edge's Caddyfile (CONTRACT.md §3 in gcloud-ovh-migrate).
 #
-# `tls internal` until the DNS moves: the edge's own CA, so the site can be tried with
-# `curl --connect-to hhbd.pl:443:<host>:443 --insecure` while hhbd.pl still points at Google.
-# In the window it becomes the staging CA, then goes away for the real certificate, and
-# `import cloudflare_only` is added once Cloudflare runs in Full (strict). deploy/README.md
-# has the order.
+# Both names are proxied by Cloudflare in Full (strict). The certificate comes from Let's
+# Encrypt through Cloudflare, and `cloudflare_only` drops every connection that does not come
+# from Cloudflare, so nobody reaches the site around it.
 hhbd.pl, www.hhbd.pl {
+	import cloudflare_only
 	import access_log
 	import security_headers
 	import compress
-	tls internal
 	import proxy hhbd-web:80
 }
