@@ -74,8 +74,9 @@ after a fresh backup on the new host; `make ovh-data` and the `gcp-*` targets we
 ### Tests
 
 ```bash
-make test-ovh-stack   # compose.ovh.yaml locally behind a stand-in edge: health, smoke, client address, logs
-./tests/ovh-release-test.sh   # every path of a release against a stand-in ci-deploy
+make test-ovh-stack     # compose.ovh.yaml locally behind a stand-in edge: health, smoke, client address, logs
+make test-ovh-release   # every path of a release against a stand-in ci-deploy
+make secrets-check      # no plaintext secret or private key in the tree
 ```
 
-All three, and the secrets gate, run on every pull request in `deploy-checks.yml`.
+All three run on every pull request in `deploy-checks.yml`.

@@ -9,17 +9,20 @@ HHBD is a Polish Hip-Hop Database - a content management system for music catalo
 ## Repository Structure
 
 - **app/** - Main Zend Framework application (frontend)
-- **backoffice/** - Admin panel with two sub-applications (`admin/` and `xadmin/`)
 - **content/** - User-uploaded images (artists, albums, labels) - NOT in version control
 - **database/** - SQL dumps for database initialization
-- **conf/nginx/** - Nginx configuration files
-- **tests/** - Smoke tests for integration testing
+- **conf/nginx/**, **conf/php/** - Nginx and PHP configuration files
+- **deploy/** - Production on the shared OVH host: compose file, edge snippet, encrypted secrets, release script (see [deploy/README.md](deploy/README.md))
+- **scripts/** - The secrets gate and the SOPS helper
+- **tests/** - Smoke tests, and the tests for the production stack and the release flow
+
+The old admin panel (`backoffice/`) left `main` on 2026-01-04 and lives on the branch `backoffice-archive`; nothing runs it.
 
 ## Development Environment
 
 ### Docker Services
 
-The project runs in Docker Compose with 5 services:
+The project runs in Docker Compose with 4 services (app, nginx, db, adminer):
 
 ```bash
 # Start all services (development mode with compose.override.yaml)
@@ -38,7 +41,6 @@ docker compose down
 
 **Service ports:**
 - Frontend: http://localhost:8080
-- Backoffice: http://localhost:8081/admin/
 - Adminer (DB): http://localhost:8082
 - MariaDB: localhost:3306
 
@@ -178,13 +180,7 @@ Parse logic extracts ID from URL suffix before `.html`.
 
 ### Backoffice
 
-Admin panel in `backoffice/` has two separate PHP applications:
-- **admin/** - Main admin panel (PHP-FPM)
-- **xadmin/** - Secondary admin panel
-
-Backoffice connects to same database as frontend, uses procedural PHP (not Zend Framework). Includes files like:
-- `connect_to_database.php` - Database connection setup
-- `add_artist_photo.php`, `add_cover.php`, `add_label_logo.php` - Image upload tools
+There is none on `main`. The procedural PHP admin panels (`admin/` and `xadmin/`) that once added artists, albums, covers and photos are archived on the branch `backoffice-archive`. Production has no admin panel; its database is reached over ssh (see [deploy/README.md](deploy/README.md)).
 
 ## Development vs Production
 
@@ -197,6 +193,8 @@ In **production mode** (use `-f compose.yaml` only):
 - Errors hidden
 - Opcache disabled timestamp validation
 - Vendor directory baked into container
+
+Production itself runs `deploy/compose.ovh.yaml` on the shared OVH host, behind its Caddy edge and Cloudflare, since 2026-10-08. A release is a CalVer tag `vYYYY.MM.N` pushed by a person; [deploy/README.md](deploy/README.md) has the rest.
 
 ## Code Style Conventions
 
@@ -212,8 +210,10 @@ In **production mode** (use `-f compose.yaml` only):
 GitHub Actions workflows (`.github/workflows/`):
 - **unit-tests.yml** - PHPUnit tests with coverage
 - **smoke-tests.yml** - Integration tests with Docker
+- **deploy-checks.yml** - The secrets gate, the release flow, and the production stack behind a stand-in edge
+- **release.yml** - Builds both images for a pushed tag `vYYYY.MM.N` and deploys them to the OVH host
 
-Runs on every push and pull request.
+The first three run on pull requests (and by hand), never again on the push a merge makes to `main`; a newer push to a pull request cancels the older run. `release.yml` runs on a pushed release tag.
 
 ## Important Notes
 

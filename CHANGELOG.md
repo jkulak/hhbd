@@ -17,8 +17,10 @@ decision; nothing tags on its own.
 ### Changed
 - `hhbd.pl` and `www.hhbd.pl` are served from the shared OVH host since 2026-10-08, behind
   Cloudflare in Full (strict), with a Let's Encrypt certificate at the origin and every
-  connection that does not come from Cloudflare dropped. The Google VM's app and nginx are
-  stopped and stay until the soak is over.
+  connection that does not come from Cloudflare dropped.
+- The docs describe the repo as it is: the backoffice is archived on the branch
+  `backoffice-archive` and nothing runs it, the dev stack has four services, CI runs on pull
+  requests, and production runs on the OVH host (#36).
 
 ## 2026.10.0 — 2026-10-08
 
