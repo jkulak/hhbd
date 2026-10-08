@@ -1,67 +1,33 @@
-# Test Database Fixtures
+# The database
 
-This directory contains database initialization files organized by context.
-
-## Directory Structure
+How the schema is defined and changed, and how a local database is set up.
 
 ```
 database/
+├── migrations/
+│   ├── 0001-baseline.up.sql     # the schema as it was when the migrations began
+│   ├── 0001-baseline.down.sql   # drops it
+│   └── NNNN-slug.{up,down}.sql  # every change since, in order
 ├── tests/
-│   ├── 01-schema.sql       # Schema only (no data)
-│   └── 02-test-fixtures.sql # Deterministic test data
+│   └── fixtures.sql             # deterministic test data for the smoke test, on the baseline
 ├── dev/
-│   └── init.sql            # Production-like data for local dev
+│   └── init.sql                 # a production dump for local work; git-ignored, optional
 └── README.md
 ```
 
-## Files
+## Setting a local database up
 
-| Directory | File | Description | Usage |
-|-----------|------|-------------|-------|
-| `tests/` | `01-schema.sql` | Database schema (structure only, no data) | CI smoke tests, automated testing |
-| `tests/` | `02-test-fixtures.sql` | Test data with deterministic IDs for smoke tests | CI smoke tests, automated testing |
-| `dev/` | `init.sql` | Production-like data for local development | Local dev (via compose.override.yaml) |
-
-## Initialization Behavior
-
-### Local Development
-
-```bash
-docker compose up -d
-# Imports: database/dev/init.sql (production-like data)
-```
-
-### CI / Testing
-
-```bash
-docker compose -f compose.yaml -f compose.ci.yaml up -d
-# Imports: database/tests/01-schema.sql + database/tests/02-test-fixtures.sql
-```
-
-### Manual Import
-
-```bash
-# Import test schema and fixtures
-docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/tests/01-schema.sql
-docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/tests/02-test-fixtures.sql
-
-# Import dev data
-docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/dev/init.sql
-
-# Generate test images
-docker compose exec app php app/tools/generate-test-images.php
-```
-
-### Reset Database (Fresh Import)
-
-With the stack running, `make reset-db` drops the `hhbd` database and loads it again from
-`database/tests/`: the schema and the fixtures the smoke test runs on. It takes a few seconds
-and leaves the containers and the volume alone. Run it before and after a piece of work, so the
-database never carries what the last one left.
+With the stack running (`docker compose up -d`):
 
 ```bash
 make reset-db
 ```
+
+It drops the `hhbd` database and builds it again the way production's is: the baseline schema
+from the migrations, the fixtures loaded onto it, and every later migration run over that data.
+It takes a few seconds, leaves the containers and the volume alone, and ends with the exact table
+and row counts. Run it before and after a piece of work, so the database never carries what the
+last one left. CI sets its database up the same way, so what passes here passes there.
 
 It acts only on the running db container of this checkout's compose project, on the local
 Docker engine, and refuses anything else before a statement reaches a database: a Docker
@@ -70,69 +36,83 @@ container started from another directory or from `deploy/compose.ovh.yaml`.
 `make test-reset-db` checks all of that against the running stack; CI runs it after the smoke
 test.
 
-To start over from whatever the mounted directory imports instead (for instance
-`database/dev/init.sql`), delete the volume and restart:
+For production-like data instead, put a dump at `database/dev/init.sql` (git-ignored; never
+commit it), mount `database/dev` as the db container's `/docker-entrypoint-initdb.d` in your
+`compose.override.yaml`, and start with an empty volume (`docker compose down -v && docker
+compose up -d`). A dump has the schema but no record of it, so before anything else:
 
 ```bash
-docker compose down -v
-docker compose up -d
+make migrate-baseline   # records 0001-baseline as applied, after checking the schema matches
+make migrate            # applies what came after it
 ```
 
-## Local Development Setup
+## Migrations
 
-### Option 1: Quick Start with Test Data
-
-For a fresh dev environment with small, deterministic test data:
+Every change to the schema, and every change to data that production needs, is a migration:
+two plain SQL files in `database/migrations/`, numbered in order, applied once and recorded in
+the table `schema_migrations` of the database itself.
 
 ```bash
-# Clean up any existing data
-docker compose down -v
-
-# Start services with test data
-docker compose -f compose.yaml -f compose.ci.yaml up -d
-
-# Verify
-docker compose logs app | grep "ready"
+make migrate-new NAME=add-album-isrc   # 0002-add-album-isrc.up.sql and .down.sql, to fill in
+make migrate                           # apply what is pending to the local database
+make migrate-down                      # revert the last one; N=2 for the last two, N=all for every one
+make migrate-status                    # what is applied when, what is pending
 ```
 
-This imports `database/tests/01-schema.sql` + `database/tests/02-test-fixtures.sql` — sufficient for feature development and testing.
+Rules the runner (`scripts/migrate.sh`) enforces:
 
-### Option 2: Production-Like Data
+- **Every migration has a down**, and the down undoes exactly what the up did. A migration
+  without a down file is refused before anything runs.
+- **One small change per migration.** MariaDB commits DDL as it goes, so a file that fails
+  halfway has done part of its work and is not recorded; the runner stops there, says which file
+  failed, and nothing after it runs. Undo by hand what did run, fix the file, run again. Small
+  files make that a minute's work.
+- **A migration must leave the running release working.** On the OVH host, `ci-deploy` takes a
+  release that does not become healthy back to the one before, which then runs against whatever
+  the migration did (CONTRACT.md §6 in `gcloud-ovh-migrate`). So: add a column in one release,
+  use it in the next, drop the old one in a third, never all three at once.
+- **Slugs** are lowercase letters, digits and dashes; **versions** four digits, given by
+  `make migrate-new`.
+- Files run as root inside the db container with `--default-character-set=utf8mb4`; a migration
+  that writes Polish text needs no `SET NAMES` of its own.
 
-For development with realistic data volume and content:
+The fixtures are written for the baseline schema. `make reset-db` loads them onto the baseline
+and then runs the later migrations over them, exactly as production's data lives, so a migration
+that cannot cope with real rows fails here first. A migration that changes a table the fixtures
+fill does not need the fixtures changed, unless the smoke test should see something new.
 
-1. **Obtain a database dump** from production or a backup
-   - Request from team lead or deployment logs
-   - Or use a recent backup if available
+`make test-migrate` exercises all of it against the running stack: up and down with the data
+intact, a failing migration, `down all` and back, the baseline, the refusals, and the ssh path
+to production through a stand-in. CI runs it after the smoke test.
 
-2. **Place it in the right location:**
+### The baseline
 
-   ```bash
-   # Copy your dump to database/dev/init.sql
-   cp /path/to/production-backup.sql database/dev/init.sql
-   ```
+`0001-baseline` is the schema as it was when the migrations began: 45 tables, from a
+`mysqldump --no-data` taken on 2026-01-04. It runs only on an empty database. A database that
+already has that schema, production first of all, records it instead:
 
-3. **Start services with dev data:**
+```bash
+make migrate-baseline        # the local database
+make ovh-migrate-baseline    # production, once; see deploy/README.md
+```
 
-   ```bash
-   # Clean up
-   docker compose down -v
+`baseline` compares every column the baseline would create with what the database has, refuses
+if any is missing (an empty database takes `make migrate`), and notes columns the database has
+that no migration describes. Until a database has a record, `make migrate` refuses to run on it
+when it has tables: the baseline would otherwise recreate them.
 
-   # Start (will import init.sql)
-   docker compose up -d
-   ```
+### Production
 
-4. **Verify:**
+Production's database is migrated from the Mac, over ssh into `hhbd-db-1` on the OVH host, with
+`make ovh-migrate` before the release that needs the change; `make ovh-migrate-down` asks for a
+typed confirmation. [deploy/README.md](../deploy/README.md) has the order.
 
-   ```bash
-   docker compose exec db mysql -uhhbd -phhbd_password hhbd -e "SELECT COUNT(*) FROM artists;"
-   ```
+## Test fixtures
 
-**Important**: `database/dev/init.sql` is **git-ignored** and contains sensitive data. Never commit it.
+`database/tests/fixtures.sql` holds deterministic data with the IDs the smoke test expects,
+written for the baseline schema.
 
-## Test Data Contents
-
-### Database Records
+### Records
 
 | Table | Records | Notes |
 |-------|---------|-------|
@@ -147,7 +127,7 @@ For development with realistic data volume and content:
 | ratings_avg | 50 | Average ratings for albums |
 | searches | 15 | Popular search terms |
 
-### Test Images
+### Test images
 
 Generated by `app/tools/generate-test-images.php`:
 
@@ -159,11 +139,7 @@ Generated by `app/tools/generate-test-images.php`:
 
 **Total:** 95 placeholder images (100x100px, ~1.5KB each)
 
-## Smoke Test Requirements
-
-The test fixtures include specific records required by smoke tests:
-
-### Required IDs
+### What the smoke test needs
 
 | Entity | ID | Content |
 |--------|-----|---------|
@@ -173,8 +149,6 @@ The test fixtures include specific records required by smoke tests:
 | Label | 58 | Alkopoligamia |
 | News | 1877 | ONAR article with "Onar wraca z nowym singlem" |
 
-### Required Content
-
 - Homepage: Contains "Pezet"
 - Album list: Contains "Jestem Hip Hopem"
 - Premieres: Contains "Stasiak"
@@ -183,34 +157,13 @@ The test fixtures include specific records required by smoke tests:
 - Search "tede": Returns "Mefistotedes" and "MercTedes"
 - Top10 page: 70+ list items, 40+ thumbnails
 
-## CI/CD Usage
+The data includes Polish characters (ą, ę, ć, ź, ż, ó, ł, ś, ń) in artist names, album titles,
+song lyrics, news content and photo descriptions.
 
-GitHub Actions workflow (`.github/workflows/smoke-tests.yml`) automatically:
+### Changing the fixtures
 
-1. Imports `database/tests/01-schema.sql`
-2. Imports `database/tests/02-test-fixtures.sql`
-3. Generates test images via `app/tools/generate-test-images.php`
-4. Runs smoke tests
+1. Edit `database/tests/fixtures.sql`, keeping the IDs above.
+2. Update image references if needed.
+3. `make reset-db`, then `make smoke`.
 
-## Polish Characters
-
-Test data includes Polish characters (ą, ę, ć, ź, ż, ó, ł, ś, ń) in:
-
-- Artist names
-- Album titles
-- Song lyrics
-- News content
-- Photo descriptions
-
-## Updating Test Data
-
-To add more test data:
-
-1. Edit `database/tests/02-test-fixtures.sql`
-2. Maintain deterministic IDs for smoke test requirements
-3. Update image references if needed
-4. Test locally before pushing
-
-## Production Data
-
-**DO NOT** use test fixtures in production. Use `database/init.sql` or a production backup instead.
+**Never** load the fixtures into production. Production's data moves through migrations only.

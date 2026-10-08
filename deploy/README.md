@@ -51,6 +51,31 @@ The release workflow needs the repository secrets `OVH_HOST`, `OVH_HOST_KEY` (th
 host to `ci-deploy`). The repository variable `SMOKE_VIA_ORIGIN=true` sends a release's smoke
 test straight to the host; it is needed only before `hhbd.pl` points there, and is unset now.
 
+### Database migrations
+
+Schema changes travel as migrations, `database/migrations/NNNN-slug.up.sql` with its
+`.down.sql`, applied in order and recorded in the database by `scripts/migrate.sh`
+([database/README.md](../database/README.md)). Production's database gets them from the Mac, as
+the admin account, over ssh into `hhbd-db-1`; the deploy key can run nothing but `ci-deploy`,
+so a release does not migrate on its own.
+
+```bash
+make ovh-migrate-status   # what production has applied, what is pending
+make ovh-migrate          # apply what is pending
+make ovh-migrate-down     # revert the last one, after typing its version to confirm
+```
+
+A release that needs a schema change: `make ovh-migrate` first, then push the tag. The release
+that is running must work with the migrated schema, and the new one with the old: `ci-deploy`
+takes a release that does not become healthy back to the one before, which then runs against
+whatever the migration did (CONTRACT.md §6). Add a column in one release, use it in the next,
+drop the old one in a third.
+
+Once, before the first `make ovh-migrate`: production already has the baseline schema, so
+`make ovh-migrate-baseline` records `0001-baseline` as applied without running it, after
+checking that every column the baseline creates is there. Until then `make ovh-migrate` refuses
+a database that has tables but no record.
+
 ### How production moved
 
 On 2026-10-08, following CONTRACT.md §10, with no failed request:
