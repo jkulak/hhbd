@@ -8,6 +8,9 @@
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+// A tool's PHP errors as JSON lines on stderr, as the web's (#101).
+Jkl_Log::installHandlers('tool');
+
 defined('APPLICATION_NAME') || define('APPLICATION_NAME', 'hhbd.pl');
 defined('APPLICATION_PATH') || define('APPLICATION_PATH', realpath(__DIR__ . '/../application'));
 defined('APPLICATION_ENV') || define('APPLICATION_ENV', getenv('APPLICATION_ENV') ?: 'production');
