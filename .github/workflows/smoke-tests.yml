@@ -81,6 +81,7 @@ jobs:
         run: |
           # As production's existing covers get described (#60), so the pages read the table.
           make covers-backfill
+          make photos-backfill
 
       - name: Wait for PHP-FPM to be healthy
         run: |

@@ -31,6 +31,7 @@
 #   - a release date is whole, with its precision, and the database refuses zero parts; an
 #     unconfirmed announcement is announced, and the 2017 placeholders are gone (#54)
 #   - a cover file is described once per album, variant and hash (#60)
+#   - an artist's photo file appears once per artist; artistid is an int (#61)
 #   - going down to the baseline brings the old schema back, and up removes it again
 #
 # It changes rows to prove these and ends with make reset-db, so the database ends as a reset
@@ -165,7 +166,7 @@ fi
 
 echo "> unique link tables"
 UNIQUE_TABLES="album_artist_lookup altnames_lookup artist_city_lookup artist_lookup band_lookup city_label_lookup collection feature_lookup music_lookup ratings remix_lookup scratch_lookup wishlist"
-uniques() { sql "SELECT GROUP_CONCAT(DISTINCT table_name ORDER BY table_name SEPARATOR ' ') FROM information_schema.statistics WHERE table_schema = DATABASE() AND non_unique = 0 AND index_name LIKE 'u\\_%' AND table_name NOT IN ('feattypes', 'album_covers')"; }
+uniques() { sql "SELECT GROUP_CONCAT(DISTINCT table_name ORDER BY table_name SEPARATOR ' ') FROM information_schema.statistics WHERE table_schema = DATABASE() AND non_unique = 0 AND index_name LIKE 'u\\_%' AND (table_name LIKE '%\\\\_lookup' OR table_name IN ('collection', 'wishlist', 'ratings'))"; }
 dupes() { # the duplicated rows of the fixtures, as table:count
     sql "SELECT CONCAT_WS(' ',
         CONCAT('album_artist:', (SELECT GROUP_CONCAT(status ORDER BY status) FROM album_artist_lookup WHERE albumid = 535 AND artistid = 8)),
@@ -241,6 +242,15 @@ else
     ok "the same file cannot describe one album's variant twice"
 fi
 
+echo "> artist photos"
+check "artistid is an int, and a photo has room for its size, hash, licence and credit" "int 8" "$(sql "SELECT CONCAT((SELECT data_type FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'artists_photos' AND column_name = 'artistid'), ' ', (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'artists_photos' AND column_name IN ('width', 'height', 'sha256', 'mime', 'licence', 'licence_url', 'credit', 'modified')))")"
+sql "UPDATE artists_photos SET sha256 = REPEAT('c', 64) WHERE id = 1"
+if sql "INSERT INTO artists_photos (artistid, filename, description, source, sourceurl, sha256) SELECT artistid, 'copy.jpg', '', '', '', sha256 FROM artists_photos WHERE id = 1" >"$T/out" 2>&1; then
+    bad "the same file cannot be one artist's photo twice"
+else
+    ok "the same file cannot be one artist's photo twice"
+fi
+
 echo "> down to the baseline brings the old schema back, and up removes it"
 rows_before=$(sql "SELECT COUNT(*) FROM songs")
 ./scripts/migrate.sh down "$after_baseline" >"$T/out" 2>&1 || { bad "down $after_baseline succeeds"; cat "$T/out"; }
@@ -258,6 +268,7 @@ check "after down: no credit columns" "0" "$(count "table_name = 'album_artist_l
 check "after down: the old track numbers, and the missing album's rows, back" "3:11:101 3:12:201 4:13:1 4:14:2 4:30:0 9999:14:1 9999:15:0" "$(tracks track)"
 check "after down: the zero-part dates and the placeholder back" "49:2016-12-00:1 50:2013-00-00:1 778:0000-00-00:1 923:2017-01-00:1" "$(dates "(SELECT COUNT(*) FROM album_artist_lookup c WHERE c.albumid = albums.id)")"
 check "after down: the placeholder label back, and its album on it" "BRAK 27" "$(sql "SELECT CONCAT((SELECT name FROM labels WHERE id = 27), ' ', (SELECT labelid FROM albums WHERE id = 48))")"
+check "after down: artistid a smallint again, without the photo columns" "smallint 0" "$(sql "SELECT CONCAT((SELECT data_type FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'artists_photos' AND column_name = 'artistid'), ' ', (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'artists_photos' AND column_name IN ('width', 'sha256', 'credit')))")"
 check "after down: no release type columns" "0" "$(count "table_name = 'albums' AND column_name IN ('release_type', 'media_digital', 'catalog_digital')")"
 check "after down: the roles and credits as the fixtures had them" "1 row 0, 1 testest, 0 key 6:36:0 7:41:0 10:42:0" "$(roles) $(credits)"
 check "after down: no archive" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'migration_archive'")"

@@ -364,6 +364,30 @@ ul.list {
   height: 300px;
 }
 
+/* A photo's credit and licence, which its licence asks to show next to it (#61) */
+#picture .caption, .gallery .caption {
+  display: block;
+  width: 300px;
+  font-size: 0.8em;
+  color: #666;
+}
+
+.gallery li {
+  display: inline-block;
+  vertical-align: top;
+  width: 150px;
+  margin: 0 8px 8px 0;
+}
+
+.gallery img {
+  width: 150px;
+  height: auto;
+}
+
+.gallery .caption {
+  width: 150px;
+}
+
 #picture, #logo {
   float: left;
   clear: both;
