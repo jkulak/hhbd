@@ -289,4 +289,4 @@ Tests run on GitHub Actions for every pull request, and not again on the push a 
 - **Smoke Tests**: `.github/workflows/smoke-tests.yml` - Integration tests with Docker
 - **Deploy checks**: `.github/workflows/deploy-checks.yml` - the secrets gate, the release flow, and the production stack behind a stand-in edge
 
-A pushed release tag `vYYYY.MM.N` runs `.github/workflows/release.yml`, which builds both images and deploys them to the OVH host.
+A pushed release tag `vYYYY.MM.N` runs `.github/workflows/release.yml`, which builds the app and nginx images and deploys them to the OVH host, and builds the importer's image for `make ovh-import`.

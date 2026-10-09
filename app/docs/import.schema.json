@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/jkulak/hhbd/blob/main/app/docs/import.schema.json",
   "title": "One document of an hhbd import batch",
-  "description": "A batch is NDJSON: one document per line, labels first, then artists, releases and standalone images, so that every reference points at something already read. docs/import.md explains the fields, how documents are matched to rows, and what the importer reports. app/tools/import.php validates every document against the same rules (Model_Import_Validator) before it writes anything.",
+  "description": "A batch is NDJSON: one document per line, labels first, then artists, releases and standalone images, so that every reference points at something already read. docs/import.md explains the fields, how documents are matched to rows, and what the importer reports. The importer (app/tools/import.php) validates every document against this file before it writes anything.",
   "oneOf": [
     { "$ref": "#/$defs/label" },
     { "$ref": "#/$defs/artist" },
@@ -48,7 +48,7 @@
       "enum": ["bandcamp", "bn", "commons", "coverartarchive", "deezer", "discogs", "glamrap", "itunes", "musicbrainz", "plwiki", "wikidata"]
     },
     "file": {
-      "description": "An image file shipped with the batch, under its files/ directory. The importer checks the header against width, height and mime and the content against sha256 before it moves the file into content/.",
+      "description": "The one original a batch ships for a cover, a photo or a logo, under its files/ directory. The importer checks the header against width, height and mime and the content against sha256, then writes the sizes the pages use from it (#96): a cover's orig (capped at 1500 px on the longer side, and only when larger than 600), 600, 300 and 75, never upscaled; a photo at 600; a logo at 300.",
       "type": "object",
       "required": ["path", "width", "height", "sha256", "mime"],
       "properties": {
@@ -56,7 +56,7 @@
         "width": { "type": "integer", "minimum": 1, "maximum": 65535 },
         "height": { "type": "integer", "minimum": 1, "maximum": 65535 },
         "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-        "mime": { "enum": ["image/jpeg", "image/png"] }
+        "mime": { "enum": ["image/jpeg", "image/png", "image/webp"] }
       }
     },
     "credit_fields": {
@@ -72,27 +72,19 @@
       }
     },
     "cover": {
-      "type": "object",
-      "required": ["variants"],
-      "properties": {
-        "variants": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "allOf": [
-              { "$ref": "#/$defs/file" },
-              {
-                "type": "object",
-                "required": ["variant"],
-                "properties": { "variant": { "enum": ["orig", "600", "300", "75"] } }
-              }
-            ]
+      "allOf": [
+        { "$ref": "#/$defs/file" },
+        { "$ref": "#/$defs/credit_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "needs_upgrade": {
+              "description": "A stand-in to replace when a larger cover turns up, such as a 600 px Discogs cover shipped because nothing better existed.",
+              "type": "boolean"
+            }
           }
-        },
-        "source": { "type": ["string", "null"], "maxLength": 32 },
-        "source_url": { "type": ["string", "null"], "maxLength": 500 },
-        "licence": { "type": ["string", "null"], "maxLength": 64 }
-      }
+        }
+      ]
     },
     "photo": {
       "allOf": [
@@ -241,7 +233,7 @@
     },
     "image": {
       "type": "object",
-      "required": ["kind", "target", "role"],
+      "required": ["kind", "target", "role", "file"],
       "properties": {
         "kind": { "const": "image" },
         "target": {
@@ -253,17 +245,23 @@
           }
         },
         "role": { "enum": ["cover", "photo", "logo"] },
-        "variants": { "$ref": "#/$defs/cover/properties/variants" },
-        "photo": { "$ref": "#/$defs/photo" },
-        "source": { "type": ["string", "null"], "maxLength": 32 },
-        "source_url": { "type": ["string", "null"], "maxLength": 500 },
-        "licence": { "type": ["string", "null"], "maxLength": 64 },
+        "file": {
+          "description": "The image with what its licence asks to show: a cover's fields for a cover, a photo's for a photo.",
+          "allOf": [
+            { "$ref": "#/$defs/file" },
+            { "$ref": "#/$defs/credit_fields" },
+            {
+              "type": "object",
+              "properties": {
+                "needs_upgrade": { "type": "boolean" },
+                "main": { "type": "boolean" },
+                "description": { "type": ["string", "null"] }
+              }
+            }
+          ]
+        },
         "provenance": { "$ref": "#/$defs/provenance" }
-      },
-      "allOf": [
-        { "if": { "properties": { "role": { "const": "cover" } } }, "then": { "required": ["variants"] } },
-        { "if": { "properties": { "role": { "enum": ["photo", "logo"] } } }, "then": { "required": ["photo"] } }
-      ]
+      }
     }
   }
 }

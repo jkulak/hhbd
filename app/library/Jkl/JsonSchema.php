@@ -52,7 +52,7 @@ class Jkl_JsonSchema
             $errors[] = "$path: expected " . json_encode($schema['const']);
         }
         if (isset($schema['enum']) && !in_array($data, $schema['enum'], true)) {
-            $errors[] = "$path: " . json_encode($data, JSON_UNESCAPED_UNICODE) . ' is not one of ' . json_encode($schema['enum'], JSON_UNESCAPED_UNICODE);
+            $errors[] = "$path: " . json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ' is not one of ' . json_encode($schema['enum'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }
 
         if (is_string($data)) {

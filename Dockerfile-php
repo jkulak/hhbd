@@ -89,3 +89,38 @@ COPY --from=builder /var/www/html/app ./app
 
 # Copy production PHP configuration
 COPY conf/php/production.ini /usr/local/etc/php/conf.d/99-production.ini
+
+# =============================================================================
+# Stage 3: Importer - the import job (#56), the one image with GD in production
+# =============================================================================
+# It writes the cover, photo and logo sizes from the one original a batch ships (#96), so it
+# needs GD for the formats originals come in: JPEG, PNG and WebP. It runs and exits, so it is
+# PHP's CLI image, not FPM, and the web image stays without GD.
+FROM php:7.4-cli as importer
+
+# Bullseye's packages from the archive, as in the builder stage
+RUN sed -i 's|http://deb.debian.org|http://archive.debian.org|g' /etc/apt/sources.list
+
+RUN apt-get update && apt-get install -y \
+    libjpeg62-turbo-dev \
+    libpng-dev \
+    libwebp-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && docker-php-ext-install pdo pdo_mysql \
+    && docker-php-ext-configure gd --with-jpeg --with-webp \
+    && docker-php-ext-install -j$(nproc) gd
+
+WORKDIR /var/www/html
+
+COPY --from=builder /var/www/html/app ./app
+
+COPY conf/php/production.ini /usr/local/etc/php/conf.d/99-production.ini
+# A decoded original takes four bytes a pixel, a 6000 x 4000 photo 96 MB, beside the copy being
+# scaled; the web's 256M leaves too little room for that. zz- loads it after 99-production.ini.
+RUN echo "memory_limit = 512M" > /usr/local/etc/php/conf.d/zz-importer.ini
+
+# A batch arrives as a tar on stdin, so it reaches the OVH host over ssh without a copy left
+# there, and the report leaves on stdout: make import and make ovh-import stream it alike.
+# Without an argument it is a dry run.
+ENTRYPOINT ["sh", "-c", "mkdir -p /tmp/batch && tar -x -C /tmp/batch && exec php app/tools/import.php /tmp/batch \"$@\"", "import"]
+CMD ["--dry-run"]

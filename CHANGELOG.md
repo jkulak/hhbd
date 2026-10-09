@@ -8,6 +8,23 @@ decision; nothing tags on its own.
 ## Unreleased
 
 ### Added
+- The importer (#56): `make import` and `make ovh-import` read a batch from the content project
+  into the catalogue, as `docs/import.md` describes. Each document is validated against the
+  contract, matched to a row by external ids, hhbd id and natural key, and written in a
+  transaction of its own; a row hhbd has is filled where empty and never overwritten, with a
+  warning for each value it keeps. The same batch read twice changes nothing; a dry run
+  reports what an apply would do and leaves nothing behind. The report goes to stdout and into
+  `import_runs`, and every group of fields it changed into `import_provenance`.
+- The importer writes the cover, photo and logo sizes from the one original a batch ships
+  (#96): JPEG, PNG or WebP in, checked against its declared size and hash, scaled down, never
+  up, and moved into `content/` only after its rows are in. An artist gets five photos at most.
+- A third image, `ghcr.io/jkulak/hhbd-importer`, built with every release for the `importer`
+  job (`profiles: [jobs]`, so no deploy starts it). It is PHP's CLI image with GD for JPEG, PNG
+  and WebP: a new dependency, the PHP extension built from PHP's own sources, approved for this
+  image on #96; the web image stays without it.
+- `tests/import-test.sh` reads a test batch of made-up rows and generated images on every pull
+  request: a dry run, an apply, the same apply again, and a batch with broken documents. The
+  production stack test feeds the batch to the importer as `make ovh-import` does.
 - An artist page shows all the artist's photos, the main one first and the rest in a gallery,
   each captioned with its author, licence and any change, as CC licences require (#61).
   Migration 0020 makes `artists_photos.artistid` an int and adds width, height, SHA-256, MIME
