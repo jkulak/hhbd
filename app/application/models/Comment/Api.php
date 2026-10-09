@@ -31,7 +31,7 @@ class Model_Comment_Api extends Jkl_Model_Api
    */
   private function _getList($query)
   {
-    $result = $this->_db->fetchAll($query, 90);
+    $result = $this->_db->fetchAll($query);
     $list = new Jkl_List(); 
     foreach ($result as $params) {
       $list->add(new Model_Comment_Container($params));
