@@ -1,8 +1,9 @@
 name: Deploy checks
 
 # What a release to the OVH host depends on, checked on every pull request: no secret in the
-# tree, the release flow, the data move, and the production stack itself behind a stand-in
-# edge. Nothing runs again on the merge to main; the pull request tested the merge result.
+# tree, and the production stack itself behind a stand-in edge. How a release rolls out is the
+# shared host's template, tested where it is kept. Nothing runs again on the merge to main; the
+# pull request tested the merge result.
 on:
   pull_request:
   workflow_dispatch:
@@ -22,16 +23,9 @@ jobs:
       - uses: actions/checkout@v4
       - run: ./scripts/secrets-check.sh
 
-  release-flow:
-    name: Release flow
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: ./tests/ovh-release-test.sh
-
-  ovh-stack:
+  ovh-e2e:
     name: Production stack behind the edge
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: ./tests/ovh-stack-test.sh
+      - run: ./tests/ovh-e2e.sh

@@ -12,9 +12,9 @@ HHBD is a Polish Hip-Hop Database - a content management system for music catalo
 - **content/** - User-uploaded images (artists, albums, labels) - NOT in version control
 - **database/** - SQL dumps for database initialization
 - **conf/nginx/**, **conf/php/** - Nginx and PHP configuration files
-- **deploy/** - Production on the shared OVH host: compose file, edge snippet, encrypted secrets, release script (see [deploy/README.md](deploy/README.md))
-- **scripts/** - The secrets gate and the SOPS helper
-- **tests/** - Smoke tests, and the tests for the production stack and the release flow
+- **deploy/ovh/** - Production on the shared OVH host: compose file, edge snippet, encrypted secrets, the release's smoke test, the import script (see [deploy/ovh/README.md](deploy/ovh/README.md))
+- **scripts/** - The database tools, and the shared OVH host's scripts: install, release, stack test, the secrets gate and the SOPS helper
+- **tests/** - Smoke tests, and the end-to-end test of the production stack
 
 The old admin panel (`backoffice/`) left `main` on 2026-01-04 and lives on the branch `backoffice-archive`; nothing runs it.
 
@@ -65,7 +65,7 @@ For production-like data instead, load a dump and record the baseline with `make
 ### The database
 
 - `make reset-db` drops the local `hhbd` database and builds it again from the migrations and the fixtures. Run it before and after a piece of work. It acts only on the running db container of this checkout's compose project on the local Docker engine, and refuses anything else.
-- Every schema or data change is a migration in `database/migrations/`, `NNNN-slug.up.sql` with its `.down.sql`: `make migrate-new NAME=...`, `make migrate`, `make migrate-down`, `make migrate-status`. Keep each one small and compatible with the release that is running. Production gets them with `make ovh-migrate` before the release that needs them ([deploy/README.md](deploy/README.md)). Details in [database/README.md](database/README.md).
+- Every schema or data change is a migration in `database/migrations/`, `NNNN-slug.up.sql` with its `.down.sql`: `make migrate-new NAME=...`, `make migrate`, `make migrate-down`, `make migrate-status`. Keep each one small and compatible with the release that is running. Production gets them with `make ovh-migrate` before the release that needs them ([deploy/ovh/README.md](deploy/ovh/README.md)). Details in [database/README.md](database/README.md).
 
 ## Common Commands
 
@@ -187,7 +187,7 @@ Parse logic extracts ID from URL suffix before `.html`.
 
 ### Backoffice
 
-There is none on `main`. The procedural PHP admin panels (`admin/` and `xadmin/`) that once added artists, albums, covers and photos are archived on the branch `backoffice-archive`. Production has no admin panel; its database is reached over ssh (see [deploy/README.md](deploy/README.md)).
+There is none on `main`. The procedural PHP admin panels (`admin/` and `xadmin/`) that once added artists, albums, covers and photos are archived on the branch `backoffice-archive`. Production has no admin panel; its database is reached over ssh (see [deploy/ovh/README.md](deploy/ovh/README.md)).
 
 The archived panels are abandoned for good (decided 2026-10-09): they are not updated, not revived, and schema or code changes do not have to stay compatible with them. Their code is a historical record only, for what a column once meant. If hhbd needs a backoffice again, it gets written from scratch.
 
@@ -203,7 +203,7 @@ In **production mode** (use `-f compose.yaml` only):
 - Opcache disabled timestamp validation
 - Vendor directory baked into container
 
-Production itself runs `deploy/compose.ovh.yaml` on the shared OVH host, behind its Caddy edge and Cloudflare, since 2026-10-08. A release is a CalVer tag `vYYYY.MM.N` pushed by a person; [deploy/README.md](deploy/README.md) has the rest.
+Production itself runs `deploy/ovh/compose.yaml` on the shared OVH host, behind its Caddy edge and Cloudflare, since 2026-10-08. A release is `gh release create vYYYY.MM.N`, run by a person; [deploy/ovh/README.md](deploy/ovh/README.md) has the rest.
 
 ## Code Style Conventions
 
@@ -219,10 +219,10 @@ Production itself runs `deploy/compose.ovh.yaml` on the shared OVH host, behind 
 GitHub Actions workflows (`.github/workflows/`):
 - **unit-tests.yml** - PHPUnit tests with coverage
 - **smoke-tests.yml** - Integration tests with Docker
-- **deploy-checks.yml** - The secrets gate, the release flow, and the production stack behind a stand-in edge
-- **release.yml** - Builds the app, nginx and importer images for a pushed tag `vYYYY.MM.N` and deploys the first two to the OVH host
+- **deploy-checks.yml** - The secrets gate, and the production stack behind a stand-in edge
+- **deploy.yml** - For a published release, builds the app, nginx and importer images and rolls the first two out on the OVH host; the shared host's template, word for word
 
-The first three run on pull requests (and by hand), never again on the push a merge makes to `main`; a newer push to a pull request cancels the older run. `release.yml` runs on a pushed release tag.
+The first three run on pull requests (and by hand), never again on the push a merge makes to `main`; a newer push to a pull request cancels the older run. `deploy.yml` runs on a published release, `gh release create vYYYY.MM.N`.
 
 ## Important Notes
 

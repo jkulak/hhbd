@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# Copied from jkulak/gcloud-ovh-migrate at 5f9a189, so this repo runs the same gate and the
-# same helper as the platform does (CONTRACT.md §4). Keep it in step with that file.
-#
 # Refuse the things that must never reach a commit. This is the "nothing secret in the
 # diff — checked, not assumed" line of the Definition of Done, made mechanical.
 #
@@ -36,10 +33,12 @@ done
 # `ovh-pass-secret` matches no token pattern below, and neither do OVH's S3 keys in
 # `secrets/user-…txt`; both turned up untracked in this repo, one `git add -A` away from
 # GitHub. Every component of the path is checked, not only the file name. Documentation
-# and scripts about secrets (.md, .sh) and sops files are fine.
+# and scripts about secrets (.md, .sh), sops files, and code — a password reset, a test of
+# one, as bankdata's tests/test_first_password.py — are fine: a credential is not kept in a
+# source file by that name.
 for f in "${files[@]}"; do
   base=$(basename "$f" | tr '[:upper:]' '[:lower:]')
-  case "$base" in *.md|*.sh|*.enc.env) continue ;; esac
+  case "$base" in *.md|*.sh|*.enc.env|*.py|*.php|*.phtml|*.js|*.ts|*.tsx|*.go|*.rs|*.swift|*.sql|*.html) continue ;; esac
   if printf '%s' "$f" | tr '[:upper:]' '[:lower:]' | tr '/' '\n' \
      | grep -qE '(^|[^a-z])(pass|passwd|password|passwords|secret|secrets|credential|credentials|token|tokens)([^a-z]|$)'; then
     note "$f is named like a credential, or sits in a directory that is; keep it out of the repo"
@@ -64,6 +63,8 @@ done
 enc=()
 for f in "${files[@]}"; do case "$f" in *.enc.env) enc+=("$f") ;; esac; done
 if [ ${#enc[@]} -gt 0 ]; then
+  # The script in single quotes runs inside the container, which expands it.
+  # shellcheck disable=SC2016
   expected=$("${DOCKER:-docker}" run --rm -v "$PWD:/w:ro" -w /w --entrypoint sh \
     "${SOPS_IMAGE:-ghcr.io/getsops/sops:v3.9.4-alpine}" -c '
       for f in "$@"; do
