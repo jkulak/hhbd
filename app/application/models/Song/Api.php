@@ -53,6 +53,23 @@ class Model_Song_Api extends Jkl_Model_Api
     }
 
     /**
+     * The query for exactly these songs, in this order: the ids come sorted from a narrow
+     * query, and the rows by primary key, so no sort carries the lyrics (#69).
+     *
+     * @param string $query SELECT ... FROM songs t1 ..., with no WHERE
+     * @param array $ids
+     */
+    private function _byIds($query, array $ids)
+    {
+        $ids = array_map('intval', $ids);
+        if (empty($ids)) {
+            return $query . ' WHERE 0';
+        }
+        $list = implode(', ', $ids);
+        return $query . ' WHERE t1.id IN (' . $list . ') ORDER BY FIELD(t1.id, ' . $list . ')';
+    }
+
+    /**
      * Get list of songs with properly populated artist containers
      * This method extends _getList() by loading artist data for each song
      *
@@ -203,28 +220,28 @@ class Model_Song_Api extends Jkl_Model_Api
     {
         $id = intval($id);
         $limit = intval($limit);
-        $query = 'SELECT *, t1.id as song_id
-              FROM songs t1, artist_lookup t2, artists t3
-              WHERE (t1.id=t2.songid AND t2.artistid=t3.id AND t3.id=' . $id . ')
-              ORDER BY t1.viewed DESC
-              ' . (($limit) ? 'LIMIT ' . $limit : '');
-        return $this->_getList($query);
+        // The ids first, sorted without the lyrics, then the rows by id (#69).
+        $ids = array_column($this->_db->fetchAll(
+            'SELECT t1.id FROM songs t1 JOIN artist_lookup t2 ON t2.songid = t1.id
+              WHERE t2.artistid = ' . $id . '
+              ORDER BY t1.viewed DESC' . (($limit) ? ' LIMIT ' . $limit : '')
+        ), 'id');
+        return $this->_getList($this->_byIds('SELECT *, t1.id as song_id FROM songs t1', $ids));
     }
 
     public function getMostPopular($limit = 10)
     {
         $limit = intval($limit);
+        // The most viewed ids first, from the index on viewed, then each song with one album
+        // and one of its artists. Grouping every song's join to pick those read the whole
+        // catalogue through a temporary table on disk on each call (#69).
+        $ids = array_column($this->_db->fetchAll('SELECT id FROM songs ORDER BY viewed DESC' . (($limit) ? ' LIMIT ' . $limit : '')), 'id');
         $query = 'SELECT *, t1.id as song_id, t1.title as song_title, t1.viewed as song_views, t3.id as alb_id, t3.cover as alb_cover, t3.title as alb_title, t5.id as art_id, t5.name as art_name, t5.disambiguation as art_disambiguation, ' .
                   '(SELECT COUNT(*) FROM hhb_comments WHERE com_object_id = t1.id AND com_object_type = "s") as comment_count ' .
                   'FROM songs t1 ' .
-                  'LEFT JOIN album_lookup t2 ON t1.id = t2.songid ' .
-                  'LEFT JOIN albums t3 ON t2.albumid = t3.id ' .
-                  'LEFT JOIN album_artist_lookup t4 ON t3.id = t4.albumid ' .
-                  'LEFT JOIN artists t5 ON t4.artistid = t5.id ' .
-                  'GROUP BY t1.id ' .
-                  'ORDER BY t1.viewed DESC ' .
-                  (($limit) ? 'LIMIT ' . $limit : '');
-        return $this->_getListWithArtists($query);
+                  'LEFT JOIN albums t3 ON t3.id = (SELECT MIN(l.albumid) FROM album_lookup l WHERE l.songid = t1.id) ' .
+                  'LEFT JOIN artists t5 ON t5.id = (SELECT MIN(c.artistid) FROM album_artist_lookup c WHERE c.albumid = t3.id)';
+        return $this->_getListWithArtists($this->_byIds($query, $ids));
     }
 
     /**

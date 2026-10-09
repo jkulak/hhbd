@@ -14,6 +14,12 @@ class Model_Artist_Api extends Jkl_Model_Api
     private static $_instance;
 
     /**
+     * What a credit on a song needs of an artist. These lists sort a join, which takes a
+     * temporary table, and one holding TEXT columns, as SELECT * would, goes to disk (#69).
+     */
+    private const CREDIT_COLUMNS = 't1.id AS art_id, t1.name, t1.disambiguation';
+
+    /**
      * Singleton instance
      *
      * @return Model_Artist_Api
@@ -214,7 +220,9 @@ class Model_Artist_Api extends Jkl_Model_Api
     public function getSongFeaturing($id)
     {
         $id = intval($id);
-        $query = 'SELECT t1.id as art_id, t3.feattype ' .
+        // Sorting a join needs a temporary table, which goes to disk when it holds a TEXT
+        // column (#69): the role's name is cut to the length a role has.
+        $query = 'SELECT t1.id as art_id, CAST(t3.feattype AS CHAR(64)) AS feattype ' .
           'FROM artists t1, feature_lookup t2, feattypes t3 ' .
           'WHERE (t2.artistid=t1.id AND t3.id=t2.feattype AND t2.songid="' . $id . '") ' .
           'ORDER BY t1.name';
@@ -232,7 +240,7 @@ class Model_Artist_Api extends Jkl_Model_Api
     public function getSongMusic($id)
     {
         $id = intval($id);
-        $query = 'SELECT *, t1.id as art_id ' .
+        $query = 'SELECT ' . self::CREDIT_COLUMNS . ' ' .
           'FROM artists AS t1, music_lookup AS t2 ' .
           'WHERE (t1.id=t2.artistid AND t2.songid=' . $id . ') ' .
           'ORDER BY t1.name';
@@ -243,7 +251,7 @@ class Model_Artist_Api extends Jkl_Model_Api
     public function getSongScratch($id)
     {
         $id = intval($id);
-        $query = 'SELECT *, t1.id as art_id ' .
+        $query = 'SELECT ' . self::CREDIT_COLUMNS . ' ' .
           'FROM artists AS t1, scratch_lookup AS t2 ' .
           'WHERE (t1.id=t2.artistid AND t2.songid=' . $id . ') ' .
           'ORDER BY t1.name';
@@ -254,7 +262,7 @@ class Model_Artist_Api extends Jkl_Model_Api
     public function getSongArtist($id)
     {
         $id = intval($id);
-        $query = 'SELECT *, t1.id as art_id ' .
+        $query = 'SELECT ' . self::CREDIT_COLUMNS . ' ' .
           'FROM artists AS t1, artist_lookup AS t2 ' .
           'WHERE (t1.id=t2.artistid AND t2.songid=' . $id . ') ' .
           'ORDER BY t1.name';
