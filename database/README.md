@@ -327,6 +327,10 @@ make ovh-covers-backfill    # production, in a one-off app container with the vo
 make ovh-covers-backfill DRY_RUN=1   # what it would add, nothing written
 ```
 
+The 87 covers production lost with its 2014 content snapshot are in no backup. 0029 cleared
+their names from `albums.cover` (#47), so those albums have no rows here, and the import's cover
+fills them.
+
 It records each existing cover as `300`, `600` or `orig` by its size and its thumbnail as
 `75`, source `legacy`, and adds nothing on a second run. A dry run writes the rows in a
 transaction it rolls back, so its report is the run's, rows already there included. `make check-images` also checks every
