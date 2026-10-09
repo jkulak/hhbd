@@ -8,7 +8,9 @@
  * For every album naming a cover, the file content/a/<cover> becomes a 300, 600 or orig row by
  * its size, and its thumbnail content/a/th/<cover without extension>-th.jpg a 75 row, each with
  * width, height, SHA-256 and MIME type, source "legacy" and no licence. A file the volume lacks
- * gets no row (#47). Running it again adds nothing: album, variant and hash are unique.
+ * gets no row (#47). Running it again adds nothing: album, variant and hash are unique. A dry
+ * run writes the same rows in a transaction it rolls back, so it reports exactly what a run
+ * would, rows already there included.
  *
  * It reads DB_HOST, DB_NAME, DB_USER and DB_PASSWORD from the environment, as the application
  * does, and the files under CONTENT_DIR (/var/www/html/content by default). getimagesize() is in
@@ -34,6 +36,10 @@ $db = new PDO(
     getenv('DB_PASSWORD'),
     array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION)
 );
+
+if ($dryRun) {
+    $db->beginTransaction();
+}
 
 $insert = $db->prepare(
     'INSERT IGNORE INTO album_covers (albumid, variant, path, width, height, sha256, mime, source, main)
@@ -64,15 +70,15 @@ foreach ($albums as $album) {
             $longer = max($width, $height);
             $variant = $longer <= 300 ? '300' : ($longer <= 600 ? '600' : 'orig');
         }
-        if ($dryRun) {
-            $counts[$variant]++;
-            continue;
-        }
         $insert->execute(array(
             (int) $album['id'], $variant, $path, $width, $height, hash_file('sha256', $file), $size['mime'],
         ));
         $counts[$insert->rowCount() ? $variant : 'already']++;
     }
+}
+
+if ($dryRun) {
+    $db->rollBack();
 }
 
 printf(
