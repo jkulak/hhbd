@@ -50,6 +50,23 @@ release script, and keeps them only once the smoke test a release has always had
   - The fixtures and the migrations, which have to read and write the old zero dates, do so in
     a session of their own.
 
+- The pages ask the database for less (#69). Measured over the same 47 pages on a copy of
+  production:
+  - temporary tables sent to disk: 1 901 of 2 038 before, 1 after;
+  - rows read by full scans: 1.02 million before, 374 thousand after;
+  - full joins: 49 before, 20 after.
+
+  The changes behind it:
+  - Migration 0028 adds the indexes the joins lacked: the link tables by artist,
+    `album_lookup` by album, `albums` by label, `songs` by views.
+  - The album lists read `albums` alone, with the credits fetched as before, instead of
+    grouping a join of albums, artists and labels whose `SELECT *` carried TEXT columns into a
+    temporary table on disk.
+  - A song's credits read the three columns a credit shows.
+  - The most viewed songs, and an artist's albums and songs, are sorted as ids first and read
+    by id.
+  - The popular searches and the label list group a VARCHAR, not a TEXT.
+
 ### Fixed
 - Registering an account works again. `hhb_users.usr_updated` and `usr_last_login` were
   NOT NULL without a default, and a registration writes neither, so the server's

@@ -41,9 +41,11 @@ class Model_Search_Api extends Jkl_Model_Api
   public function getMostPopular($limit = 15)
   {
     $limit = intval($limit);
-    $query = "SELECT DISTINCT(t1.searchstring) AS sea_query, count(t1.searchstring) AS sea_count
+    // Grouped as a VARCHAR, so the temporary table stays in memory; searchstring is a
+    // MEDIUMTEXT, which sent it to disk on every page that shows these (#69).
+    $query = "SELECT CAST(t1.searchstring AS CHAR(100)) AS sea_query, count(*) AS sea_count
               FROM searches t1
-              GROUP BY t1.`searchstring`
+              GROUP BY sea_query
               ORDER BY sea_count DESC" .
               (($limit != null)?' LIMIT ' . $limit:'');
     $result = $this->_db->fetchAll($query);
