@@ -56,6 +56,11 @@ class Model_Album_Container
     public $credits = array();
     /** The main artists as a page names them: "Białas & Lanek" */
     public $artistNames;
+    /** The cover's and the thumbnail's size in pixels, where album_covers knows it (#60) */
+    public $coverWidth;
+    public $coverHeight;
+    public $thumbnailWidth;
+    public $thumbnailHeight;
     /** day, month or year: how much of releaseDate is known */
     public $releaseDatePrecision;
     /** Whether the release is only announced; null where the database does not say */
@@ -131,7 +136,19 @@ class Model_Album_Container
             $this->updated = $params['updated'];
         }
 
-        if (!empty($params['cover'])) {
+        // From album_covers once an album has rows there (#60): the page's cover the largest
+        // the page needs, the lists' thumbnail the smallest. Without rows, the paths albums.cover
+        // has always given.
+        $page = !empty($params['covers']) ? self::pickCover($params['covers'], array('600', 'orig', '300')) : null;
+        $thumb = !empty($params['covers']) ? self::pickCover($params['covers'], array('75', '300', '600', 'orig')) : null;
+        if (null !== $page) {
+            $this->cover = $configApp['paths']['contentPath'] . $page['path'];
+            $this->coverWidth = $page['width'];
+            $this->coverHeight = $page['height'];
+            $this->thumbnail = $configApp['paths']['contentPath'] . $thumb['path'];
+            $this->thumbnailWidth = $thumb['width'];
+            $this->thumbnailHeight = $thumb['height'];
+        } elseif (!empty($params['cover'])) {
             $this->cover = $configApp['paths']['albumCoverPath'] . $params['cover'];
             $this->thumbnail = $configApp['paths']['albumThumbnailPath'] . substr($params['cover'], 0, -4) . $configApp['paths']['albumThumbnailSuffix'];
         } else {
@@ -204,6 +221,23 @@ class Model_Album_Container
             return 'main' === $credit['role'];
         }));
         return empty($main) ? $this->credits : $main;
+    }
+
+    /**
+     * The first of the preferred variants an album has.
+     *
+     * @param array    $covers     variant => array('path', 'width', 'height')
+     * @param string[] $preference variants, best first
+     * @return array|null
+     */
+    public static function pickCover(array $covers, array $preference)
+    {
+        foreach ($preference as $variant) {
+            if (isset($covers[$variant])) {
+                return $covers[$variant];
+            }
+        }
+        return null;
     }
 
     /**

@@ -42,15 +42,26 @@ UNION ALL SELECT 'logo', CONCAT('l/', logo) FROM labels WHERE logo <> '';" | db_
 
 missing=$(printf '%s\n' "$files" | content_sh 'while IFS="	" read -r kind path; do [ -f "/var/www/html/content/$path" ] || printf "%s\t%s\n" "$kind" "$path"; done')
 
+# Every album_covers row (#60): its file is there and still has the hash the row recorded.
+# Before migration 0019 there is no such table, and nothing to check.
+covers=
+if [ "$(printf '%s\n' "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'album_covers';" | db_sql)" = 1 ]; then
+    covers=$(printf '%s\n' "SELECT 'cover file', path, sha256 FROM album_covers;" | db_sql)
+fi
+changed=$(printf '%s\n' "$covers" | content_sh 'while IFS="	" read -r kind path sum; do [ -n "$path" ] || continue; f="/var/www/html/content/$path"; if [ ! -f "$f" ]; then printf "%s\t%s\t%s\n" "$kind" "$path" "missing"; elif [ "$(sha256sum "$f" | cut -d" " -f1)" != "$sum" ]; then printf "%s\t%s\t%s\n" "$kind" "$path" "changed"; fi; done')
+if [ -n "$changed" ]; then
+    missing=$(printf '%s\n%s' "$missing" "$changed" | grep . || true)
+fi
+
 echo "images the catalogue names on $where"
-for kind in cover thumbnail photo logo; do
-    named=$(printf '%s\n' "$files" | awk -F'\t' -v k="$kind" '$1 == k' | grep -c . || true)
+for kind in cover thumbnail photo logo "cover file"; do
+    named=$(printf '%s\n%s\n' "$files" "$covers" | awk -F'\t' -v k="$kind" '$1 == k' | grep -c . || true)
     lost=$(printf '%s\n' "$missing" | awk -F'\t' -v k="$kind" '$1 == k' | grep -c . || true)
-    printf '  %-9s %5s named, %5s missing\n' "$kind" "$named" "$lost"
+    printf '  %-10s %5s named, %5s missing or changed\n' "$kind" "$named" "$lost"
 done
 if [ -n "$missing" ]; then
     echo "missing:"
-    printf '%s\n' "$missing" | awk -F'\t' '{ print "  content/" $2 }'
+    printf '%s\n' "$missing" | awk -F'\t' '{ print "  content/" $2 ($3 == "changed" ? " (its hash differs from album_covers)" : "") }'
     exit 1
 fi
 echo "ok every file is there"
