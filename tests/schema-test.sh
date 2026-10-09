@@ -21,6 +21,8 @@
 #   - an artist with members is a band, type 'b', as the pages decide it (#65)
 #   - a role name is unique, the role-less row 0 stays, and a credit without a role takes one
 #     only where the artist's other credits agree (#66)
+#   - every album has a release type: a flagged one with one to three tracks is a single, any
+#     other flagged one an EP (#53)
 #   - going down to the baseline brings the old schema back, and up removes it again
 #
 # It changes rows to prove these and ends with make reset-db, so the database ends as a reset
@@ -196,6 +198,10 @@ else
     ok "a role name cannot be stored twice, whatever its case"
 fi
 
+echo "> release types"
+check "the flagged albums are a single and an EP, the rest albums" "2:single 46:ep album:$(sql "SELECT COUNT(*) - 2 FROM albums")" "$(sql "SELECT CONCAT((SELECT GROUP_CONCAT(CONCAT(id, ':', release_type) ORDER BY id SEPARATOR ' ') FROM albums WHERE release_type <> 'album'), ' album:', (SELECT COUNT(*) FROM albums WHERE release_type = 'album'))")"
+check "nothing is digital until someone says so" "0" "$(sql "SELECT COUNT(*) FROM albums WHERE media_digital <> 0 OR catalog_digital IS NOT NULL")"
+
 echo "> down to the baseline brings the old schema back, and up removes it"
 rows_before=$(sql "SELECT COUNT(*) FROM songs")
 ./scripts/migrate.sh down "$after_baseline" >"$T/out" 2>&1 || { bad "down $after_baseline succeeds"; cat "$T/out"; }
@@ -209,6 +215,7 @@ check "after down: every duplicate back as the fixtures had it" \
     "album_artist:0,999,999 band:2 altnames:2 artist:2 collection:1,2 ratings:1@$(sql "SELECT added FROM ratings WHERE ID = 1"),1001@2010-05-02 10:00:00" "$(dupes)"
 check "after down: no unique keys on the link tables" "NULL" "$(uniques)"
 check "after down: the artists' types as the fixtures had them" "60:x 61:m 62:b 63:x" "$(types)"
+check "after down: no release type columns" "0" "$(count "table_name = 'albums' AND column_name IN ('release_type', 'media_digital', 'catalog_digital')")"
 check "after down: the roles and credits as the fixtures had them" "1 row 0, 1 testest, 0 key 6:36:0 7:41:0 10:42:0" "$(roles) $(credits)"
 check "after down: no archive" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'migration_archive'")"
 check "after down: added changes on update again, in 11 tables plus the lyrics log" "12" "$(count "$TIMES_WITH_ON_UPDATE")"
