@@ -27,7 +27,7 @@ then the import contract, Discogs credits on the pages, and placeholders for mis
   tables they add, which the baseline fixtures cannot fill.
 
 ### Fixed
-- A release's smoke test checks only what holds on production's data (#96). The checks added
+- A release's smoke test checks only what holds on production's data (#97). The checks added
   for the fixtures' own cases (an album on no label, a two-disc album, Discogs provenance and
   the rest) looked for rows production does not have, so 2026.10.1 failed its smoke test and the
   host went back to 2026.10.0. `tests/smoke-test.sh` keeps those checks in a section of their
