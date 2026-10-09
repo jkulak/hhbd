@@ -521,6 +521,7 @@ run_tests() {
     # nginx logged an error for every bot asking (#34)
     echo "--- Missing Files ---"
     test_not_found "A .php file that does not exist is nginx's 404, not PHP-FPM's" "/wp-login.php" "File not found."
+    test_not_found "No dotfile is served (#139)" "/.htaccess" "RewriteEngine"
     echo ""
 
     # Static pages
