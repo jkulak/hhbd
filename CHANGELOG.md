@@ -7,6 +7,13 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
+### Fixed
+- A cover, thumbnail, photo or logo the catalogue names but the content volume lacks shows a
+  placeholder instead of a broken image: nginx answers it with a 404 whose body is a
+  placeholder shipped in the image (#47). `make check-images` and `make ovh-check-images`
+  list such files; production lacks 87 covers, 86 thumbnails, a photo and a logo. CI runs the
+  check on the fixtures, whose generator now also writes the album thumbnails.
+
 ## 2026.10.1 — 2026-10-09
 
 The catalog made ready for the import from hhbd-content: external ids, provenance, release
