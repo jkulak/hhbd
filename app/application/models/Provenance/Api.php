@@ -33,6 +33,11 @@ class Model_Provenance_Api extends Jkl_Model_Api
     public const MODES = array('dry-run', 'apply');
 
     /**
+     * The users row the import writes into addedby and updatedby (#63), added by migration 0008.
+     */
+    public const IMPORT_USER_ID = 1100;
+
+    /**
      * The totals of a run, named as the import report names its actions.
      */
     public const COUNTS = array('created', 'updated', 'unchanged', 'skipped', 'refused');
@@ -180,6 +185,26 @@ class Model_Provenance_Api extends Jkl_Model_Api
                                      fetched = VALUES(fetched), run_id = VALUES(run_id)',
             array($entityType, (int) $entityId, $field, $source, $sourceRef, $licence, $fetched, $runId)
         );
+    }
+
+    /**
+     * Who the import is in addedby and updatedby: IMPORT_USER_ID from the environment, or 1100
+     * when it is unset, and only when users has that row as the import's. The importer asks
+     * before it writes, so a database without the row stops it instead of filling the catalog
+     * with an id that names nobody.
+     *
+     * @return int
+     * @throws RuntimeException when users has no import row with that id
+     */
+    public function getImportUserId()
+    {
+        $configured = getenv('IMPORT_USER_ID');
+        $id = self::assertId(false === $configured || '' === $configured ? self::IMPORT_USER_ID : $configured);
+        $rows = $this->_db->fetchAll('SELECT login FROM users WHERE ID = ?', array($id));
+        if (empty($rows) || 'import' !== $rows[0]['login']) {
+            throw new RuntimeException(sprintf('users has no import row with ID %d; migration 0008 adds it', $id));
+        }
+        return $id;
     }
 
     /**

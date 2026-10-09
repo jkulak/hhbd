@@ -8,6 +8,12 @@ decision; nothing tags on its own.
 ## Unreleased
 
 ### Added
+- The import has its own row in `users` (migration 0008, with a down): `ID` 1100, login
+  `import`, no password. The importer writes it into `addedby` for what it creates and into
+  `updatedby` for what it changes, so an imported row shows as one without a look at
+  `import_provenance` (#63). `Model_Provenance_Api::getImportUserId()` reads `IMPORT_USER_ID`
+  (1100 when unset) and refuses when the row is missing; `database/README.md` has the query
+  that lists what the import added.
 - `import_runs` and `import_provenance` (migration 0007, with a down): one row per import batch
   with its mode, totals and JSON report, and one row per imported field and source with the
   reference, licence and fetch time, so a licence question or a takedown is answered per row
