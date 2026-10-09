@@ -46,7 +46,7 @@ class Model_Import_ContractTest extends TestCase
                 'release_type' => 'album', 'release_date' => '2016-11-03', 'release_date_precision' => 'day', 'announced' => false,
                 'label' => array('ref' => 'label:asfalt-records'), 'catalog_numbers' => array('cd' => 'AR-C148', 'digital' => null),
                 'formats' => array('digital', 'cd'), 'legal' => true, 'parent_release' => null, 'description' => null,
-                'cover' => array('variants' => array($file + array('variant' => 'orig')), 'source' => 'coverartarchive', 'source_url' => null, 'licence' => 'unknown'),
+                'cover' => $file + array('source' => 'coverartarchive', 'source_url' => null, 'licence' => 'unknown', 'needs_upgrade' => false),
                 'tracklist' => array(array('disc' => 1, 'position' => 1, 'title' => 'Wiatr', 'length_seconds' => 192, 'isrc' => null, 'instrumental' => false,
                     'external_ids' => array('musicbrainz:recording' => 'b1a9c0e9-d987-4042-ae91-78d6a3267d69'),
                     'credits' => array(array('ref' => 'artist:rumak', 'role' => 'producer', 'feat_type' => null)))),
@@ -54,7 +54,7 @@ class Model_Import_ContractTest extends TestCase
             )),
             'a cover for an album hhbd has' => array(array(
                 'kind' => 'image', 'target' => array('entity' => 'album', 'ref' => 'hhbd:album:966'), 'role' => 'cover',
-                'variants' => array($file + array('variant' => 'orig')), 'source' => 'discogs', 'source_url' => null, 'licence' => 'restricted',
+                'file' => $file + array('source' => 'discogs', 'source_url' => null, 'licence' => 'restricted', 'needs_upgrade' => true),
             )),
         );
     }
@@ -83,7 +83,8 @@ class Model_Import_ContractTest extends TestCase
             'a release with no artists' => array(array('kind' => 'release', 'ref' => 'release:x', 'title' => 'X', 'artists' => array()), '$.artists: fewer than 1 items'),
             'an unknown kind of id' => array(array('kind' => 'label', 'ref' => 'label:x', 'name' => 'X', 'external_ids' => array('spotify:artist' => '1')), '$.external_ids.spotify:artist (name): does not match ^(discogs:(master|release|artist|label)|musicbrainz:(release_group|release|recording|artist|label)|wikidata:item|deezer:(album|artist)|itunes:(collection|artist)|plwiki:pageid|barcode:gtin14|isrc:isrc)$'),
             'a date with zero parts' => array(array('kind' => 'release', 'ref' => 'release:x', 'title' => 'X', 'artists' => array(array('ref' => 'artist:a', 'role' => 'main', 'position' => 1)), 'release_date' => '2016-11-00'), '$.release_date: not a date'),
-            'a cover image without its files' => array(array('kind' => 'image', 'target' => array('entity' => 'album', 'ref' => 'hhbd:album:1'), 'role' => 'cover'), '$: variants is missing'),
+            'a cover image without its file' => array(array('kind' => 'image', 'target' => array('entity' => 'album', 'ref' => 'hhbd:album:1'), 'role' => 'cover'), '$: file is missing'),
+            'a GIF' => array(array('kind' => 'image', 'target' => array('entity' => 'album', 'ref' => 'hhbd:album:1'), 'role' => 'cover', 'file' => array('path' => 'files/a.gif', 'width' => 1, 'height' => 1, 'sha256' => str_repeat('a', 64), 'mime' => 'image/gif')), '$.file.mime: "image/gif" is not one of ["image/jpeg","image/png","image/webp"]'),
         );
     }
 }
