@@ -93,7 +93,8 @@ fi
 use_db_target "$TARGET"
 
 query() { printf '%s\n' "$1" | db_sql; }
-run_file() { db_sql <"$1"; }
+# Every file in a session that allows zero dates, which the older migrations need (lib-db.sh).
+run_file() { { printf '%s\n' "$LEGACY_DATES_SESSION"; cat "$1"; } | db_sql; }
 
 [ "$(query 'SELECT 1' 2>/dev/null)" = 1 ] || refuse "cannot reach the database at $where"
 

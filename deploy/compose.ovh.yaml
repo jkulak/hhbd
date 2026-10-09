@@ -96,9 +96,11 @@ services:
     #   since #45;
     # - the Aria page cache, which holds on-disk temporary tables (86% of them, because the
     #   queries carry TEXT columns), is down to 32 MB from 128 MB: ample for a small site.
+    # - sql_mode is MariaDB's default plus NO_ZERO_IN_DATE and NO_ZERO_DATE, so no zero date is
+    #   written again once 0018 and 0024-0027 cleared them (#88).
     # Keep compose.yaml and compose.ci.yaml on the same flags, so tests see what production sees.
     command: >
-      --innodb-buffer-pool-size=96M --innodb-buffer-pool-dump-at-shutdown=1 --innodb-buffer-pool-load-at-startup=1 --max-connections=20 --innodb-log-file-size=16M --innodb-flush-log-at-trx-commit=2 --innodb-read-io-threads=4 --innodb-write-io-threads=1 --table-open-cache=400 --innodb-stats-on-metadata=0 --transaction-isolation=READ-COMMITTED --skip-name-resolve --key-buffer-size=8M --aria-pagecache-buffer-size=32M
+      --innodb-buffer-pool-size=96M --innodb-buffer-pool-dump-at-shutdown=1 --innodb-buffer-pool-load-at-startup=1 --max-connections=20 --innodb-log-file-size=16M --innodb-flush-log-at-trx-commit=2 --innodb-read-io-threads=4 --innodb-write-io-threads=1 --table-open-cache=400 --innodb-stats-on-metadata=0 --transaction-isolation=READ-COMMITTED --skip-name-resolve --key-buffer-size=8M --aria-pagecache-buffer-size=32M --sql-mode=STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,NO_ZERO_IN_DATE,NO_ZERO_DATE
     # The host's nightly backup dumps this database, as root with the password this container
     # was started with, read inside it (its CONTRACT.md §8).
     labels:

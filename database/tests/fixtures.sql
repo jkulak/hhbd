@@ -766,6 +766,17 @@ INSERT INTO `album_artist_lookup` (`albumid`, `artistid`, `status`) VALUES
 (923, 1, 999),
 (778, 2, 999);
 
+-- Zero and partial dates in the columns 0024-0027 clear (#88), as production held them: a band
+-- formed in 1998 and still on, one formed in March 1998 that split in 2003, a member who joined
+-- in 1998 and left in December 2003, a user who never logged in nor changed anything, one with
+-- no known registration time, and a news item with a zero expiry.
+UPDATE `artists` SET `since` = '1998-00-00', `till` = '0000-00-00' WHERE `id` = 22;
+UPDATE `artists` SET `since` = '1998-03-00', `till` = '2003-00-00' WHERE `id` = 23;
+UPDATE `band_lookup` SET `insince` = '1998-00-00', `awaysince` = '2003-12-00' WHERE `artistid` = 35 AND `bandid` = 23;
+UPDATE `hhb_users` SET `usr_updated` = '0000-00-00 00:00:00', `usr_last_login` = '0000-00-00 00:00:00' WHERE `usr_id` = 9;
+UPDATE `hhb_users` SET `usr_added` = '0000-00-00 00:00:00' WHERE `usr_id` = 8;
+UPDATE `news` SET `expires` = '0000-00-00 00:00:00' WHERE `ID` = 2;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================

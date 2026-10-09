@@ -357,6 +357,31 @@ as announced the dates still to come and eight guessed ones entered years ahead 
 filled in, and removed four 2017 placeholders. An album without a label has `labelid` NULL
 (0017, #55); the placeholder label 27 "BRAK" is gone.
 
+## No zero dates
+
+No date, datetime or timestamp column holds a zero date or a zero part: what is not known is
+NULL (0018, 0024-0027, #88).
+
+| Column | Change |
+|---|---|
+| `artists.since`, `artists.till` | have a precision (`since_precision`, `till_precision`), as release dates do |
+| `band_lookup.insince`, `band_lookup.awaysince` | have a precision too (`insince_precision`, `awaysince_precision`) |
+| `hhb_users.usr_added`, `usr_updated`, `usr_last_login` | are nullable now, so a registration, which writes only `usr_added`, is no longer refused |
+| `news.expires` | NULL for a news item that never expires |
+
+A CHECK on each of these columns refuses a zero part, in any session.
+
+The server runs with `NO_ZERO_IN_DATE,NO_ZERO_DATE` in `sql_mode` on top of MariaDB's default,
+the same in all three compose files, so the application cannot write a zero date anywhere. The
+fixtures (`fixtures.sql`) and the migrations still need zero dates:
+- the fixtures hold them, as production did, for the migrations to clear;
+- the older migrations rebuild tables that hold them;
+- the downs write them back.
+
+So the fixtures load in a session of their own, and `scripts/migrate.sh` runs every file in a
+session without the two flags (`LEGACY_DATES_SESSION` in `scripts/lib-db.sh`).
+`make test-schema` checks every such column.
+
 ## External ids
 
 `external_ids` (0006, #51) holds the ids a catalog row has in other databases: Discogs,
