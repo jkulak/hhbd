@@ -93,8 +93,12 @@ ovh-secrets-init: ## Create deploy/ovh/hhbd.enc.env once, with database password
 # --- The local database -------------------------------------------------------------------
 
 .PHONY: reset-db
-reset-db: ## Drop the local hhbd database, migrate it from scratch and load the test fixtures (local stack only)
+reset-db: ## Drop the local hhbd database and build it from the migrations and the test fixtures, or load the kept result of that (local stack only; RESET_DB_FULL=1 always builds)
 	./scripts/reset-db.sh
+
+.PHONY: test-images
+test-images: ## Write the placeholder covers, photos and logos the fixtures name into content/, in the importer's image, the one with GD
+	docker compose run --rm --no-deps -T --entrypoint php importer app/tools/generate-test-images.php
 
 .PHONY: migrate
 migrate: ## Apply the pending migrations to the local database
@@ -153,12 +157,12 @@ ovh-e2e: ## Run deploy/ovh/compose.yaml here behind a stand-in edge: smoke test,
 	./tests/ovh-e2e.sh
 
 .PHONY: test-reset-db
-test-reset-db: ## Check make reset-db against the running local stack: make test-reset-db URL=http://localhost:8080
-	./tests/reset-db-test.sh $(or $(URL),http://localhost:8080)
+test-reset-db: ## Check make reset-db against the running local stack
+	./tests/reset-db-test.sh
 
 .PHONY: test-migrate
-test-migrate: ## Check the migration runner against the running local stack: make test-migrate URL=http://localhost:8080
-	./tests/migrate-test.sh $(or $(URL),http://localhost:8080)
+test-migrate: ## Check the migration runner against the running local stack
+	./tests/migrate-test.sh
 
 .PHONY: test-schema
 test-schema: ## Check the rules the migrations put on the schema (engines, audit columns) on the running local stack: make test-schema URL=http://localhost:8080

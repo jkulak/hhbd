@@ -5,7 +5,9 @@
 # What it proves:
 #   - a reset undoes changed rows and drops a table that does not belong to the fixtures
 #   - two resets in a row give the same exact row count in every table
-#   - the smoke test passes right after a reset
+#   - a reset builds the database from the migrations once and keeps the result, the next one
+#     loads it, and the two give the same tables, columns, indexes and rows, checksum for
+#     checksum; RESET_DB_FULL=1 builds it again, and a build drops a result it no longer matches
 #   - it refuses a Docker engine that is not local, a project with no running db, and a db
 #     container of the same project name started from another directory, and in each case
 #     leaves the database alone
@@ -13,12 +15,13 @@
 # The database ends as a reset leaves it. The other project it starts for the last refusal, one
 # busybox container, is removed on the way out, with its directory.
 #
-# Usage: tests/reset-db-test.sh [base URL of the running site, default http://localhost:8080]
+# The smoke test after a reset is the smoke workflow's own step, not this test's.
+#
+# Usage: tests/reset-db-test.sh
 #
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-URL=${1:-http://localhost:8080}
 OTHER=hhbd-resetdb-elsewhere
 T=$(mktemp -d "${TMPDIR:-/tmp}/hhbd-resetdb.XXXXXX")
 pass=0
@@ -37,13 +40,22 @@ check() { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1"; echo "     expected: 
 sql() { # sql <statement>: in this project's database, as root
     docker compose exec -T db sh -c 'MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?}" exec mariadb -uroot -N -B "${MYSQL_DATABASE:?}" -e "$1"' -- "$1"
 }
-# Exact count(*) of every table, one "table<TAB>rows" line each.
-counts() {
-    local t
-    for t in $(sql "SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'" | cut -f1); do
-        printf '%s\t%s\n' "$t" "$(sql "SELECT COUNT(*) FROM \`$t\`")"
-    done
+sql_in() { # the statements on stdin, in one call
+    docker compose exec -T db sh -c 'MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?}" exec mariadb -uroot -N -B "${MYSQL_DATABASE:?}"'
 }
+# for_each_table <statement, {t} for the table's name, no single quotes>: that statement for every
+# table, in one call rather than one per table.
+for_each_table() {
+    sql "SELECT REPLACE('$1', '{t}', table_name) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' ORDER BY table_name" | sql_in
+}
+# Exact count(*) of every table, one "table<TAB>rows" line each.
+# shellcheck disable=SC2016
+counts() { for_each_table 'SELECT "{t}", COUNT(*) FROM `{t}`;'; }
+# Each table's definition and checksum: what a database built from the migrations and one loaded
+# from the kept result must agree on, down to the auto-increment counters.
+# shellcheck disable=SC2016
+state() { for_each_table 'SHOW CREATE TABLE `{t}`; CHECKSUM TABLE `{t}` EXTENDED;'; }
+kept() { docker compose exec -T db sh -c 'ls /tmp/hhbd-reset-*.sql 2>/dev/null' | tr -d '\r'; }
 has_table() { sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = '$1'"; }
 reset() { make -s reset-db >"$T/out" 2>&1; }
 
@@ -63,12 +75,19 @@ check "a table that is not in the fixtures is gone" "0" "$(has_table stray_after
 check "the fixtures' albums are there" \
     "$(printf '%s\n' "$first" | awk -F'\t' '$1 == "albums" { print $2 }')" "$(sql "SELECT COUNT(*) FROM albums")"
 
-echo "> the smoke test, right after the reset"
-if ./tests/smoke-test.sh "$URL" >"$T/out" 2>&1; then
-    ok "the smoke test passes ($(grep -o '[0-9]* passed' "$T/out"))"
-else
-    bad "the smoke test passes"; tail -20 "$T/out"
-fi
+echo "> built from the migrations, then loaded from the kept result"
+# A result left by older files, which the next build must not leave behind.
+docker compose exec -T db sh -c 'echo "-- stale" > /tmp/hhbd-reset-0000000000000000.sql'
+if RESET_DB_FULL=1 reset; then ok "RESET_DB_FULL=1 make reset-db succeeds"; else bad "RESET_DB_FULL=1 make reset-db succeeds"; cat "$T/out"; exit 1; fi
+check "RESET_DB_FULL=1 builds it from the migrations" "built from the migrations" "$(grep -o 'built from the migrations' "$T/out")"
+check "and keeps that one result, the older one gone" "1 kept, 0 stale" "$(kept | grep -c .) kept, $(kept | grep -c 0000000000000000) stale"
+built=$(state)
+sql "DELETE FROM albums ORDER BY id DESC LIMIT 1; CREATE TABLE stray_after_reset (id int)"
+reset || cat "$T/out"
+check "the next reset loads the kept result" "from the kept result" "$(grep -o 'from the kept result' "$T/out")"
+check "which gives every table the definition and the checksum the build gave it" "$built" "$(state)"
+check "and the row count" "$first" "$(counts)"
+check "a table that is not in the fixtures is gone again" "0" "$(has_table stray_after_reset)"
 
 echo "> what it refuses, leaving a marker table where it was"
 sql "CREATE TABLE marker_untouched (id int)"

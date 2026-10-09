@@ -14,17 +14,17 @@
 #   - the ovh target's ssh path carries SQL both ways, through a stand-in for ssh, and down
 #     there needs a confirmation
 #   - new writes the next version's two files
-#   - the smoke test passes at the end
 #
 # Throwaway migrations live in copies of the migrations directory, removed on the way out. The
 # database ends as make reset-db leaves it.
 #
-# Usage: tests/migrate-test.sh [base URL of the running site, default http://localhost:8080]
+# The smoke test after a reset is the smoke workflow's own step, not this test's.
+#
+# Usage: tests/migrate-test.sh
 #
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-URL=${1:-http://localhost:8080}
 T=$(mktemp -d "${TMPDIR:-/tmp}/hhbd-migratetest.XXXXXX")
 trap 'rm -rf "$T"' EXIT
 pass=0
@@ -37,11 +37,11 @@ check() { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1"; echo "     expected: 
 sql() { # sql <statement>: in this project's database, as root
     docker compose exec -T db sh -c 'MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?}" exec mariadb -uroot -N -B "${MYSQL_DATABASE:?}" -e "$1"' -- "$1"
 }
-counts() { # exact count(*) of every table but the migrations' own, one "table<TAB>rows" line each
-    local t
-    for t in $(sql "SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'" | cut -f1 | grep -vx schema_migrations); do
-        printf '%s\t%s\n' "$t" "$(sql "SELECT COUNT(*) FROM \`$t\`")"
-    done
+sql_in() { # the statements on stdin, in one call
+    docker compose exec -T db sh -c 'MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?}" exec mariadb -uroot -N -B "${MYSQL_DATABASE:?}"'
+}
+counts() { # exact count(*) of every table but the migrations' own, one "table<TAB>rows" line each, in one call
+    sql "SELECT CONCAT('SELECT \"', table_name, '\", COUNT(*) FROM \`', table_name, '\`;') FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' AND table_name <> 'schema_migrations' ORDER BY table_name" | sql_in
 }
 has_column() { sql "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = '$1' AND column_name = '$2'"; }
 app_tables() { sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' AND table_name <> 'schema_migrations'"; }
@@ -167,7 +167,6 @@ make -s reset-db >"$T/out" 2>&1
 migrate status
 check "a last reset-db leaves nothing pending" "0 pending" "$(summary | grep -oE '[0-9]+ pending')"
 check "and the fixtures as they were" "$first" "$(counts)"
-if ./tests/smoke-test.sh "$URL" >"$T/out" 2>&1; then ok "the smoke test passes ($(grep -o '[0-9]* passed' "$T/out"))"; else bad "the smoke test passes"; tail -20 "$T/out"; fi
 
 echo ""
 echo "$pass passed, $fail failed"

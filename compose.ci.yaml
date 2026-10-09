@@ -1,7 +1,7 @@
 services:
   app:
     build:
-      target: builder # Use builder stage for test image generation with GD
+      target: builder # composer, unzip and git, for the dev dependencies the tests install
     environment:
       APPLICATION_ENV: production
 
