@@ -7,6 +7,13 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
+### Added
+- `album_covers` (migration 0019, with a down) describes each cover file: variant, path, size,
+  SHA-256, MIME type, source, licence (#60). The album page and the lists read it, with the
+  file's width and height on the `<img>`, and fall back to `albums.cover` for an album without
+  rows. `make covers-backfill` and `make ovh-covers-backfill` describe the covers already on
+  the volume; `make check-images` also verifies each row's file and hash.
+
 ### Changed
 - Release dates are stored whole with their precision instead of zero parts, and an album says
   whether it is announced (#54). Migration 0018 rewrote 154 dates, gave the two 0000-00-00 no

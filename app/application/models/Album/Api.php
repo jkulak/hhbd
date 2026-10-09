@@ -56,12 +56,46 @@ class Model_Album_Api extends Jkl_Model_Api
             }
         }
         $credits = $this->getCredits(array_keys($albums));
+        $covers = $this->getCovers(array_keys($albums));
         foreach ($albums as $id => $row) {
             if (isset($credits[$id])) {
                 $albums[$id]['credits'] = $credits[$id];
             }
+            if (isset($covers[$id])) {
+                $albums[$id]['covers'] = $covers[$id];
+            }
         }
         return array_values($albums);
+    }
+
+    /**
+     * Each album's cover files from album_covers (#60), one per variant: the main cover's, and
+     * of several the newest.
+     *
+     * @param int[] $albumIds
+     * @return array album id => variant => array('path', 'width', 'height')
+     */
+    public function getCovers(array $albumIds)
+    {
+        $albumIds = array_filter(array_unique(array_map('intval', $albumIds)));
+        if (empty($albumIds)) {
+            return array();
+        }
+        $rows = $this->_db->fetchAll(
+            "SELECT albumid, variant, path, width, height FROM album_covers
+              WHERE albumid IN (" . implode(',', $albumIds) . ")
+              ORDER BY albumid, variant, main = 'y', id"
+        );
+        $covers = array();
+        foreach ($rows as $row) {
+            // The last one per variant wins: the main cover, then the newest.
+            $covers[(int) $row['albumid']][$row['variant']] = array(
+                'path'   => $row['path'],
+                'width'  => (int) $row['width'],
+                'height' => (int) $row['height'],
+            );
+        }
+        return $covers;
     }
 
     /**
@@ -124,6 +158,10 @@ class Model_Album_Api extends Jkl_Model_Api
         $credits = $this->getCredits(array($id));
         if (isset($credits[$id])) {
             $params['credits'] = $credits[$id];
+        }
+        $covers = $this->getCovers(array($id));
+        if (isset($covers[$id])) {
+            $params['covers'] = $covers[$id];
         }
         if ($full) {
             $params['tracklist'] = Model_Song_Api::getInstance()->getTracklist($id);
