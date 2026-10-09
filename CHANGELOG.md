@@ -7,6 +7,18 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
+### Changed
+- Release dates are stored whole with their precision instead of zero parts, and an album says
+  whether it is announced (#54). Migration 0018 rewrote 154 dates, gave the two 0000-00-00 no
+  date, marked 8 guessed announcements never filled in, removed the four 2017 placeholders
+  that topped the album list for years, and adds a CHECK against zero parts. The album lists
+  and counts read `announced`; the newest list now starts with a real release.
+- Albums without a label have `labelid` NULL; the placeholder label 27 "BRAK" and the pages'
+  special cases for it are gone (#55). Migration 0017 moved its 247 albums.
+- A track's disc has a column of its own instead of `disc * 100 + position` (#59). Migration
+  0016 decoded 1 348 rows, put the 6 tracks at position 0 last on their disc and removed the
+  22 rows of albums that no longer exist; its down puts every touched album back whole.
+
 ## 2026.10.2 — 2026-10-09
 
 What 2026.10.1 was to bring, which its own smoke test kept off production (see Fixed), and since
