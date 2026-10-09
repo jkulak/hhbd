@@ -1,123 +1,96 @@
 # =============================================================================
-# Stage 1: Builder - composer and the application, the stage CI's app runs on
+# The PHP images, all from Debian's own PHP packages on Debian 13 (trixie): nothing is compiled.
+# Debian builds, patches and ships them, and a rebuild takes its security updates, while trixie
+# is supported (2028, LTS to 2030). PHP 8.4 is trixie's, supported upstream to the end of 2028.
+# CLAUDE.md says why 8.4 (#37).
+#
+#   base        PHP-FPM with the extensions the application uses, configured as hhbd runs it
+#   builder     base with composer: CI's app, and where production's vendor/ is installed
+#   production  base with the application and its vendor/: the web's image
+#   importer    production's application with the CLI and GD: the import job (#56, #96)
 # =============================================================================
-FROM php:7.4-fpm as builder
+FROM debian:trixie-slim AS base
 
-# php:7.4 is built on Debian 11 (bullseye), which is past its long-term support, and its
-# packages are moving to archive.debian.org: by October 2026 the regular mirrors still listed
-# libfcgi's security fix but no longer served the file, which failed every build. The archive
-# holds all three bullseye suites.
-RUN sed -i 's|http://deb.debian.org|http://archive.debian.org|g' /etc/apt/sources.list
-
-# Composer unpacks packages with unzip, or clones them with git. No GD here: the importer's
-# image has it from Debian's packages, and CI's test images are made there.
-RUN apt-get update && apt-get install -y \
+# PDO MySQL, mbstring, the XML that ZF reads its config with, opcache; cgi-fcgi from
+# libfcgi-bin for the healthcheck.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    php8.4-cli \
+    php8.4-fpm \
+    php8.4-mbstring \
+    php8.4-mysql \
+    php8.4-opcache \
+    php8.4-xml \
     libfcgi-bin \
-    unzip \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /run/php
+
+# The pool as the containers need it (port 9000, the environment kept, stderr for logs), then
+# where its logs go, both read after Debian's own www.conf, which goes.
+RUN rm /etc/php/8.4/fpm/pool.d/www.conf
+COPY conf/php/fpm-pool.conf /etc/php/8.4/fpm/pool.d/www.conf
+COPY conf/php/fpm-logging.conf /etc/php/8.4/fpm/pool.d/zz-hhbd-logging.conf
+COPY conf/php/production.ini /etc/php/8.4/fpm/conf.d/99-production.ini
+COPY conf/php/production.ini /etc/php/8.4/cli/conf.d/99-production.ini
+# Healthy when PHP-FPM answers its status page; the compose files run it by this name.
+COPY --chmod=755 conf/php/php-fpm-healthcheck /usr/local/bin/php-fpm-healthcheck
+
+WORKDIR /var/www/html
+EXPOSE 9000
+# SIGQUIT lets a worker finish its request before FPM stops.
+STOPSIGNAL SIGQUIT
+CMD ["php-fpm8.4", "--nodaemonize"]
+
+# =============================================================================
+# Builder: composer, and the application with its vendor/. CI's app runs on it, so it also has
+# what composer needs to install the dev dependencies there: unzip and git.
+# =============================================================================
+FROM base AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
     git \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
-
-RUN docker-php-ext-install pdo pdo_mysql
-
-# Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# Install php-fpm-healthcheck
-RUN curl -o /usr/local/bin/php-fpm-healthcheck \
-    https://raw.githubusercontent.com/renatomefi/php-fpm-healthcheck/master/php-fpm-healthcheck \
-    && chmod +x /usr/local/bin/php-fpm-healthcheck
-
-# Enable status endpoint for healthcheck
-RUN echo "pm.status_path = /status" >> /usr/local/etc/php-fpm.d/zz-docker.conf
-
-# Logs to the container's stderr, never to files inside it
-COPY conf/php/fpm-logging.conf /usr/local/etc/php-fpm.d/zz-hhbd-logging.conf
 
 WORKDIR /var/www/html/app
 
-# Copy composer files first for layer caching
+# Composer files first, so the dependencies' layer survives a change to the code. Without the
+# log handlers production.ini prepends, which are not here before the code is.
 COPY app/composer.json app/composer.lock* ./
+RUN php -d auto_prepend_file= /usr/bin/composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
-
-# Copy application code
 COPY app/ ./
-
-# Fix file permissions (ensure files are readable)
 RUN find . -type f -exec chmod 644 {} \; && find . -type d -exec chmod 755 {} \;
 
-# Copy production PHP configuration
-COPY conf/php/production.ini /usr/local/etc/php/conf.d/99-production.ini
-
 # =============================================================================
-# Stage 2: Production - minimal runtime without GD dependencies
+# Production: base with the application. Composer stays, as the local compose file mounts app/
+# over it and installs vendor/ with it there.
 # =============================================================================
-FROM php:7.4-fpm as production
+FROM base AS production
 
-# Bullseye's packages from the archive, as in the builder stage
-RUN sed -i 's|http://deb.debian.org|http://archive.debian.org|g' /etc/apt/sources.list
-
-# Install only runtime system dependencies (no GD libraries)
-RUN apt-get update && apt-get install -y \
-    libfcgi-bin \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install only essential PHP extensions (no GD)
-RUN docker-php-ext-install pdo pdo_mysql
-
-# Copy Composer from official image
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# Copy php-fpm-healthcheck from builder
-COPY --from=builder /usr/local/bin/php-fpm-healthcheck /usr/local/bin/php-fpm-healthcheck
-
-# Copy PHP-FPM configuration from builder
-COPY --from=builder /usr/local/etc/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
-COPY --from=builder /usr/local/etc/php-fpm.d/zz-hhbd-logging.conf /usr/local/etc/php-fpm.d/zz-hhbd-logging.conf
-
-WORKDIR /var/www/html
-
-# Copy built application from builder stage (includes vendor/, all code, correct permissions)
 COPY --from=builder /var/www/html/app ./app
 
-# Copy production PHP configuration
-COPY conf/php/production.ini /usr/local/etc/php/conf.d/99-production.ini
-
 # =============================================================================
-# Stage 3: Importer - the import job (#56), the one image with GD in production
+# Importer: the import job (#56). It writes the cover, photo and logo sizes from the one
+# original a batch ships (#96), so it needs GD, for JPEG, PNG and WebP; the web's image stays
+# without. It runs and exits: the CLI is enough, FPM in the layer below costs nothing extra.
 # =============================================================================
-# It writes the cover, photo and logo sizes from the one original a batch ships (#96), so it
-# needs GD for the formats originals come in: JPEG, PNG and WebP. It runs and exits, so it is
-# PHP's CLI image, not FPM, and the web image stays without GD.
-# Debian's own PHP 7.4 with GD, from packages: nothing to compile. The official image builds
-# GD from source on every build that misses the layer cache, which was a minute of each CI run
-# and release. Bullseye's PHP is the same 7.4.33 the app's image runs.
-FROM debian:bullseye-slim as importer
+FROM base AS importer
 
-# Bullseye's packages from the archive, as in the builder stage
-RUN sed -i 's|http://deb.debian.org|http://archive.debian.org|g' /etc/apt/sources.list \
-    && apt-get update && apt-get install -y --no-install-recommends \
-    php7.4-cli \
-    php7.4-gd \
-    php7.4-json \
-    php7.4-mbstring \
-    php7.4-mysql \
-    php7.4-xml \
+RUN apt-get update && apt-get install -y --no-install-recommends php8.4-gd \
     && rm -rf /var/lib/apt/lists/* \
     && php -r 'exit((extension_loaded("pdo_mysql") && gd_info()["JPEG Support"] && gd_info()["PNG Support"] && gd_info()["WebP Support"]) ? 0 : 1);'
 
-WORKDIR /var/www/html
-
 COPY --from=builder /var/www/html/app ./app
-
-COPY conf/php/production.ini /etc/php/7.4/cli/conf.d/99-production.ini
 # A decoded original takes four bytes a pixel, a 6000 x 4000 photo 96 MB, beside the copy being
 # scaled; the web's 256M leaves too little room for that. zz- loads it after 99-production.ini.
-RUN echo "memory_limit = 512M" > /etc/php/7.4/cli/conf.d/zz-importer.ini
+RUN echo "memory_limit = 512M" > /etc/php/8.4/cli/conf.d/zz-importer.ini
 
 # A batch arrives as a tar on stdin, so it reaches the OVH host over ssh without a copy left
 # there, and the report leaves on stdout: make import and make ovh-import stream it alike.
 # Without an argument it is a dry run.
+STOPSIGNAL SIGTERM
 ENTRYPOINT ["sh", "-c", "mkdir -p /tmp/batch && tar -x -C /tmp/batch && exec php app/tools/import.php /tmp/batch \"$@\"", "import"]
 CMD ["--dry-run"]
