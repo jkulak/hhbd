@@ -1,0 +1,1 @@
+<?php foreach ($this->album->getMainCredits() as $i => $credit): ?><?php if ($i > 0): ?> &amp; <?php endif ?><?php echo $this->partial('artist/_link.phtml', array('artist' => $credit['artist'])) ?><?php endforeach ?>

@@ -33,12 +33,84 @@ class Model_Album_Api extends Jkl_Model_Api
      */
     public function getList($query)
     {
-        $result = $this->_db->fetchAll($query);
         $albums = new Jkl_List();
-        foreach ($result as $params) {
+        foreach ($this->_withCredits($this->_db->fetchAll($query)) as $params) {
             $albums->add(new Model_Album_Container($params));
         }
         return $albums;
+    }
+
+    /**
+     * One row per album, in the order the query gave them, though a query joining
+     * album_artist_lookup gives one per credited artist; each with every artist credited on
+     * it, so an album by two artists is listed once and names both (#58).
+     */
+    private function _withCredits(array $rows)
+    {
+        $albums = array();
+        foreach ($rows as $row) {
+            if (!isset($row['alb_id'])) {
+                $albums[] = $row;
+            } elseif (!isset($albums[(int) $row['alb_id']])) {
+                $albums[(int) $row['alb_id']] = $row;
+            }
+        }
+        $credits = $this->getCredits(array_keys($albums));
+        foreach ($albums as $id => $row) {
+            if (isset($credits[$id])) {
+                $albums[$id]['credits'] = $credits[$id];
+            }
+        }
+        return array_values($albums);
+    }
+
+    /**
+     * The artists credited on each album, as creditsByAlbum() orders them.
+     *
+     * @param int[] $albumIds
+     * @return array album id => credits
+     */
+    public function getCredits(array $albumIds)
+    {
+        $albumIds = array_filter(array_unique(array_map('intval', $albumIds)));
+        if (empty($albumIds)) {
+            return array();
+        }
+        // Joined to artists, as the lists always were, so a credit naming no artist is skipped.
+        $rows = $this->_db->fetchAll(
+            'SELECT l.* FROM album_artist_lookup l JOIN artists a ON a.id = l.artistid
+              WHERE l.albumid IN (' . implode(',', $albumIds) . ')'
+        );
+        return self::creditsByAlbum($rows);
+    }
+
+    /**
+     * album_artist_lookup rows as each album's credits: main artists before featured ones, then
+     * by position once migration 0015 adds the column, and by artist id, the order the pages
+     * have always picked the first artist in. Without the columns every credit is a main one
+     * under the artist's own name.
+     *
+     * @return array album id => list of array('artistid', 'role', 'position', 'credited_as')
+     */
+    public static function creditsByAlbum(array $rows)
+    {
+        $byAlbum = array();
+        foreach ($rows as $row) {
+            $byAlbum[(int) $row['albumid']][] = array(
+                'artistid'    => (int) $row['artistid'],
+                'role'        => (isset($row['role']) && 'featured' === $row['role']) ? 'featured' : 'main',
+                'position'    => isset($row['position']) ? (int) $row['position'] : 1,
+                'credited_as' => (isset($row['credited_as']) && '' !== trim($row['credited_as'])) ? $row['credited_as'] : null,
+            );
+        }
+        foreach ($byAlbum as $id => $credits) {
+            usort($credits, function ($a, $b) {
+                return array('featured' === $a['role'], $a['position'], $a['artistid'])
+                    <=> array('featured' === $b['role'], $b['position'], $b['artistid']);
+            });
+            $byAlbum[$id] = $credits;
+        }
+        return $byAlbum;
     }
 
     public function find($id, $full = false)
@@ -49,6 +121,10 @@ class Model_Album_Api extends Jkl_Model_Api
         "WHERE (t3.id=t2.artistid AND t2.albumid=t1.id AND t1.id='" . $id . "')";
         $result = $this->_db->fetchAll($query);
         $params = $result[0];
+        $credits = $this->getCredits(array($id));
+        if (isset($credits[$id])) {
+            $params['credits'] = $credits[$id];
+        }
         if ($full) {
             $params['tracklist'] = Model_Song_Api::getInstance()->getTracklist($id);
             $params['eps'] = $this->getEps($id);
@@ -92,6 +168,7 @@ class Model_Album_Api extends Jkl_Model_Api
         $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id as lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
           'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
           'WHERE (t3.title LIKE "%' . $like . '%" AND t1.id=t2.artistid AND t2.albumid=t3.id) ' .
+          'GROUP BY t3.id ' .
           'ORDER BY t3.viewed DESC' .
           (($limit != null) ? ' LIMIT ' . $limit : '') .
           ' OFFSET ' . ($page * $limit);
@@ -120,6 +197,7 @@ class Model_Album_Api extends Jkl_Model_Api
         $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id as lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
           'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
           'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id) ' .
+          'GROUP BY t3.id ' .
           'ORDER BY t3.viewed DESC ' .
           'LIMIT ' . $count;
         return $this->getList($query);
@@ -131,6 +209,7 @@ class Model_Album_Api extends Jkl_Model_Api
         $query = 'SELECT *, t1.id AS alb_id, t2.rating AS rating, t3.artistid AS art_id, t4.id AS lab_id ' .
           'FROM albums t1 LEFT JOIN labels t4 ON t4.id=t1.labelid, ratings_avg t2, album_artist_lookup t3 ' .
           'WHERE (t1.id=t2.albumid AND t3.albumid=t1.id) ' .
+          'GROUP BY t1.id ' .
           'ORDER BY t2.rating DESC ' .
           'LIMIT ' . $count;
         return $this->getList($query);
@@ -146,6 +225,7 @@ class Model_Album_Api extends Jkl_Model_Api
         $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id as lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
           'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
           'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t3.year' . '<="' . date('Y-m-d') . '") ' .
+          'GROUP BY t3.id ' .
           'ORDER BY t3.year DESC ' .
           'LIMIT ' . $count . ' ' .
           'OFFSET ' . ($page * $count);
@@ -159,6 +239,7 @@ class Model_Album_Api extends Jkl_Model_Api
         $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id AS lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
           'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
           'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t3.year' . '>"' . date('Y-m-d') . '") ' .
+          'GROUP BY t3.id ' .
           'ORDER BY t3.year ASC ' .
           'LIMIT ' . $count . ' ' .
           'OFFSET ' . ($page * $count);
@@ -226,6 +307,7 @@ class Model_Album_Api extends Jkl_Model_Api
           'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t4.id="' . $id . '"' .
           $excludeCondition .
           ') ' .
+          'GROUP BY t3.id ' .
           'ORDER BY t3.viewed DESC ' .
           'LIMIT ' . $count;
         return $this->getList($query);
@@ -267,7 +349,7 @@ class Model_Album_Api extends Jkl_Model_Api
               FROM albums t1, artists t2, album_artist_lookup t3
               WHERE (t2.id=t3.artistid AND t1.id=t3.albumid AND (
               ' . implode(' OR ', $condition) . ')
-              )' .
+              ) GROUP BY t1.id' .
                   (($limit != null) ? ' LIMIT ' . $limit : '');
 
         return $this->getList($query);
@@ -295,7 +377,7 @@ class Model_Album_Api extends Jkl_Model_Api
               FROM albums t1, artists t2, album_artist_lookup t3
               WHERE (t2.id=t3.artistid AND t1.id=t3.albumid AND (
               ' . implode(' OR ', $condition) . ')
-              )' .
+              ) GROUP BY t1.id' .
                   (($limit != null) ? ' LIMIT ' . $limit : '');
 
         return $this->getList($query);
@@ -323,7 +405,7 @@ class Model_Album_Api extends Jkl_Model_Api
               FROM albums t1, artists t2, album_artist_lookup t3
               WHERE (t2.id=t3.artistid AND t1.id=t3.albumid AND (
               ' . implode(' OR ', $condition) . ')
-              )' .
+              ) GROUP BY t1.id' .
                   (($limit != null) ? ' LIMIT ' . $limit : '');
 
         return $this->getList($query);
@@ -337,7 +419,7 @@ class Model_Album_Api extends Jkl_Model_Api
         $query = "SELECT *, t1.id as alb_id, t3.id as art_id  
               FROM albums t1, album_lookup t2, artists t3, album_artist_lookup t4 
               WHERE (t1.id=t2.albumid AND t2.songid='$id' AND t4.albumid=t1.id AND t4.artistid=t3.id)
-              " .
+              GROUP BY t1.id" .
                   (($limit != null) ? ' LIMIT ' . $limit : '');
         return $this->getList($query);
     }
@@ -349,6 +431,7 @@ class Model_Album_Api extends Jkl_Model_Api
         $query = "SELECT *, t1.id AS alb_id, t3.id AS art_id
     FROM albums t1, `album_artist_lookup` t2, `artists` t3
     WHERE (t3.`id`=t2.`artistid` AND t1.`id`=t2.`albumid` AND t1.`labelid`=$id)
+    GROUP BY t1.`id`
     ORDER BY t1.`year` DESC" .
         (($limit != null) ? ' LIMIT ' . $limit : '');
         return $this->getList($query);
@@ -386,6 +469,7 @@ class Model_Album_Api extends Jkl_Model_Api
         $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id as lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
           'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
           'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id) ' .
+          'GROUP BY t3.id ' .
           'ORDER BY t3.added DESC ' .
           'LIMIT ' . $limit;
         return $this->getList($query);
