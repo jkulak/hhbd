@@ -702,6 +702,17 @@ INSERT INTO `feature_lookup` (`songid`, `artistid`, `feattype`, `status`) VALUES
 (9, 42, 2, 999),
 (10, 42, 0, 999);
 
+-- ============================================
+-- 22. RELEASE TYPES and media, which migration 0014 types (#53)
+-- Muzyka Poważna (2) is flagged as a single and has two tracks: it becomes a single. Morska
+-- Bryza (46) precedes album 2 and has no tracks: it becomes an EP. Leśna Ścieżka (47) is a
+-- nielegal, and Superextra (535) came out on CD and LP.
+-- ============================================
+UPDATE `albums` SET `singiel` = 1 WHERE `id` = 2;
+UPDATE `albums` SET `epfor` = 2 WHERE `id` = 46;
+UPDATE `albums` SET `legal` = 'n' WHERE `id` = 47;
+UPDATE `albums` SET `media_cd` = 1, `media_lp` = 1 WHERE `id` = 535;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================

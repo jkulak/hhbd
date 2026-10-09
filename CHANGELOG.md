@@ -14,6 +14,12 @@ decision; nothing tags on its own.
   release tags alone, instead of reading it from repository secrets any branch could read.
 
 ### Added
+- Albums have a release type (album, EP, mixtape, compilation, beat tape, single, other) and a
+  digital medium with its catalog number (#53). Migration 0014 adds the columns and types the
+  albums `singiel` or `epfor` flagged: 12 singles (one to three tracks) and 60 EPs on
+  production. The album page and the album lists show the type and `[nielegal]` next to the
+  title, and the page lists the media; the catalog number falls back to the LP's, the
+  cassette's or the digital one when there is no CD number.
 - `Model_FeatType_Api::resolve()` finds a credit's role by name, whatever its case, and adds a
   role nobody has used yet, so imported credits named "Rap" or "Cuty" land on one row each
   (#66).

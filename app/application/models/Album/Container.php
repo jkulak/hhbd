@@ -11,12 +11,44 @@
 
 class Model_Album_Container
 {
+    /**
+     * What a page shows next to the title for each release type; nothing for an album.
+     */
+    public const RELEASE_TYPE_LABELS = array(
+        'album'       => null,
+        'ep'          => 'EP',
+        'mixtape'     => 'mixtape',
+        'compilation' => 'kompilacja',
+        'beat_tape'   => 'beat tape',
+        'single'      => 'singiel',
+        'other'       => null,
+    );
+
+    /**
+     * The media a release came out on, in the order a page lists them.
+     */
+    public const MEDIA = array(
+        'media_cd'      => 'CD',
+        'media_lp'      => 'LP',
+        'media_mc'      => 'MC',
+        'media_digital' => 'cyfrowo',
+    );
+
     public $id;
     public $title;
     public $artist;
     public $releaseDate;
     public $cover;
     public $autoDescription = null;
+
+    /** album, ep, mixtape, compilation, beat_tape, single or other */
+    public $releaseType = 'album';
+    /** The type as a page shows it ("EP"), or null for an album */
+    public $releaseTypeLabel;
+    /** The media it came out on, as a page lists them: CD, LP, MC, cyfrowo */
+    public $media = array();
+    /** False for a nielegal, a release that came out without a publisher's licence */
+    public $legal = true;
 
     public function __construct($params, $full = false)
     {
@@ -43,11 +75,15 @@ class Model_Album_Container
             $this->legal = ($params['legal'] == 'y') ? true : false;
         }
 
+        $this->releaseType = self::releaseTypeOf($params);
+        $this->releaseTypeLabel = self::RELEASE_TYPE_LABELS[$this->releaseType];
+        $this->media = self::mediaOf($params);
+
         $this->releaseDate = $params['year'];
         $this->year = substr($params['year'], 0, 4);
         $this->releaseDateNormalized = Jkl_Tools_Date::getNormalDate($this->releaseDate);
 
-        $this->catalogNumber = (!empty($params['catalog_cd']) ? $params['catalog_cd'] : null);
+        $this->catalogNumber = self::catalogNumberOf($params);
 
         if (!empty($params['epfor'])) {
             $this->epFor = $params['epfor'];
@@ -116,6 +152,52 @@ class Model_Album_Container
             'album',
             true
         );
+    }
+
+    /**
+     * The release type of a row: release_type, or before migration 0014 added it, an EP for any
+     * album that singiel or epfor marked, as the page showed them.
+     *
+     * @return string
+     */
+    public static function releaseTypeOf(array $params)
+    {
+        if (!empty($params['release_type']) && array_key_exists($params['release_type'], self::RELEASE_TYPE_LABELS)) {
+            return $params['release_type'];
+        }
+        return (!empty($params['singiel']) || !empty($params['epfor'])) ? 'ep' : 'album';
+    }
+
+    /**
+     * The media a row says the release came out on, in the page's order.
+     *
+     * @return string[]
+     */
+    public static function mediaOf(array $params)
+    {
+        $media = array();
+        foreach (self::MEDIA as $column => $label) {
+            if (!empty($params[$column])) {
+                $media[] = $label;
+            }
+        }
+        return $media;
+    }
+
+    /**
+     * The catalog number a page shows: the CD's, else the LP's, the cassette's or the digital
+     * release's, so a release without a CD still shows its number.
+     *
+     * @return string|null
+     */
+    public static function catalogNumberOf(array $params)
+    {
+        foreach (array('catalog_cd', 'catalog_lp', 'catalog_mc', 'catalog_digital') as $column) {
+            if (!empty($params[$column])) {
+                return $params[$column];
+            }
+        }
+        return null;
     }
 
     /**
