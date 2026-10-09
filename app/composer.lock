@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "264aa5660d1579fa5e97176ddedb3588",
+    "content-hash": "ee61cf071254427015a63ff8bf4761d7",
     "packages": [
         {
             "name": "shardj/zf1-future",
@@ -4989,7 +4989,7 @@
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
-        "php": "^7.4"
+        "php": "^8.4"
     },
     "platform-dev": {},
     "plugin-api-version": "2.9.0"
