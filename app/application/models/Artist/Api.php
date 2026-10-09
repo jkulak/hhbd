@@ -157,6 +157,9 @@ class Model_Artist_Api extends Jkl_Model_Api
         $id = intval($id);
         $query = 'select *, id as art_id from artists where id=' . $id;
         $result = $this->_db->fetchAll($query);
+        if (empty($result)) {
+            return null;
+        }
         $params = $result[0];
 
         if ($full) {

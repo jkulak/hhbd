@@ -42,6 +42,12 @@ class LabelController extends Zend_Controller_Action
         $label->artists = implode(', ', array_unique($artists));
         $label->autoDescription = $this->_generateDescription($label);
         $this->view->label = $label;
+        // What an import left to settle about it, for an admin's eyes only (#103).
+        if ($this->view->IsAdmin()) {
+            $this->getResponse()->setHeader('Cache-Control', 'private, no-store', true);
+            $this->view->reviewItems = Model_Review_Api::getInstance()->openFor('label', (int) $label->id);
+            $this->view->reviewMessages = $this->_helper->flashMessenger->getMessages();
+        }
         $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . '/' . $canonicalSlug;
 
         $this->view->comments = Model_Comment_Api::getInstance()->getComments($label->id, Model_Comment_Container::TYPE_LABEL);

@@ -125,7 +125,8 @@ typed confirmation. [deploy/README.md](../deploy/README.md) has the order.
 The catalogue is `utf8mb4` with `utf8mb4_polish_ci` (0021, #71): any character fits, "Żabson"
 and "Zabson" are two names while "żabson" is "Żabson", and `ORDER BY name` follows the Polish
 alphabet. Tables that hold identifiers compare bytes instead (`utf8mb4_bin`: `external_ids`,
-`import_runs`, `import_provenance`, `migration_archive`, `album_covers`), and the runner's
+`import_runs`, `import_provenance`, `migration_archive`, `album_covers`, `review_items`,
+`artist_merges`), and the runner's
 `schema_migrations` keeps its own. A new table says which of the two it is. The application
 connects with `utf8mb4` too; MariaDB's `utf8` is the three-byte `utf8mb3`.
 
@@ -156,6 +157,33 @@ several artists, it names none of them (see [docs/import.md](../docs/import.md))
 0022's down folds each qualifier into the name, "Solar (SBM Label)", so the old key on the name
 holds. It keeps the pair in `migration_archive`, and the up splits it again. Before it changes
 anything, the down refuses if a folded name is one another artist already has.
+
+## Review items
+
+`review_items` (0023, #103) holds what an import left for a person to settle:
+- `entity_type` and `entity_id` say which row the item is about;
+- `reason` is one of `Model_Review_Api::REASONS`;
+- `detail` is JSON with what the doubt is: suggested artists, or the sources' values;
+- `run_id` is the run that opened the item.
+
+An item is open until `resolved` is set, together with `resolved_by` (the admin, or 1100 for the
+import), `resolution` and a `note`. A row has at most one open item per reason.
+
+An admin settles an item on the page it is about, through a form with the session's token
+(`Jkl_Csrf`). The action and the item's resolution happen in one transaction, and the row
+records the admin in `updatedby`.
+
+**Merging an artist into another** moves the duplicate's references and removes it:
+- every column in `Model_Review_Api::ARTIST_COLUMNS` is pointed at the artist kept, and so is
+  every row in `ARTIST_ENTITIES` that names the duplicate by type and id;
+- a reference the kept artist already has is dropped rather than doubled;
+- the duplicate row is deleted, and `artist_merges` sends its old URL to the kept artist's page
+  with a 301;
+- the item's `undo_data` keeps the deleted row and every row moved or dropped, so the merge can be
+  taken back by hand.
+
+`tests/review-test.sh` checks that every `artistid`, `bandid` and `aid` column in the schema is
+on the list. A new table that points at an artist goes on it too.
 
 ## Audit columns
 

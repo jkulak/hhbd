@@ -37,6 +37,11 @@ class ArtistController extends Zend_Controller_Action
     // View artist detail page
     public function viewAction()
     {
+        // An artist merged into another (#103) answers with the page of the one it became.
+        $into = Model_Review_Api::getInstance()->mergedInto($this->params['id']);
+        if (null !== $into) {
+            $this->_helper->redirector->gotoUrl(Model_Artist_Api::getInstance()->find($into)->getUrl(), array('code' => 301));
+        }
         $artist = Model_Artist_Api::getInstance()->find($this->params['id'], true);
 
         // Build canonical URL and redirect if current URL doesn't match
@@ -64,6 +69,12 @@ class ArtistController extends Zend_Controller_Action
         $artist->autoDescription = $this->generateDescription($artist);
 
         $this->view->artist = $artist;
+        // What an import left to settle about it, for an admin's eyes only (#103).
+        if ($this->view->IsAdmin()) {
+            $this->getResponse()->setHeader('Cache-Control', 'private, no-store', true);
+            $this->view->reviewItems = Model_Review_Api::getInstance()->openFor('artist', (int) $artist->id);
+            $this->view->reviewMessages = $this->_helper->flashMessenger->getMessages();
+        }
         $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . '/' . $canonicalSlug;
 
         $this->view->comments = Model_Comment_Api::getInstance()->getComments($artist->id, Model_Comment_Container::TYPE_ARTIST);
