@@ -206,9 +206,13 @@ class Model_Review_Api extends Jkl_Model_Api
         $this->touch('albums', $albumId, $userId);
     }
 
+    /** The row's updatedby is the admin's users row (#132); resolved_by stays their account */
     private function touch($table, $id, $userId)
     {
-        $this->_db->query("UPDATE `$table` SET updatedby = ?, updated = NOW() WHERE id = ?", array((int) $userId, (int) $id));
+        $this->_db->query(
+            "UPDATE `$table` SET updatedby = ?, updated = NOW() WHERE id = ?",
+            array(Model_Audit_Api::getInstance()->userIdFor($userId), (int) $id)
+        );
     }
 
     /** The artist a merged one became, following merges of merges; null for one never merged */
