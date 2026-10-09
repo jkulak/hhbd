@@ -1,5 +1,6 @@
 <?php
 
+#[\AllowDynamicProperties]
 class StatController extends Zend_Controller_Action
 {
   

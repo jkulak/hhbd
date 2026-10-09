@@ -590,7 +590,7 @@ run: an import run with provenance, and external ids.
 |-------|---------|-------|
 | artists | 51 | Including Pezet, Eldo, Mes (ID 35), etc.; `fixtures-latest.sql` adds two Solars (64, 65) with qualifiers and their band (66) |
 | albums | 50 | Including "Jestem Hip Hopem", Superextra (ID 535) |
-| songs | 32 | Including Pogoda (ID 7329) with features, and 6190 stored mangled for 0031 (#27) |
+| songs | 33 | Including Pogoda (ID 7329) with features, 6190 stored mangled for 0031 (#27), and 9100 on no album and by no artist (#37) |
 | labels | 15 | Including Alkopoligamia (ID 58), Asfalt |
 | news | 6 | Including ID 1877 (Onar article) |
 | artists_photos | 30 | Linked to main artists |

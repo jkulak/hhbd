@@ -9,6 +9,7 @@
  * @package default
  **/
 
+#[\AllowDynamicProperties]
 class Model_Song_Container
 {
     public $lyrics = '';

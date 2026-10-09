@@ -9,6 +9,7 @@
  * @package default
  **/
 
+#[\AllowDynamicProperties]
 class Model_User_Container
 {
     private $_id;

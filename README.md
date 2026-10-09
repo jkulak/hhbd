@@ -63,7 +63,7 @@ Production runs on the shared OVH host, behind its Caddy edge and Cloudflare, si
 
 ### Dev Container (Recommended)
 
-The project includes a VS Code Dev Container for a consistent PHP 7.4 development environment.
+The project includes a VS Code Dev Container for a consistent PHP 8.4 development environment, from Debian 13's packages as the images have it.
 
 **Prerequisites:**
 
@@ -78,9 +78,9 @@ The project includes a VS Code Dev Container for a consistent PHP 7.4 developmen
 
 **Included tools:**
 
-- PHP 7.4 with GD, MySQLi, PDO extensions
+- PHP 8.4 with GD, MySQLi, PDO extensions
 - Composer 2
-- Xdebug 3.1 (pre-configured for VS Code debugging)
+- Xdebug 3 (pre-configured for VS Code debugging)
 - PHP CodeSniffer
 
 **Running tests in dev container:**
@@ -215,7 +215,7 @@ HHBD is a content management system for Polish hip-hop music featuring:
 | Component  | Technology                            |
 | ---------- | ------------------------------------- |
 | Framework  | Zend Framework 1 (shardj/zf1-future)  |
-| Language   | PHP 7.4+                              |
+| Language   | PHP 8.4                               |
 | Database   | MariaDB 10.11                         |
 | Web Server | Nginx + PHP-FPM                       |
 

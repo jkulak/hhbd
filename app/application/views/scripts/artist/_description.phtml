@@ -7,7 +7,7 @@
   <?php echo $this->artist->name ?> 
 
   <?php if (!empty($this->artist->alsoKnownAs->items)): ?>
-    znany jest także jako <?php echo implode($this->artist->alsoKnownAs->items, ', ') ?>
+    znany jest także jako <?php echo implode(', ', $this->artist->alsoKnownAs->items) ?>
   <?php endif ?>
 
   <?php if (!empty($this->artist->realName)): ?>

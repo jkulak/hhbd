@@ -214,6 +214,8 @@ INSERT INTO `songs` (`id`, `title`, `lyrics`, `status`, `viewed`) VALUES
 (7329, 'Pogoda', 'Słońce świeci jasno nad miastem...', 999, 5000),
 -- ISO-8859-2 read as latin-1, as production had it; 0031 repairs it by its id (#27)
 (6190, 'W³a¶nie tak siê bawi...', '', 999, 0),
+-- On no album and by no artist, as three old songs on production are: its page is a 404 (#37)
+(9100, 'Bez albumu', '', 999, 0),
 -- Additional songs for Top10
 (1, 'Intro', 'Witamy w świecie hip-hopu...', 999, 8000),
 (2, 'Ulice', 'Chodzę po ulicach miasta...', 999, 7500),

@@ -92,7 +92,7 @@ class Jkl_Log
                 return false;
             }
             $level = ($number & (E_WARNING | E_USER_WARNING | E_CORE_WARNING | E_COMPILE_WARNING)) ? 'warn'
-                : (($number & (E_NOTICE | E_USER_NOTICE | E_DEPRECATED | E_USER_DEPRECATED | E_STRICT)) ? 'info' : 'error');
+                : (($number & (E_NOTICE | E_USER_NOTICE | E_DEPRECATED | E_USER_DEPRECATED)) ? 'info' : 'error');
             $e = new ErrorException($message, 0, $number, $file, $line);
             self::write($level, $message, array('logger' => $logger) + self::describe($e));
             return true;
