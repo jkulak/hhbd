@@ -7,27 +7,11 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
-### Changed
-- An album can be credited to several artists (#58). Migration 0015 adds a role, a position and
-  a credited name to each credit. Album lists show such an album once instead of once per
-  artist, name it after all its main artists ("Pezet & Eldo"), and the album page links each
-  of them; titles, Open Graph and the page's description name them all. List queries group by
-  album, so a limit of ten shows ten albums.
-- Tracklists read a track's disc from a disc column once it exists, and from the old
-  disc * 100 + position encoding until then (#59, first step); an album of several discs is
-  numbered 1-01, 2-01 either way. The migration that adds the column can follow this release.
-- An album without a label shows in every album list and its page renders, with the label left
-  out of its description (#55, first step). Lists joined labels with an inner join, so an
-  album with no label vanished from them; the placeholder label "BRAK" (27) now reads as no
-  label too, so the 247 albums on it no longer say "wydany przez wytwórnię ," with no name.
-- Release dates are shown to the precision they are known, read from a precision column once
-  it exists and from the zero parts of the date until then (#54, first step). Nothing on the
-  pages changes yet: this release reads both shapes, so the migration that stores dates with a
-  precision can follow it.
-- `deploy/compose.ovh.yaml` labels what the host's nightly backup takes: the database on `db`,
-  dumped with the root password the container already has, and the `content` volume on `nginx`.
-- The release job runs in the `production` environment, which keeps the deploy key and admits
-  release tags alone, instead of reading it from repository secrets any branch could read.
+## 2026.10.1 — 2026-10-09
+
+The catalog made ready for the import from hhbd-content: external ids, provenance, release
+types, several artists per album, and the clean-ups the data needed. It also reads the old and
+the new shape of dates, labels and discs, so the migrations that change those can follow it.
 
 ### Added
 - Albums have a release type (album, EP, mixtape, compilation, beat tape, single, other) and a
@@ -65,8 +49,44 @@ decision; nothing tags on its own.
   vocabulary and the rules.
 - `Jkl_Db::fetchAll()` and `query()` take bound values, so new code passes values from outside
   sources as parameters instead of escaping them into the query.
+- Database migrations: plain SQL in `database/migrations/`, an `up` and a `down` each, applied
+  in order and recorded in the database by `scripts/migrate.sh`. `make migrate`,
+  `make migrate-down`, `make migrate-status` and `make migrate-new` for the local database;
+  `make ovh-migrate` and its siblings for production, where `make ovh-migrate-baseline` once
+  records the schema production already has. `0001-baseline` is that schema: the dump the tests
+  loaded until now, completed with the six `urlname` columns production has and the dump
+  lacked, which the first `baseline` on production brought to light. `make migrate` refuses a
+  database that has tables but no record, and
+  `baseline` checks every column it would create is there. `make test-migrate` exercises the
+  runner against the live stack, and CI runs it after the smoke test (#42).
+- `make reset-db` drops the local `hhbd` database and builds it again the way production's is:
+  the baseline from the migrations, the fixtures onto it, every later migration over that data.
+  It takes a few seconds, leaves the containers and the volume alone, and refuses a Docker
+  engine that is not local, a project with no running db, and a db container started from
+  another directory or from production's compose file. `make test-reset-db` checks it, and CI
+  runs that after the smoke test (#38).
 
 ### Changed
+- An album can be credited to several artists (#58). Migration 0015 adds a role, a position and
+  a credited name to each credit. Album lists show such an album once instead of once per
+  artist, name it after all its main artists ("Pezet & Eldo"), and the album page links each
+  of them; titles, Open Graph and the page's description name them all. List queries group by
+  album, so a limit of ten shows ten albums.
+- Tracklists read a track's disc from a disc column once it exists, and from the old
+  disc * 100 + position encoding until then (#59, first step); an album of several discs is
+  numbered 1-01, 2-01 either way. The migration that adds the column can follow this release.
+- An album without a label shows in every album list and its page renders, with the label left
+  out of its description (#55, first step). Lists joined labels with an inner join, so an
+  album with no label vanished from them; the placeholder label "BRAK" (27) now reads as no
+  label too, so the 247 albums on it no longer say "wydany przez wytwórnię ," with no name.
+- Release dates are shown to the precision they are known, read from a precision column once
+  it exists and from the zero parts of the date until then (#54, first step). Nothing on the
+  pages changes yet: this release reads both shapes, so the migration that stores dates with a
+  precision can follow it.
+- `deploy/compose.ovh.yaml` labels what the host's nightly backup takes: the database on `db`,
+  dumped with the root password the container already has, and the `content` volume on `nginx`.
+- The release job runs in the `production` environment, which keeps the deploy key and admits
+  release tags alone, instead of reading it from repository secrets any branch could read.
 - MariaDB's caches fit an all-InnoDB database (#67): the MyISAM key cache is 8 MB instead of
   128 MB, since no table uses it, and the Aria page cache, which holds on-disk temporary
   tables, 32 MB instead of 128 MB. The InnoDB buffer pool stays at 96 MB, about three times
@@ -79,6 +99,15 @@ decision; nothing tags on its own.
 - The archived admin panels (`admin/`, `xadmin/` on `backoffice-archive`) are abandoned for
   good: not updated, not revived, and nothing has to stay compatible with them. A future
   backoffice gets written from scratch.
+- `hhbd.pl` and `www.hhbd.pl` are served from the shared OVH host since 2026-10-08, behind
+  Cloudflare in Full (strict), with a Let's Encrypt certificate at the origin and every
+  connection that does not come from Cloudflare dropped.
+- The docs describe the repo as it is: the backoffice is archived on the branch
+  `backoffice-archive` and nothing runs it, the dev stack has four services, CI runs on pull
+  requests, and production runs on the OVH host (#36).
+- CI sets its database up with `make reset-db`, like a developer does, instead of through
+  MariaDB's init scripts; `database/tests/01-schema.sql` became the baseline migration and
+  `02-test-fixtures.sql` is `database/tests/fixtures.sql` (#42).
 
 ### Fixed
 - The sitemaps answer again: every `sitemap-*.xml` failed with a parse error, since the
@@ -112,41 +141,12 @@ decision; nothing tags on its own.
   views update those rows. Migrations 0002 to 0004, each with a down; `database/README.md` says
   what every audit column means, and `make test-schema` checks it in CI (#48).
 
-### Added
-- Database migrations: plain SQL in `database/migrations/`, an `up` and a `down` each, applied
-  in order and recorded in the database by `scripts/migrate.sh`. `make migrate`,
-  `make migrate-down`, `make migrate-status` and `make migrate-new` for the local database;
-  `make ovh-migrate` and its siblings for production, where `make ovh-migrate-baseline` once
-  records the schema production already has. `0001-baseline` is that schema: the dump the tests
-  loaded until now, completed with the six `urlname` columns production has and the dump
-  lacked, which the first `baseline` on production brought to light. `make migrate` refuses a
-  database that has tables but no record, and
-  `baseline` checks every column it would create is there. `make test-migrate` exercises the
-  runner against the live stack, and CI runs it after the smoke test (#42).
-- `make reset-db` drops the local `hhbd` database and builds it again the way production's is:
-  the baseline from the migrations, the fixtures onto it, every later migration over that data.
-  It takes a few seconds, leaves the containers and the volume alone, and refuses a Docker
-  engine that is not local, a project with no running db, and a db container started from
-  another directory or from production's compose file. `make test-reset-db` checks it, and CI
-  runs that after the smoke test (#38).
-
 ### Removed
 - Everything that deployed to Google Cloud: the `env-prod` workflow, `deploy/compose.gcp.yaml`, the
   `deploy/0*.sh` setup and deploy scripts, `deploy/rollback.sh` with its `prod-lkg` tags, and the
   `GCP_SA_KEY` secret. The Google project was deleted on 2026-10-08, the day production moved.
 - The one-off data move from Google (`deploy/ovh-data.sh`, its test and `make ovh-data`) and the
   `make gcp-*` targets, which had nothing left to act on.
-
-### Changed
-- `hhbd.pl` and `www.hhbd.pl` are served from the shared OVH host since 2026-10-08, behind
-  Cloudflare in Full (strict), with a Let's Encrypt certificate at the origin and every
-  connection that does not come from Cloudflare dropped.
-- The docs describe the repo as it is: the backoffice is archived on the branch
-  `backoffice-archive` and nothing runs it, the dev stack has four services, CI runs on pull
-  requests, and production runs on the OVH host (#36).
-- CI sets its database up with `make reset-db`, like a developer does, instead of through
-  MariaDB's init scripts; `database/tests/01-schema.sql` became the baseline migration and
-  `02-test-fixtures.sql` is `database/tests/fixtures.sql` (#42).
 
 ## 2026.10.0 — 2026-10-08
 
