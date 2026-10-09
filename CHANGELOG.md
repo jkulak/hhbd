@@ -7,6 +7,13 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
+## 2026.10.3 — 2026-10-09
+
+The code for migrations 0016 to 0021, which production's database has run under 2026.10.2
+since 2026-10-09, and the importer. Once it is deployed, `make ovh-covers-backfill` and
+`make ovh-photos-backfill` describe the covers and photos already on the content volume, and
+`make ovh-import` can read the first batch.
+
 ### Added
 - The importer (#56): `make import` and `make ovh-import` read a batch from the content project
   into the catalogue, as `docs/import.md` describes. Each document is validated against the
