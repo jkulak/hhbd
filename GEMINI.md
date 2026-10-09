@@ -8,7 +8,7 @@ The project is built on **Zend Framework 1** (specifically the `shardj/zf1-futur
 **Note:** The old admin panel (`backoffice/`) is archived on the branch `backoffice-archive`; nothing runs it, and it will not be revived or kept compatible. Production runs on the shared OVH host (see `deploy/ovh/README.md`).
 
 ## Technology Stack
-*   **Language:** PHP 7.4+ (Targeting PHP 8.x compatibility)
+*   **Language:** PHP 8.4
 *   **Framework:** Zend Framework 1 (`shardj/zf1-future`)
 *   **Database:** MariaDB 10.11
 *   **Frontend:** Legacy jQuery (1.4.4), Custom CSS/JS, `tipsy`

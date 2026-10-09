@@ -3,6 +3,7 @@
 /**
  * One row of import_provenance: a field of a catalog row, and a source that supplied it.
  */
+#[\AllowDynamicProperties]
 class Model_Provenance_Container
 {
     public $entityType;

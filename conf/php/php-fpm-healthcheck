@@ -1,0 +1,6 @@
+#!/bin/sh
+# Healthy when PHP-FPM answers its status page over FastCGI, as nginx reaches it. Written here
+# rather than downloaded: the image used to fetch renatomefi/php-fpm-healthcheck from that
+# project's master branch on every build, whatever was there at the time (#37).
+SCRIPT_NAME=/status SCRIPT_FILENAME=/status REQUEST_METHOD=GET \
+    cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q '^pool:'

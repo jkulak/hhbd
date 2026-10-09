@@ -1,5 +1,6 @@
 <?php
 
+#[\AllowDynamicProperties]
 class SearchController extends Zend_Controller_Action
 {
 

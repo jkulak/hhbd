@@ -1,10 +1,10 @@
-# Copilot Instructions: HHBD (Zend Framework 1, PHP 7.4)
+# Copilot Instructions: HHBD (Zend Framework 1, PHP 8.4)
 
 Purpose: Make an AI agent immediately productive in this codebase by outlining architecture, workflows, and project-specific patterns.
 
 Big picture
 - HHBD (Hip-Hop Database) is a Polish Hip-Hop content management system for music catalog featuring artists, albums, songs, labels, user profiles, comments, ratings, and community features.
-- Legacy PHP 7.4 app using Zend Framework 1 (maintained via shardj/zf1-future) served by Nginx + PHP-FPM.
+- Legacy PHP 8.4 app using Zend Framework 1 (maintained via shardj/zf1-future) served by Nginx + PHP-FPM.
 - Services (Docker Compose): app (PHP-FPM), nginx (8080), db (MariaDB 10.11), adminer (8082).
 - Dockerfile-php uses multi-stage build: 'builder' stage (with GD for test image generation, used in CI), 'production' stage (minimal runtime, used in dev and on the OVH host).
 - Frontend app lives in [app/](app/); entrypoint is [app/public/index.php](app/public/index.php). Config in [app/application/configs/application.ini](app/application/configs/application.ini) and routes in [app/application/configs/routes.xml](app/application/configs/routes.xml).
@@ -61,7 +61,7 @@ Gotchas (do these)
 - **File permissions with mounted volumes**: Dev container workspace is mounted from macOS. Can't `chmod` files - use `bash script.sh` instead of `./script.sh`. Git's `core.fileMode` is set to `true` but chmod may fail silently.
 - **CI bind mount issue**: After `docker compose up` in CI, run `docker compose exec -T app composer install` because bind-mounted `./app` hides the image's vendor/. This is already wired in [.github/workflows/smoke-tests.yml](.github/workflows/smoke-tests.yml).
 - After any container rebuild in dev, run `composer install` (volume hides container vendor).
-- Target PHP 7.4; avoid PHP 8 features. Maintain ZF1 naming/autoloading (PSR-0, `Jkl_` prefix maps to `library/Jkl/`).
+- Target PHP 8.4 (Debian 13's packages, Dockerfile-php). Maintain ZF1 naming/autoloading (PSR-0, `Jkl_` prefix maps to `library/Jkl/`).
 - Polish strings and slugs are common; preserve encoding and diacritics.
 - **Legacy security issues**: Password hashing uses MD5 with salt (should migrate to bcrypt); jQuery 1.4.4 is outdated.
 - **Authentication**: Uses Zend_Auth with database adapter; simple `usr_is_admin` flag for authorization.

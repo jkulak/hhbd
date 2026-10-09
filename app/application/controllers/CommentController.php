@@ -4,6 +4,7 @@ define('MAX_COMMENT_LENGTH', 1000);
 define('MIN_FORM_TIME_SECONDS', 2);  // Minimum time to fill form (bot protection)
 define('CAPTCHA_SALT', 'hhbd_salt_2024');
 
+#[\AllowDynamicProperties]
 class CommentController extends Zend_Controller_Action
 {
     public function init()

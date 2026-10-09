@@ -9,6 +9,7 @@
  * @package default
  **/
 
+#[\AllowDynamicProperties]
 class Model_Comment_Container
 {
   const TYPE_ARTIST = 'p';
