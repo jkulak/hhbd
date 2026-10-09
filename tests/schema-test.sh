@@ -280,10 +280,13 @@ sql "INSERT INTO artists (name, urlname, type, status, trivia, website) VALUES (
 check "names sort in Polish order: L before Ł before M, Z before Ż" "Lux Testowy|Łoś Testowy|Mazur Testowy|Zabson|Zenek Testowy|Żabson" "$(sql "SELECT GROUP_CONCAT(name ORDER BY name SEPARATOR '|') FROM artists WHERE name IN ('Lux Testowy', 'Łoś Testowy', 'Mazur Testowy', 'Zabson', 'Zenek Testowy', 'Żabson')")"
 sql "INSERT INTO artists (id, name, urlname, type, status, trivia, website) VALUES (9001, 'Mikrofon 🎤', 'mikrofon', 'm', 999, '', '')"
 check "a four-byte character comes back from the database" "Mikrofon 🎤" "$(sql "SELECT name FROM artists WHERE id = 9001")"
-if curl -s -L --max-time 10 "$URL/mikrofon-p9001.html" | grep -q '🎤'; then
+# The page whole, then the test: piped into grep -q, which leaves at the first match, curl still
+# writing failed with 23, and pipefail made that a failed check now and then on Linux.
+page=$(curl -s -L --max-time 10 -w '\n%{http_code}' "$URL/mikrofon-p9001.html" || true)
+if [[ "$page" == *🎤* ]]; then
     ok "and from the artist's page"
 else
-    bad "and from the artist's page"
+    bad "and from the artist's page (HTTP ${page##*$'\n'})"
 fi
 # Gone before the down: in utf8mb3_general_ci Zabson and Żabson would be one name, and the
 # microphone could not be stored, so the down would rightly refuse.

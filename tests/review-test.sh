@@ -10,6 +10,7 @@
 #     type" each do what they say and close the item with the admin and the time
 #   - a value that is no date is refused and leaves the item open
 #   - the list counts what is still open
+#   - an admin sees on a page who added its row and when: a person, the import, nobody known
 #
 # It ends with make reset-db, so the database ends as a reset leaves it.
 #
@@ -54,6 +55,18 @@ make -s reset-db >"$T/out" 2>&1 || { bad "make reset-db succeeds"; cat "$T/out";
 curl -s -o /dev/null --max-time 10 -c "$T/jar" --data-urlencode "email=admin@example.com" --data-urlencode "password=adminpass" "$URL/uzytkownik/logowanie.html"
 token=$(curl -s --max-time 10 -b "$T/jar" -c "$T/jar" "$URL/solar-raper-z-poznania-p65.html" | grep -o 'name="token" value="[0-9a-f]*"' | head -1 | sed 's/.*value="//; s/"$//')
 check "the panel's forms carry a token" "64" "${#token}"
+
+echo "> who added a row, and when, on its page"
+# An artist the import added (1100, migration 0008): set here, as in the fixtures it would change
+# what the schema test's README query finds the import added
+sql "UPDATE artists SET added = '2026-10-09 12:00:00', addedby = 1100 WHERE id = 64"
+seen() { curl -s --max-time 10 -b "$T/jar" "$URL$1" | grep -o "Dodano:[^<]*<[^>]*>[^<]*\|Dodano: [^<]*" | head -1 | sed 's/<[^>]*>//g'; }
+check "an album added by a person: when, to the minute, and who" "Dodano: 12 maja 2009, 14:03 (Redakcja Testowa)" "$(seen /wdowa-superextra-a535.html)"
+check "a song, the same" "Dodano: 12 maja 2009, 14:05 (Redakcja Testowa)" "$(seen /pogoda-s7329.html)"
+check "a label whose author is not known" "Dodano: 2 listopada 2008, 09:30 (autor nieznany)" "$(seen /alkopoligamia-l58.html)"
+check "an artist the import added" "Dodano: 9 października 2026, 12:00 (import)" "$(seen /solar-sbm-label-p64.html)"
+check "an artist with neither known" "Dodano: data nieznana (autor nieznany)" "$(seen /mes-p35.html)"
+check "and a visitor not logged in sees none of it" "" "$(curl -s --max-time 10 "$URL/wdowa-superextra-a535.html" | grep -o 'Dodano:' | head -1)"
 
 echo "> forms that do not count"
 check "without the token: refused" "403" "$(settle 3 pick 2013 '' 'not-the-token')"

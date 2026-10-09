@@ -53,6 +53,9 @@
     	   </ul>
   	   </li>
     	<?php endif ?>
+    	<?php if ('' !== ($added = $this->AddedFor('song', $this->song->id))): ?>
+    	  <li>Dodano: <?php echo $added ?></li>
+    	<?php endif ?>
 	  </ul>
 	</div>
 
