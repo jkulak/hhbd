@@ -186,8 +186,17 @@ class Model_Edit_Api extends Jkl_Model_Api
         if ($fromId === $intoId) {
             throw new RuntimeException('An album cannot be merged into itself.');
         }
+        // The kept album keeps the cover it shows: the merged one's files come along, but not as
+        // its main cover, which the page would otherwise take as the newer one.
+        $keepsCover = !empty($this->_db->fetchAll("SELECT id FROM album_covers WHERE albumid = ? AND main = 'y' LIMIT 1", array($intoId)));
         foreach (self::ALBUM_COLUMNS as $table => $columns) {
             foreach ($columns as $column) {
+                if ('album_covers' === $table && $keepsCover) {
+                    foreach ($this->_db->fetchAll('SELECT * FROM album_covers WHERE albumid = ?', array($fromId)) as $row) {
+                        $this->moveRow('album_covers', $row, array('albumid' => $intoId, 'main' => 'n'));
+                    }
+                    continue;
+                }
                 $this->moveAll($table, $column, $fromId, $intoId);
             }
         }
