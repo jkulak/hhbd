@@ -27,9 +27,46 @@ class Model_Image_Api extends Jkl_Model_Api
       return self::$_instance;
   }
   
-  function __construct() {
-    $this->_appConfig = Zend_Registry::get('Config_App');
-    parent::__construct();
+  /*
+  * $db and $appConfig are for tests; everything else takes the shared connection and config
+  */
+  function __construct($db = null, $appConfig = null) {
+    $this->_appConfig = (null === $appConfig) ? Zend_Registry::get('Config_App') : $appConfig;
+    if (null === $db) {
+      parent::__construct();
+    } else {
+      $this->_db = $db;
+    }
+  }
+
+  /*
+  * Adds a photo of an artist (#61) and keeps exactly one main photo per artist: the new one when
+  * $main says so or when the artist has none yet. $photo holds the columns: filename, width,
+  * height, sha256, mime, description, source, sourceurl, licence, licence_url, credit, modified.
+  * Returns the new row's id.
+  */
+  public function addArtistPhoto($artistId, array $photo, $main = false)
+  {
+    $artistId = (int) $artistId;
+    if ($artistId < 1 || empty($photo['filename'])) {
+      throw new InvalidArgumentException('A photo needs an artist and a file');
+    }
+    $hasMain = $this->_db->fetchAll('SELECT id FROM artists_photos WHERE artistid = ? AND main = ?', array($artistId, 'y'));
+    $main = $main || empty($hasMain);
+    if ($main && !empty($hasMain)) {
+      $this->_db->query('UPDATE artists_photos SET main = ? WHERE artistid = ?', array('n', $artistId));
+    }
+    $columns = array('filename', 'width', 'height', 'sha256', 'mime', 'description', 'source', 'sourceurl', 'licence', 'licence_url', 'credit', 'modified');
+    $bind = array($artistId, $main ? 'y' : 'n');
+    foreach ($columns as $column) {
+      $default = in_array($column, array('description', 'source', 'sourceurl'), true) ? '' : null;
+      $bind[] = isset($photo[$column]) ? $photo[$column] : ($column === 'modified' ? 0 : $default);
+    }
+    $this->_db->query(
+      'INSERT INTO artists_photos (artistid, main, ' . implode(', ', $columns) . ') VALUES (?, ?' . str_repeat(', ?', count($columns)) . ')',
+      $bind
+    );
+    return (int) $this->_db->lastInsertId();
   }
   
   public function getArtistPhoto($id)
@@ -51,7 +88,8 @@ class Model_Image_Api extends Jkl_Model_Api
 
   public function getArtistPhotos($id)
   {
-    $query = 'SELECT * FROM artists_photos WHERE (artistid=' . $id . ') ORDER BY main';
+    // The main photo first, then the others in the order they came (#61).
+    $query = 'SELECT * FROM artists_photos WHERE (artistid=' . intval($id) . ') ORDER BY main, id';
     $result = $this->_db->fetchAll($query);
     $pictures = new Jkl_List('Picture list');
     if (sizeof($result) != 0) {
