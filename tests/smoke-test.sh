@@ -10,8 +10,17 @@
 #   # A host the name does not point at yet, e.g. a new origin before the DNS moves:
 #   SMOKE_CURL_OPTS="--connect-to hhbd.pl:443:<host>:443 --insecure" ./tests/smoke-test.sh https://hhbd.pl
 #
+#   # Production, as a release checks it: only what holds on production's data
+#   SMOKE_TARGET=production ./tests/smoke-test.sh https://hhbd.pl
+#
+# Most checks hold on the test fixtures and on production alike: the fixtures copy the rows the
+# checks look at (Mes, Superextra, Pogoda, Alkopoligamia, news 1877). The fixture checks look at
+# cases only the fixtures hold (an album on no label, a two-disc album, Discogs provenance, ...)
+# and run unless SMOKE_TARGET=production, which deploy/ovh-release.sh sets.
+#
 
 BASE_URL="${1:-http://localhost:8080}"
+SMOKE_TARGET="${SMOKE_TARGET:-fixtures}"
 FAILED=0
 PASSED=0
 ERRORS=()  # Array to collect error messages
@@ -349,25 +358,10 @@ test_no_plus_in_urls() {
 }
 
 # Run tests
-run_tests() {
-    echo "Running tests..."
-    echo ""
-
-    # Core pages
-    echo "--- Listing Pages ---"
-    test_page "Homepage" "/" "Pezet"
-    test_page "Album List" "/albumy.html" "Jestem Hip Hopem"
-    test_page "Premieres" "/premiery.html" "Stasiak"
-    test_page "Artist List" "/wykonawcy.html" "Eldo"
-    test_page "Label List" "/wytwornie.html" "Asfalt"
-    echo ""
-
-    # Detail pages (using known data from test database)
-    echo "--- Detail Pages ---"
-    test_page "Label Detail (Alkopoligamia)" "/alkopoligamia-l58.html" "Alkopoligamia"
-    test_page "Artist Detail (Mes)" "/mes-p35.html" "Piotr  Szmidt"
+# Cases only the test fixtures hold; skipped when SMOKE_TARGET=production.
+run_fixture_tests() {
+    echo "--- Fixture cases ---"
     test_page_multi "Artist city from the old backoffice table (Mes)" "/mes-p35.html" "Miasto:" "Kraków"
-    test_page_multi "Album Detail (Wdowa - Superextra)" "/wdowa-superextra-a535.html" "Wdowa" "Pogoda" "Alkopoligamia"
     test_page_multi "Album media (Superextra)" "/wdowa-superextra-a535.html" "Nośniki:" "CD, LP"
     test_page "Release type: a single" "/pezet-muzyka-powazna-a2.html" "[singiel]"
     test_page "Release type: an EP" "/taco-hemingway-morska-bryza-a46.html" "[EP]"
@@ -379,12 +373,34 @@ run_tests() {
     test_page_absent "Discogs's CC0 data is not credited (Jestem Hip Hopem)" "/pezet-jestem-hip-hopem-a1.html" "Data provided by Discogs"
     test_page_multi "An album links where it can be heard" "/wdowa-superextra-a535.html" "https://www.deezer.com/album/302127" "https://music.apple.com/album/1440857781"
     test_page "An artist's Discogs data is credited (Mes)" "/mes-p35.html" "https://www.discogs.com/artist/271903"
-    test_page "The about page says the site is not affiliated with Discogs" "/o-nas.html" "not affiliated with, sponsored or endorsed by Discogs"
     test_page "A joint album links both its artists" "/pezet-jestem-hip-hopem-a1.html" "&amp; <a href"
     test_page "A joint album is listed on each artist's page, named after both" "/eldo-p2.html" "Pezet & Eldo - Jestem Hip Hopem"
-    test_page "The album sitemap gives each album's canonical URL" "/sitemap-albums.xml" "/pezet-jestem-hip-hopem-a1.html</loc>"
-    test_page "The song sitemap gives canonical URLs" "/sitemap-songs.xml" "/intro-s1.html</loc>"
-    test_page "The label sitemap gives canonical URLs" "/sitemap-labels.xml" "/asfalt-l1.html</loc>"
+    echo ""
+}
+
+run_tests() {
+    echo "Running tests..."
+    echo ""
+
+    # Core pages
+    echo "--- Listing Pages ---"
+    test_page "Homepage" "/" "Pezet"
+    # The table, not a title: production's top album was a 2017 placeholder until #54 removed it.
+    test_page "Album List" "/albumy.html" "Lista albumów hip-hopowych"
+    test_page "Premieres" "/premiery.html" "Stasiak"
+    test_page "Artist List" "/wykonawcy.html" "Eldo"
+    test_page "Label List" "/wytwornie.html" "Asfalt"
+    echo ""
+
+    # Detail pages (using known data from test database)
+    echo "--- Detail Pages ---"
+    test_page "Label Detail (Alkopoligamia)" "/alkopoligamia-l58.html" "Alkopoligamia"
+    test_page "Artist Detail (Mes)" "/mes-p35.html" "Piotr  Szmidt"
+    test_page_multi "Album Detail (Wdowa - Superextra)" "/wdowa-superextra-a535.html" "Wdowa" "Pogoda" "Alkopoligamia"
+    test_page "The about page says the site is not affiliated with Discogs" "/o-nas.html" "not affiliated with, sponsored or endorsed by Discogs"
+    test_page "The album sitemap gives each album's canonical URL" "/sitemap-albums.xml" "/wdowa-superextra-a535.html</loc>"
+    test_page "The song sitemap gives canonical URLs" "/sitemap-songs.xml" "/pogoda-s7329.html</loc>"
+    test_page "The label sitemap gives canonical URLs" "/sitemap-labels.xml" "/alkopoligamia-l58.html</loc>"
     test_page "The artist sitemap renders" "/sitemap-artists.xml" "/mes-p35.html</loc>"
     test_page "The news sitemap renders" "/sitemap-news.xml" "wideo-n1877.html</loc>"
     test_page_multi "Song Detail (Wdowa - Pogoda)" "/pogoda-s7329.html" "Dj Technik" "Beatmo"
@@ -474,4 +490,9 @@ print_summary() {
 # Main
 wait_for_service
 run_tests
+case "$SMOKE_TARGET" in
+    fixtures) run_fixture_tests ;;
+    production) echo "--- Fixture cases: skipped, SMOKE_TARGET=production ---"; echo "" ;;
+    *) echo "SMOKE_TARGET is fixtures or production, not '$SMOKE_TARGET'" >&2; exit 2 ;;
+esac
 print_summary
