@@ -29,7 +29,7 @@ wait_healthy() {
 
 # local_db_container: prints the id of this checkout's running db container, once healthy.
 # Refuses a project with no running db, and a db created from another directory (a second
-# checkout using this one's project name) or from deploy/compose.ovh.yaml, which is
+# checkout using this one's project name) or from deploy/ovh/compose.yaml, which is
 # production's compose file and must never be reset or migrated by accident.
 local_db_container() {
     require_local_engine
@@ -48,7 +48,7 @@ local_db_container() {
         *) refuse "the db container of '$project' was not created from this checkout's compose.yaml" ;;
     esac
     case "$(label com.docker.compose.project.config_files)" in
-        *compose.ovh.yaml*) refuse "the db container of '$project' runs production's compose file" ;;
+        */deploy/ovh/compose.yaml*) refuse "the db container of '$project' runs production's compose file" ;;
     esac
 
     wait_healthy "$cid" "the db container of '$project'"
@@ -106,7 +106,7 @@ use_db_target() {
             where="$(docker inspect --format '{{.Name}}' "$MIGRATE_CONTAINER" | sed 's|^/||') (local)"
             ;;
         ovh)
-            [ -n "${OVH_HOST:-}" ] || refuse "OVH_HOST is not set; put it in .env"
+            [ -n "${OVH_HOST:-}" ] || refuse "OVH_HOST is not set: it lives in gcloud-ovh-migrate's .env, which make loads"
             db_ovh_container=${OVH_DB_CONTAINER:-hhbd-db-1}
             # One static command over ssh, SQL on stdin: nothing from this side is quoted for the
             # far side, and the password is read from the container's environment over there.

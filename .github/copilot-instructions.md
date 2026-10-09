@@ -92,9 +92,10 @@ When implementing features
 - Keep images/paths aligned with `app.paths.*` in `application.ini`; generate dev placeholders via the test-images tool.
 
 Deployment (OVH)
-- Production runs on the shared OVH host behind its Caddy edge and Cloudflare; see [deploy/README.md](deploy/README.md).
-- A release is a CalVer tag `vYYYY.MM.N`: [release.yml](.github/workflows/release.yml) builds the app, nginx and importer images to GHCR and [deploy/ovh-release.sh](deploy/ovh-release.sh) rolls them out through the host's `ci-deploy`, rolling back on a failed smoke test.
-- Configuration reaches the host only through `make ovh-install` ([deploy/ovh-install.sh](deploy/ovh-install.sh)); the production compose is [deploy/compose.ovh.yaml](deploy/compose.ovh.yaml), secrets are in `deploy/hhbd.enc.env` (SOPS).
+- Production runs on the shared OVH host behind its Caddy edge and Cloudflare; see [deploy/ovh/README.md](deploy/ovh/README.md).
+- A release is `gh release create vYYYY.MM.N`: [deploy.yml](.github/workflows/deploy.yml) builds the app, nginx and importer images to GHCR and [scripts/ovh-release.sh](scripts/ovh-release.sh) rolls them out through the host's `ci-deploy`, rolling back when [deploy/ovh/smoke.sh](deploy/ovh/smoke.sh) fails.
+- Configuration reaches the host only through `make ovh-install` ([scripts/ovh-install.sh](scripts/ovh-install.sh)); the production compose is [deploy/ovh/compose.yaml](deploy/ovh/compose.yaml), secrets are in `deploy/ovh/hhbd.enc.env` (SOPS).
+- The install and release scripts, `deploy/ovh/ovh.mk`, the secrets scripts and `deploy.yml` are the shared host's service template, word for word the same in every service on it: a change to them goes to gcloud-ovh-migrate, not here. What is this service's own is `deploy/ovh/`.
 
 ⚠️ CRITICAL: Database Safety Rule
 - **NEVER modify the main development database `db->hhbd` without explicit prior permission.**

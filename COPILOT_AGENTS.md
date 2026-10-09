@@ -68,21 +68,21 @@ AI coding agents have access to a `web_fetch` tool that can retrieve external we
 
 ```bash
 # Search for similar code patterns
-grep -r "ci-deploy" deploy/
+grep -r "ci-deploy" deploy/ scripts/
 
 # Find files with similar functionality
-find deploy/ -name "*.sh" -type f
+find deploy/ scripts/ -name "*.sh" -type f
 
 # Study existing implementations
-cat deploy/ovh-release.sh
-cat deploy/ovh-install.sh
+cat scripts/ovh-release.sh
+cat scripts/ovh-install.sh
 ```
 
 ### 2. Pattern Recognition
 
 Look at how the repository solves similar problems:
 
-- **Deployment scripts**: Check `deploy/` directory for ssh and `ci-deploy` patterns
+- **Deployment scripts**: Check `deploy/ovh/` and `scripts/ovh-*.sh` for ssh and `ci-deploy` patterns
 - **PHP features**: Look at similar controllers, models, or library classes
 - **Testing**: Study existing tests in `app/tests/unit/` or `tests/smoke-test.sh`
 - **Configuration**: Review `app/application/configs/application.ini` and `compose.yaml`
