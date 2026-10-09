@@ -32,6 +32,8 @@
 #     unconfirmed announcement is announced, and the 2017 placeholders are gone (#54)
 #   - a cover file is described once per album, variant and hash (#60)
 #   - an artist's photo file appears once per artist; artistid is an int (#61)
+#   - the catalogue is utf8mb4 with the Polish collation: Ż is not Z, case does not count,
+#     Polish order, and a four-byte character survives an insert and a page view (#71)
 #   - going down to the baseline brings the old schema back, and up removes it again
 #
 # It changes rows to prove these and ends with make reset-db, so the database ends as a reset
@@ -251,6 +253,32 @@ else
     ok "the same file cannot be one artist's photo twice"
 fi
 
+echo "> utf8mb4 with the Polish collation"
+check "every table is utf8mb4_polish_ci, but the byte-compared ones and the runner's own" "utf8mb4_bin 5, utf8mb4_general_ci 1, utf8mb4_polish_ci 44" "$(sql "SELECT GROUP_CONCAT(CONCAT(c, ' ', n) ORDER BY c SEPARATOR ', ') FROM (SELECT table_collation c, COUNT(*) n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' GROUP BY table_collation) x")"
+check "no column is left in utf8mb3" "0" "$(count "character_set_name = 'utf8mb3'")"
+if sql "INSERT INTO artists (name, urlname, type, status, trivia, website) VALUES ('Zabson', 'zabson-2', 'm', 999, '', '')" >"$T/out" 2>&1; then
+    ok "Zabson is a name of its own next to Żabson"
+else
+    bad "Zabson is a name of its own next to Żabson"; cat "$T/out"
+fi
+if sql "INSERT INTO artists (name, urlname, type, status, trivia, website) VALUES ('żabson', 'zabson-3', 'm', 999, '', '')" >"$T/out" 2>&1; then
+    bad "żabson is Żabson in another case, and refused"
+else
+    ok "żabson is Żabson in another case, and refused"
+fi
+sql "INSERT INTO artists (name, urlname, type, status, trivia, website) VALUES ('Łoś Testowy', 'los-testowy', 'm', 999, '', ''), ('Lux Testowy', 'lux-testowy', 'm', 999, '', ''), ('Mazur Testowy', 'mazur-testowy', 'm', 999, '', ''), ('Zenek Testowy', 'zenek-testowy', 'm', 999, '', '')"
+check "names sort in Polish order: L before Ł before M, Z before Ż" "Lux Testowy|Łoś Testowy|Mazur Testowy|Zabson|Zenek Testowy|Żabson" "$(sql "SELECT GROUP_CONCAT(name ORDER BY name SEPARATOR '|') FROM artists WHERE name IN ('Lux Testowy', 'Łoś Testowy', 'Mazur Testowy', 'Zabson', 'Zenek Testowy', 'Żabson')")"
+sql "INSERT INTO artists (id, name, urlname, type, status, trivia, website) VALUES (9001, 'Mikrofon 🎤', 'mikrofon', 'm', 999, '', '')"
+check "a four-byte character comes back from the database" "Mikrofon 🎤" "$(sql "SELECT name FROM artists WHERE id = 9001")"
+if curl -s -L --max-time 10 "$URL/mikrofon-p9001.html" | grep -q '🎤'; then
+    ok "and from the artist's page"
+else
+    bad "and from the artist's page"
+fi
+# Gone before the down: in utf8mb3_general_ci Zabson and Żabson would be one name, and the
+# microphone could not be stored, so the down would rightly refuse.
+sql "DELETE FROM artists WHERE id = 9001 OR name IN ('Zabson', 'Lux Testowy', 'Łoś Testowy', 'Mazur Testowy', 'Zenek Testowy')"
+
 echo "> down to the baseline brings the old schema back, and up removes it"
 rows_before=$(sql "SELECT COUNT(*) FROM songs")
 ./scripts/migrate.sh down "$after_baseline" >"$T/out" 2>&1 || { bad "down $after_baseline succeeds"; cat "$T/out"; }
@@ -269,6 +297,7 @@ check "after down: the old track numbers, and the missing album's rows, back" "3
 check "after down: the zero-part dates and the placeholder back" "49:2016-12-00:1 50:2013-00-00:1 778:0000-00-00:1 923:2017-01-00:1" "$(dates "(SELECT COUNT(*) FROM album_artist_lookup c WHERE c.albumid = albums.id)")"
 check "after down: the placeholder label back, and its album on it" "BRAK 27" "$(sql "SELECT CONCAT((SELECT name FROM labels WHERE id = 27), ' ', (SELECT labelid FROM albums WHERE id = 48))")"
 check "after down: artistid a smallint again, without the photo columns" "smallint 0" "$(sql "SELECT CONCAT((SELECT data_type FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'artists_photos' AND column_name = 'artistid'), ' ', (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'artists_photos' AND column_name IN ('width', 'sha256', 'credit')))")"
+check "after down: every catalogue table utf8mb3 again" "45" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_collation LIKE 'utf8mb3%'")"
 check "after down: no release type columns" "0" "$(count "table_name = 'albums' AND column_name IN ('release_type', 'media_digital', 'catalog_digital')")"
 check "after down: the roles and credits as the fixtures had them" "1 row 0, 1 testest, 0 key 6:36:0 7:41:0 10:42:0" "$(roles) $(credits)"
 check "after down: no archive" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'migration_archive'")"
