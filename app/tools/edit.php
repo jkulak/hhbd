@@ -10,6 +10,7 @@
  *   merge-albums <from> <into>      merge-artists <from> <into>
  *   delete-album <id>               delete-artist <id>               delete-label <id>
  *   set <albums|artists|labels|songs> <id> <column> <value|--null>
+ *   set <albums|artists|labels|songs> <id> <JSON object of columns>   one operation (#145)
  *   undo <operation>
  *
  * --by is the display name of an hhbd user who is an admin, --why says why; without both it
@@ -22,7 +23,11 @@
 $args = array_slice($argv, 1);
 if (array('-') === $args) {
     // From make ovh-edit over ssh: no shell between here and the caller re-reads the arguments.
-    $args = array_values(array_filter(explode("\0", stream_get_contents(STDIN)), 'strlen'));
+    // Each ends in a NUL, so only the piece after the last one goes: an empty VALUE is a value.
+    $args = explode("\0", stream_get_contents(STDIN));
+    if ('' === end($args)) {
+        array_pop($args);
+    }
 }
 $by = $why = null;
 $apply = false;

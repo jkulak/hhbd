@@ -39,4 +39,49 @@ class Model_Edit_ApiTest extends TestCase
     {
         $this->assertSame(array('albums', 'artists', 'labels', 'songs'), Model_Edit_Api::SETTABLE);
     }
+
+    public function testSetTakesARowsColumnsAsOneJsonObjectBesideOneColumnAtATime(): void
+    {
+        $this->assertSame(array('table', 'id', 'values'), Model_Edit_Api::SET_COLUMNS);
+        $this->assertSame(array('id', 'updatedby', 'updated'), Model_Edit_Api::SET_OWN);
+    }
+
+    public function testTheJsonFormGivesEachColumnItsValueWithNullForNull(): void
+    {
+        $this->assertSame(
+            array('title' => 'Jestem "Hip Hopem"', 'year' => '2010-06-15', 'media_cd' => 1, 'notes' => null, 'urlname' => ''),
+            Model_Edit_Api::columnsOf('{"title": "Jestem \\"Hip Hopem\\"", "year": "2010-06-15", "media_cd": 1, "notes": null, "urlname": ""}')
+        );
+    }
+
+    public function testTheJsonFormKeepsPolishLettersAndANumberTooLongForAnInteger(): void
+    {
+        $this->assertSame(
+            array('title' => 'Żółć', 'viewed' => '123456789012345678901234567890'),
+            Model_Edit_Api::columnsOf('{"title": "\\u017b\\u00f3\\u0142\\u0107", "viewed": 123456789012345678901234567890}')
+        );
+    }
+
+    /**
+     * @dataProvider valuesTheJsonFormRefuses
+     */
+    public function testTheJsonFormRefusesAnythingButAnObjectOfPlainValues($value): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        Model_Edit_Api::columnsOf($value);
+    }
+
+    public static function valuesTheJsonFormRefuses(): array
+    {
+        return array(
+            'no VALUE'      => array(null),
+            'not JSON'      => array('title=Superextra'),
+            'a list'        => array('["Superextra"]'),
+            'a string'      => array('"Superextra"'),
+            'an empty one'  => array('{}'),
+            'a nested one'  => array('{"title": {"pl": "Superextra"}}'),
+            'a list inside' => array('{"title": ["Superextra"]}'),
+            'a boolean'     => array('{"legal": true}'),
+        );
+    }
 }

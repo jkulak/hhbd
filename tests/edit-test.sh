@@ -6,6 +6,8 @@
 #   - merging two albums, merging two artists, deleting an album, an artist and a label, and
 #     setting a field each do what they say, leave no row naming what went, and journal one
 #     row per row changed
+#   - set with a JSON object changes all its columns in one operation that one undo takes back,
+#     and refuses all of them for one it may not set (#145)
 #   - a merged album's page answers 301 with the album kept, which keeps showing its own cover
 #   - undoing each of them gives back the data exactly: a dump taken before the operation and
 #     one taken after the undo are the same
@@ -166,6 +168,38 @@ dump >"$T/set.after"
 check "set: the data as it was before" "same" "$(diff -q "$T/set.before" "$T/set.after" >/dev/null && echo same)"
 check "set refuses the id, and a column the row lacks" "2 2" \
     "$(edit set-id "set albums 1 id" apply x) $(edit set-none "set albums 1 nope" apply x)"
+check "set: an empty VALUE is an empty string, not NULL" "0 ''" \
+    "$(edit set-empty "set albums 1 notes" apply '') $(sql "SELECT QUOTE(notes) FROM albums WHERE id = 1")"
+check "set: undone" "0" "$(edit set-empty-undo "undo $(last_operation)" apply)"
+dump >"$T/set.after"
+check "set: the data as it was before, again" "same" "$(diff -q "$T/set.before" "$T/set.after" >/dev/null && echo same)"
+
+echo "> setting several columns at once"
+columns='{"title": "Żółć \"na odmułę\"", "catalog_cd": "ALK 003", "notes": "z okładki", "year": null}'
+before=$(sql "SELECT CONCAT_WS('|', title, IFNULL(catalog_cd, 'NULL'), IFNULL(year, 'NULL')) FROM albums WHERE id = 1")
+edit set-many-dry "set albums 1" "" "$columns" >/dev/null
+check "set with JSON: the dry run shows each column's value before and after" "4" \
+    "$(grep -oE 'title "[^"]*" → "Żółć "na odmułę""|catalog_cd [^,]* → "ALK 003"|notes [^,]* → "z okładki"|year [^,]* → NULL' "$T/set-many-dry" | wc -l | tr -d ' ')"
+check "set with JSON: the dry run wrote nothing" "$before" \
+    "$(sql "SELECT CONCAT_WS('|', title, IFNULL(catalog_cd, 'NULL'), IFNULL(year, 'NULL')) FROM albums WHERE id = 1")"
+dump >"$T/set-many.before"
+check "set with JSON: applied" "0" "$(edit set-many "set albums 1" apply "$columns")"
+operation=$(last_operation)
+check "set with JSON: every column in, NULL for null, the admin's row as updatedby" \
+    "Żółć \"na odmułę\"|ALK 003|z okładki|NULL|$(sql "SELECT ID FROM users WHERE hhb_usr_id = 10")" \
+    "$(sql "SELECT CONCAT_WS('|', title, catalog_cd, notes, IFNULL(year, 'NULL'), updatedby) FROM albums WHERE id = 1")"
+check "set with JSON: one operation, one journal row, the object kept as the arguments" "1 1 ALK 003" \
+    "$(changes set-many) $(journalled "$operation") $(sql "SELECT JSON_VALUE(args, '\$.values.catalog_cd') FROM edit_operations WHERE id = $operation")"
+undo set-many
+for refused in '{"title": "x", "nope": "y"}' '{"title": "x", "id": 2}' '{"title": "x", "updated": "2020-01-01 00:00:00"}' \
+    '{"title": "x", "updatedby": 1}' '{"title": ["x"]}' '{}' '["x"]' 'title=x'; do
+    status=$(edit set-refused "set albums 1" apply "$refused")
+    check "set with JSON refuses $refused, and writes nothing" "2 $before" \
+        "$status $(sql "SELECT CONCAT_WS('|', title, IFNULL(catalog_cd, 'NULL'), IFNULL(year, 'NULL')) FROM albums WHERE id = 1")"
+done
+check "set with JSON refuses a call without VALUE" "2" "$(edit set-no-value "set albums 1" apply)"
+dump >"$T/set-many.refused"
+check "set with JSON: the refusals left the data as it was" "same" "$(diff -q "$T/set-many.before" "$T/set-many.refused" >/dev/null && echo same)"
 
 echo "> the journal says who, when, why and the path"
 check "every operation has its admin, a time, its reason and the command line" "0" \
