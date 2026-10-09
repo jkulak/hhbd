@@ -1,5 +1,6 @@
 <?php
 
+#[\AllowDynamicProperties]
 class LabelController extends Zend_Controller_Action
 {
     public function init()
@@ -67,9 +68,12 @@ class LabelController extends Zend_Controller_Action
         $description .= $label->name . ' wydała do tej pory ' . count($label->releases->items) . ' ';
         $description .= ((count($label->releases->items) > 4) ? 'albumów' : ((count($label->releases->items) > 1) ? 'albumy' : 'album')) . '. ';
         $description .= 'Wytwórnia wydaje taki artystów jak: ' . $label->artists . '. ';
-        $description .= 'Najnowsze wydawnictwo wytwórni to: ' . $label->releases->items[0]->title . ', ';
-        $description .= 'za które odpowiedizalny jest ' . $label->releases->items[0]->artist->name . '. ';
-        $description .= 'Ostatni album ' . $label->name . ' wydało ' . $label->releases->items[0]->releaseDateNormalized . '. ';
+        // A label with no release yet has no newest one to name
+        if (!empty($label->releases->items)) {
+            $description .= 'Najnowsze wydawnictwo wytwórni to: ' . $label->releases->items[0]->title . ', ';
+            $description .= 'za które odpowiedizalny jest ' . $label->releases->items[0]->artist->name . '. ';
+            $description .= 'Ostatni album ' . $label->name . ' wydało ' . $label->releases->items[0]->releaseDateNormalized . '. ';
+        }
 
         if (!empty($label->website)) {
             $description .= 'Oficjalna strona wytwórni, to: ' . $label->website . ' - sprawdzajcie! ';

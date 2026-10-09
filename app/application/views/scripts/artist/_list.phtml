@@ -1,5 +1,5 @@
 <table>
-  <caption class="hidden"><?php echo $artist->name ?> - dyskografia, lista wydanych albumów</caption>
+  <caption class="hidden">Lista wykonawców</caption>
   <thead>
     <tr><th>Wykonawca</th><th>Wydanych albumów</th><th>Znany także jako</th></tr>
   </thead>
@@ -13,7 +13,7 @@
             --
           <?php endif ?>
       </td>
-      <td><?php echo implode($artist->alsoKnownAs->items, ', ') ?></td>
+      <td><?php echo implode(', ', $artist->alsoKnownAs->items) ?></td>
     </tr>
   <?php endforeach ?>
   </tbody>

@@ -21,6 +21,23 @@ person's decision; nothing releases on its own.
   old addresses, where they belong.
 
 ### Changed
+- PHP 8.4, from Debian 13's own packages, in every image: the web's, the importer's, CI's builder
+  and the dev container (#37). PHP 7.4 had been out of support since 2022 and its image's
+  Debian 11 was fetched from archive.debian.org with no security update ever again; Debian 13
+  and PHP 8.4 are both supported to 2028, and a rebuild takes Debian's security updates. Nothing
+  is compiled. On a copy of production, the same 942 pages answer about four times faster:
+  median 13.8 ms against 60.0 ms, p99 52 ms against 100 ms. The web's image is under 300 MB
+  instead of 670 MB.
+- The application runs on PHP 8: `implode()` with its arguments in the old order (the artist's
+  page and list), `create_function()`, `E_STRICT`, and nulls passed where PHP 8 wants a string;
+  the model containers and controllers that fill undeclared properties say so with
+  `#[\AllowDynamicProperties]`.
+- The app container's healthcheck is a three-line script in the repository rather than
+  renatomefi/php-fpm-healthcheck, downloaded from that project's master branch on every build.
+- `compose.override.example.yaml`: the local development override, whose `development.ini` now
+  loads after `99-production.ini`, so the code is re-read on every change; it loaded before it,
+  and production's `opcache.validate_timestamps = 0` won.
+- PHPUnit 9.6.38 and symfony/process 8.1 (development only), past two advisories.
 - nginx and the app run in two colours, `nginx-blue`/`app-blue` and `nginx-green`/`app-green`
   (#124). A deploy starts the new release beside the one serving, and the shared edge moves to
   it once its home page renders, so no request waits on a release. Until now nginx and the app
@@ -33,9 +50,9 @@ person's decision; nothing releases on its own.
   - `make ovh-e2e` runs both colours and drives blue.
   - `scripts/check-images.sh` reads production's files from whichever container mounts the
     content volume.
-- The importer's image is Debian's own PHP 7.4 with GD from packages, where the official image
-  compiled GD on every build that missed the layer cache: the same PHP 7.4.33, JPEG, PNG and
-  WebP, 349 MB instead of 747 MB, and nothing to compile. The builder stage compiles no GD
+- The importer's image is Debian's own PHP with GD from packages (8.4 since #37), where the
+  official image compiled GD on every build that missed the layer cache: JPEG, PNG and WebP,
+  349 MB instead of 747 MB, and nothing to compile. The builder stage compiles no GD
   either; CI makes its test images in the importer's image, `make test-images`.
 - `make reset-db` keeps the result of a build from the migrations and loads it on the next
   reset, in under a second, until a migration, a fixture, one of its scripts or the day changes;
@@ -48,6 +65,9 @@ person's decision; nothing releases on its own.
   the production stack test gets its images built with the layer cache.
 
 ### Fixed
+- A song on no album and by no artist answers 404, where its page failed with 500: three old
+  songs on production (#37). A label with no release yet gets a description without a newest
+  one.
 - Polish letters stored mangled come back (#27, migration 0031): UTF-8 read as cp1250, cp1252 or
   latin-1 and stored again, once or several times over (`JÄ¹ąW` for `JŹW`, `PÃ“Ä¹ąNIEJ` for
   `PÓŹNIEJ`), and old song titles in ISO-8859-2 read as latin-1 (`W³a¶nie` for `Właśnie`). The

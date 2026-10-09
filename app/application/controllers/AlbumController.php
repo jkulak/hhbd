@@ -1,5 +1,6 @@
 <?php
 
+#[\AllowDynamicProperties]
 class AlbumController extends Zend_Controller_Action
 {
     public function init()

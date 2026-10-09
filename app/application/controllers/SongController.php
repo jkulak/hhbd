@@ -1,5 +1,6 @@
 <?php
 
+#[\AllowDynamicProperties]
 class SongController extends Zend_Controller_Action
 {
     public function init()
@@ -35,6 +36,11 @@ class SongController extends Zend_Controller_Action
         // content
         $params = $this->getRequest()->getParams();
         $song = Model_Song_Api::getInstance()->find($params['id'], true);
+        // A song on no album and by no artist has nothing to show it with: a few old rows on
+        // production, which answered 500 (#37).
+        if (empty($song->albumArtist)) {
+            throw new Zend_Controller_Action_Exception('Song ' . (int) $params['id'] . ' has no album and no artist', 404);
+        }
 
         // Build canonical URL and redirect if current URL doesn't match
         $canonicalSlug = Jkl_Tools_Url::createUrl($song->title . '-s' . $song->id) . '.html';

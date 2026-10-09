@@ -380,6 +380,7 @@ run_fixture_tests() {
     test_page "An artist's Discogs data is credited (Mes)" "/mes-p35.html" "https://www.discogs.com/artist/271903"
     test_page "Another name stored mangled reads right (#27)" "/mes-p35.html" "JŹW"
     test_redirect_301 "An old address's underscore finds a slug written with a dash (#26)" "/n/dj_technik" "/dj-technik-p6.html"
+    test_not_found "A song on no album and by no artist is a 404, not a 500 (#37)" "/bez-albumu-s9100.html" "Call to a member function"
     test_page_multi "An artist's main photo carries its credit and licence (Mes)" "/mes-p35.html" "Jan Kowalski" "https://creativecommons.org/licenses/by-sa/4.0/"
     test_page_multi "An artist's other photos are in a gallery, captioned (Mes)" "/mes-p35.html" "Zdjęcia" "Anna Nowak" "(zmodyfikowane)"
     test_page "A joint album links both its artists" "/pezet-jestem-hip-hopem-a1.html" "&amp; <a href"

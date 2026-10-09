@@ -104,6 +104,7 @@ class Model_Song_Api extends Jkl_Model_Api
 
         $params['featured'] = Model_Album_Api::getInstance()->getSongAlbums($id, null);
 
+        $albumArtist = null;
         $max = isset($params['featured']->items) ? count($params['featured']->items) : 0;
         if ($max > 0) {
             for ($i = 0; $i < $max; $i++) {
@@ -118,7 +119,7 @@ class Model_Song_Api extends Jkl_Model_Api
             Zend_Registry::get('Logger')->info('Song ' . $id . ' is not featured on any album.');
         }
 
-        if (!isset($albumArtist)) {
+        if (null === $albumArtist) {
             if ($max > 0) {
                 $albumArtist = new Model_Artist_Container(array('name' => $params['featured']->items[0]->title, 'art_id' => $params['featured']->items[0]->id));
             }
@@ -127,7 +128,7 @@ class Model_Song_Api extends Jkl_Model_Api
         $params['albumArtist'] = $albumArtist;
 
         // assign album artist to a song, if it doesnt have artist assigned
-        if (!isset($params['artist']->items) || count($params['artist']->items) < 1) {
+        if (null !== $albumArtist && (!isset($params['artist']->items) || count($params['artist']->items) < 1)) {
             $params['artist']->add($albumArtist);
         }
 
