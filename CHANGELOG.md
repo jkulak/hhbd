@@ -8,6 +8,11 @@ person's decision; nothing releases on its own.
 
 ## Unreleased
 
+### Fixed
+- nginx passes a response larger than its buffers, such as `/sitemap-songs.xml`, straight on
+  instead of spooling it to a temporary file. That spooling wrote a `warn` line in nginx's own
+  format on every such request, the only line nginx wrote on production after 2026.10.8 (#101).
+
 ## 2026.10.8 — 2026-10-09
 
 hhbd logs in the shared host's format (#101): every line of the app container is JSON, nginx
