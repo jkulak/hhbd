@@ -49,6 +49,10 @@ class Model_Album_Container
     public $media = array();
     /** False for a nielegal, a release that came out without a publisher's licence */
     public $legal = true;
+    /** day, month or year: how much of releaseDate is known */
+    public $releaseDatePrecision;
+    /** Whether the release is only announced; null where the database does not say */
+    public $announced;
 
     public function __construct($params, $full = false)
     {
@@ -81,7 +85,12 @@ class Model_Album_Container
 
         $this->releaseDate = $params['year'];
         $this->year = substr($params['year'], 0, 4);
-        $this->releaseDateNormalized = Jkl_Tools_Date::getNormalDate($this->releaseDate);
+        $this->releaseDatePrecision = !empty($params['release_date_precision'])
+            ? $params['release_date_precision']
+            : Jkl_Tools_Date::precisionOf($this->releaseDate);
+        $this->releaseDateNormalized = Jkl_Tools_Date::getNormalDate($this->releaseDate, $this->releaseDatePrecision);
+        // Before migration 0015 there is no announced column, and the date decides.
+        $this->announced = isset($params['announced']) ? (bool) $params['announced'] : null;
 
         $this->catalogNumber = self::catalogNumberOf($params);
 
@@ -201,10 +210,14 @@ class Model_Album_Container
     }
 
     /**
-     * Checks if album is announced, or already released
+     * Checks if album is announced, or already released: what the announced column says, or
+     * without it, whether the date is still to come.
      */
     public function isAnnounced()
     {
+        if (null !== $this->announced) {
+            return $this->announced;
+        }
         return ($this->releaseDate >= date('Y-m-d'));
     }
 }
