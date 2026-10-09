@@ -100,6 +100,9 @@ class AlbumController extends Zend_Controller_Action
         }
 
         $this->view->comments = Model_Comment_Api::getInstance()->getComments($album->id, Model_Comment_Container::TYPE_ALBUM);
+        // Where its data came from, for the credits its sources ask for, and its ids elsewhere (#62).
+        $this->view->provenance = Model_Provenance_Api::getInstance()->getForEntity('album', (int) $album->id);
+        $this->view->externalIds = Model_ExternalId_Api::getInstance()->getForEntity('album', (int) $album->id);
 
         $this->view->title = $album->artistNames . ' - ' . $album->title . ' (' . $album->year . ')';
         $this->view->headTitle()->set($this->view->title, 'PREPEND');

@@ -129,6 +129,25 @@ class Model_ExternalId_Api extends Jkl_Model_Api
     }
 
     /**
+     * The page of the first id a row has in a source, trying kinds in the order given:
+     * pageUrl($ids, 'discogs', array('release', 'master')).
+     *
+     * @param Jkl_List $ids of Model_ExternalId_Container, as getForEntity() returns them
+     * @return string|null
+     */
+    public static function pageUrl(Jkl_List $ids, $source, array $kinds)
+    {
+        foreach ($kinds as $kind) {
+            foreach ($ids->items as $id) {
+                if ($id->source === $source && $id->kind === $kind && null !== $id->getUrl()) {
+                    return $id->getUrl();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * The stored form of an id: what it is compared and kept as.
      *
      * @throws InvalidArgumentException for an unknown source or kind, or a malformed value

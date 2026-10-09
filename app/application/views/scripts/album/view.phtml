@@ -39,6 +39,7 @@
     </ul>
 
     <ul id="details">
+      <?php echo $this->partial('album/_listen.phtml', array('externalIds' => $this->externalIds)) ?>
       <!-- <li>Dodany: <?php echo $this->album->added ?></li> -->
       <?php if (!empty($this->album->epFor)): ?>
         <li><span>Singiel do:</span> <?php echo $this->partial('album/_link.phtml', array('album' => $this->album->epFor)) ?> </li>
@@ -141,6 +142,8 @@
   	 <?php if (!empty($this->album->description)): ?><p><?php echo $this->album->description ?></p><?php endif ?>
     <p class="<?php if (!empty($this->album->description)): ?>js-hidden <?php endif ?>auto"><?php echo $this->album->autoDescription ?></p>
   </div>
+
+  <?php echo $this->partial('common/_credits.phtml', array('provenance' => $this->provenance, 'externalIds' => $this->externalIds, 'discogsKinds' => array('release', 'master'))) ?>
 
   <div class="pane" id="comments">
      <div class="header"><h2>Wasze komentarze <span class="hidden">na temat <?php echo $this->album->title ?></span></h2></div>

@@ -20,6 +20,22 @@ class Model_Provenance_List extends Jkl_List
     }
 
     /**
+     * Whether the page has to say "Data provided by Discogs." (#62): Discogs's API terms ask for
+     * it next to anything taken through the API. Data from the monthly dump is CC0 and asks for
+     * nothing, so the importer records its licence as CC0; any other Discogs row came through
+     * the API.
+     */
+    public function requiresDiscogsCredit()
+    {
+        foreach ($this->items as $item) {
+            if ('discogs' === $item->source && 'CC0' !== $item->licence) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Every source that supplied the field, in alphabetical order; empty for a field nothing
      * imported, such as one a person typed in.
      *
