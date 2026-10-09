@@ -36,6 +36,11 @@ person's decision; nothing releases on its own.
   the production stack test gets its images built with the layer cache.
 
 ### Fixed
+- Polish letters stored mangled come back (#27, migration 0031): UTF-8 read as cp1250, cp1252 or
+  latin-1 and stored again, once or several times over (`JÄ¹ąW` for `JŹW`, `PÃ“Ä¹ąNIEJ` for
+  `PÓŹNIEJ`), and old song titles in ISO-8859-2 read as latin-1 (`W³a¶nie` for `Właśnie`). The
+  migration holds no value from the database, only the sequences, letters and row keys a scan of
+  production found; it keeps no copy of the old values and its down undoes nothing.
 - The downs of 0003 and 0004 change the `added` defaults with `MODIFY`. Their `ALTER COLUMN
   ... SET DEFAULT` did nothing, with no error, on a database loaded from a dump, as a restore of
   the nightly backup is: MariaDB 10.11 ignores it when the `current_timestamp()` default came
