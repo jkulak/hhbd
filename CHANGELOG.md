@@ -56,6 +56,11 @@ decision; nothing tags on its own.
   backoffice gets written from scratch.
 
 ### Fixed
+- An artist with members is typed as a band (#65). The pages decide "band" by members and show
+  no type yet, so nothing visible changes, but the importer and any page that shows the label
+  now have one rule to follow. Migration 0012 set type `b` on the 67 artists on production that
+  had members and another type; its down restores their types. The 66 bands without members
+  are listed on #65 for review.
 - Every link table has a unique key, so the database refuses a link stored twice (#57).
   Migration 0011 first removed the copies production held (album_artist_lookup 7, band_lookup
   8, artist_lookup 1, music_lookup 3, collection 3, ratings 2), keeping the published or the
