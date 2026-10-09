@@ -90,6 +90,12 @@ class Model_Song_Api extends Jkl_Model_Api
         return $list;
     }
 
+    /** Whether there is a song $id, for its page to ask before it builds it (#147) */
+    public function exists($id)
+    {
+        return $this->has('songs', $id);
+    }
+
     public function find($id, $full = false)
     {
         $id = intval($id);
@@ -325,6 +331,21 @@ class Model_Song_Api extends Jkl_Model_Api
     * Returns list of most recent songs
     * used for: sitemaps
     **/
+    /**
+     * The songs that have a page, newest first, for the sitemap (#147). A song on no album with
+     * an artist answers 404 (#37), so it is no address to hand a search engine.
+     */
+    public function getSitemap($limit)
+    {
+        $query = 'SELECT *, t1.id AS song_id, t1.title AS sng_title
+              FROM songs t1
+              WHERE t1.id IN (SELECT l.songid FROM album_lookup l
+                               WHERE EXISTS (SELECT 1 FROM album_artist_lookup c JOIN artists a ON a.id = c.artistid WHERE c.albumid = l.albumid))
+              ORDER BY t1.added DESC
+              LIMIT ' . intval($limit);
+        return $this->_getList($query);
+    }
+
     public function getRecent($limit = 20)
     {
         $limit = intval($limit);

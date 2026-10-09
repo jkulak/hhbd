@@ -39,6 +39,12 @@ class Model_Label_Api extends Jkl_Model_Api
         return $list;
     }
 
+    /** Whether there is a label $id, for its page to ask before it builds it (#147) */
+    public function exists($id)
+    {
+        return $this->has('labels', $id);
+    }
+
     public function find($id, $full = false)
     {
         $id = intval($id);

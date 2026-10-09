@@ -89,6 +89,9 @@ class AlbumController extends Zend_Controller_Action
         if (null !== $into) {
             $this->_helper->redirector->gotoUrl(Model_Album_Api::getInstance()->find($into)->getUrl(), array('code' => 301));
         }
+        if (!Model_Album_Api::getInstance()->exists($params['id'])) {
+            throw new Zend_Controller_Action_Exception('No album ' . (int) $params['id'], 404);
+        }
         $album = Model_Album_Api::getInstance()->find($params['id'], true);
 
         // Build canonical URL and redirect if current URL doesn't match
@@ -137,7 +140,7 @@ class AlbumController extends Zend_Controller_Action
             }
         }
 
-        $this->view->headMeta()->setName('description', $album->artistNames . ' "' . $album->title . '"' . $releaseInfo . '. U nas teksty utworów, tracklista, oraz inne szczegółowe informacje o albumie.');
+        $this->view->headMeta()->setName('description', Jkl_Tools_String::metaDescription($album->artistNames . ' "' . $album->title . '"' . $releaseInfo . '. U nas teksty utworów, tracklista, oraz inne szczegółowe informacje o albumie.'));
 
         // Open Graph Protocol (see more: http://mgp.me)
         $og = new Jkl_Og('Hhbd.pl');

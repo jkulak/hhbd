@@ -178,6 +178,12 @@ class Model_Album_Api extends Jkl_Model_Api
         return $byAlbum;
     }
 
+    /** Whether album $id has a page: it is there, and credits an artist (#147) */
+    public function exists($id)
+    {
+        return !empty($this->_db->fetchAll('SELECT 1 FROM albums AS t3 WHERE t3.id = ? AND ' . self::HAS_ARTIST, array((int) $id)));
+    }
+
     public function find($id, $full = false)
     {
         $id = intval($id);

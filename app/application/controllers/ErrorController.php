@@ -56,6 +56,19 @@ class ErrorController extends Zend_Controller_Action
         }
         
         $this->view->request = $errors->request;
+        $this->describe();
+    }
+
+    /**
+     * The error page's title, in the site's layout, and nothing in it for a search engine to
+     * keep: it was "Zend Framework Default Application", in a second document inside the first,
+     * and the layout's index,follow (#147). The whole title, as the controller that failed may
+     * have put its own part in already.
+     */
+    private function describe()
+    {
+        $this->view->headTitle()->set((404 === $this->getResponse()->getHttpResponseCode() ? 'Nie ma takiej strony' : 'Błąd') . ' - Hhbd.pl');
+        $this->view->headMeta()->setName('robots', 'noindex,follow');
     }
 
     /**

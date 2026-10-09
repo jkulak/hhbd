@@ -383,6 +383,10 @@ run_fixture_tests() {
     test_page_200 "and nginx serves it" "/content/news/test-news-001.jpg"
     test_redirect_301 "An old address's underscore finds a slug written with a dash (#26)" "/n/dj_technik" "/dj-technik-p6.html"
     test_not_found "A song on no album and by no artist is a 404, not a 500 (#37)" "/bez-albumu-s9100.html" "Call to a member function"
+    test_page_absent "and the song sitemap leaves it out (#147)" "/sitemap-songs.xml" "-s9100.html<"
+    test_page "An artist's meta description is its description's text (#147)" "/mes-p35.html" 'name="description" content="Raper z Krakowa, &quot;Fach&quot;."'
+    test_page "A song's is its lyrics' lines with a comma between" "/pogoda-s7329.html" 'name="description" content="Tekst i teledysk utworu Wdowa - Pogoda. Słońce świeci jasno nad miastem..., A my na ławce"'
+    test_page "A news item's is its text without the tags" "/onar-jak-na-pierwszej-plycie-wideo-n1877.html" 'name="description" content="Onar wraca z nowym singlem promującym jego najnowszy album. Artysta prezentuje świeży materiał, który nawiązuje do jego wcześniejszej twórczości."'
     test_page_multi "An artist's main photo carries its credit and licence (Mes)" "/mes-p35.html" "Jan Kowalski" "https://creativecommons.org/licenses/by-sa/4.0/"
     test_page_multi "An artist's other photos are in a gallery, captioned (Mes)" "/mes-p35.html" "Zdjęcia" "Anna Nowak" "(zmodyfikowane)"
     test_page "A joint album links both its artists" "/pezet-jestem-hip-hopem-a1.html" "&amp; <a href"
@@ -457,6 +461,64 @@ test_not_found() {
     return 0
 }
 
+# test_page_status <name> <path> <status> <text>: the path answers that status, without
+# following a redirect, and the body contains the text
+test_page_status() {
+    local name="$1" path="$2" expected_status="$3" expected="$4"
+    local url="${BASE_URL}${path}"
+    local status content
+    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 $CURL_OPTS "$url" 2>/dev/null || echo "000")
+    content=$(curl -s --max-time 10 $CURL_OPTS "$url" 2>/dev/null)
+    if [[ "$status" == "$expected_status" ]] && echo "$content" | grep -qi -- "$expected"; then
+        echo -e "${GREEN}✓${NC} $name"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - HTTP $status (expected $expected_status with '$expected')"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
+}
+
+# test_sitemap <name> <path> <urlset|sitemapindex>: XML a search engine reads (#147): served as
+# application/xml, nothing after the root element closes, every entry closed and with one <loc>,
+# and every <loc> an absolute address on this site: https:// ones on production
+test_sitemap() {
+    local name="$1" path="$2" root="$3"
+    local url="${BASE_URL}${path}" entry=url
+    [[ "$root" == sitemapindex ]] && entry=sitemap
+    local type body opens closes locs ours last problem=""
+    type=$(curl -s -D - -o /dev/null --max-time 30 $CURL_OPTS "$url" 2>/dev/null | tr -d '\r' | grep -i '^content-type:' | head -1)
+    body=$(curl -s --max-time 30 $CURL_OPTS "$url" 2>/dev/null)
+    opens=$(echo "$body" | grep -o "<$entry>" | wc -l | tr -d ' ')
+    closes=$(echo "$body" | grep -o "</$entry>" | wc -l | tr -d ' ')
+    locs=$(echo "$body" | grep -o '<loc>' | wc -l | tr -d ' ')
+    ours=$(echo "$body" | grep -o "<loc>${BASE_URL}/[^<]*</loc>" | wc -l | tr -d ' ')
+    last=$(echo "$body" | grep -v '^[[:space:]]*$' | tail -1 | tr -d '[:space:]')
+    if [[ "$type" != *application/xml* ]]; then
+        problem="served as '${type#*: }'"
+    elif [[ "$(echo "$body" | head -1)" != "<?xml"* ]]; then
+        problem="no XML declaration first"
+    elif [[ "$last" != "</$root>" ]]; then
+        problem="ends with '$last', not </$root>"
+    elif [[ "$opens" -eq 0 || "$opens" != "$closes" || "$opens" != "$locs" ]]; then
+        problem="$opens <$entry>, $closes </$entry>, $locs <loc>"
+    elif [[ "$ours" != "$locs" ]]; then
+        problem="$((locs - ours)) of $locs <loc> not under ${BASE_URL}/"
+    fi
+    if [[ -z "$problem" ]]; then
+        echo -e "${GREEN}✓${NC} $name ($locs addresses)"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - $problem"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
+}
+
 run_tests() {
     echo "Running tests..."
     echo ""
@@ -528,6 +590,35 @@ run_tests() {
     echo "--- Static Pages ---"
     test_page "About Page" "/o-nas.html" "hhbd"
     test_page "Contact Page" "/kontakt.html" "kontakt"
+    echo ""
+
+    # What a search engine reads first, and what it finds (#147)
+    echo "--- Search Engines ---"
+    test_page "robots.txt names the sitemap index" "/robots.txt" "^Sitemap: https://hhbd.pl/sitemap-index.xml$"
+    test_page_absent "robots.txt keeps no search engine out of the whole site" "/robots.txt" "^Disallow: /$"
+    test_sitemap "The sitemap index" "/sitemap-index.xml" sitemapindex
+    test_page "The sitemap index names the song sitemap at an absolute address" "/sitemap-index.xml" "<loc>${BASE_URL}/sitemap-songs.xml</loc>"
+    test_sitemap "The album sitemap" "/sitemap-albums.xml" urlset
+    test_sitemap "The artist sitemap" "/sitemap-artists.xml" urlset
+    test_sitemap "The song sitemap" "/sitemap-songs.xml" urlset
+    test_sitemap "The label sitemap" "/sitemap-labels.xml" urlset
+    test_sitemap "The news sitemap" "/sitemap-news.xml" urlset
+    test_not_found "A sitemap of no kind is a 404" "/sitemap-nothing.xml" "<urlset"
+    test_page "The album sitemap's addresses are the canonical ones, scheme and all" "/sitemap-albums.xml" "<loc>${BASE_URL}/wdowa-superextra-a535.html</loc>"
+    test_canonical_tag "An album's canonical tag has this site's scheme" "/wdowa-superextra-a535.html" "${BASE_URL}/wdowa-superextra-a535.html"
+    test_not_found "A missing album is a 404 at its own address, not a redirect" "/nie-ma-takiego-a999999999.html" "Zend Framework"
+    test_not_found "A missing artist is a 404 at its own address" "/nie-ma-takiego-p999999999.html" "Zend Framework"
+    test_not_found "A missing song is a 404 at its own address" "/nie-ma-takiego-s999999999.html" "Zend Framework"
+    test_not_found "A missing label is a 404 at its own address" "/nie-ma-takiej-l999999999.html" "Zend Framework"
+    test_not_found "A missing news item is a 404 at its own address" "/nie-ma-takiego-n999999999.html" "Zend Framework"
+    test_page_status "The 404 page has a title of its own" "/nie-ma-takiego-a999999999.html" 404 "<title>Nie ma takiej strony - Hhbd.pl</title>"
+    test_page_status "and asks not to be indexed" "/nie-ma-takiego-a999999999.html" 404 'name="robots" content="noindex,follow"'
+    test_page "Search results ask not to be indexed" "/szukaj.html?q=tede" 'name="robots" content="noindex,follow"'
+    test_page "The login page asks not to be indexed" "/uzytkownik/logowanie.html" 'name="robots" content="noindex,follow"'
+    test_page "An album's page asks to be indexed" "/wdowa-superextra-a535.html" 'name="robots" content="index,follow"'
+    test_page_absent "An artist's meta description holds no HTML" "/mes-p35.html" '&lt;p'
+    test_page_absent "A song's meta description holds none of its lyrics' line breaks" "/pogoda-s7329.html" '&lt;br'
+    test_page_absent "A news item's meta description holds no HTML" "/onar-jak-na-pierwszej-plycie-wideo-n1877.html" 'name="description" content="[^"]*&lt;'
     echo ""
 
     # Canonical URL tests

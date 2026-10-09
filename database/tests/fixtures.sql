@@ -44,7 +44,7 @@ INSERT INTO `artists` (`id`, `name`, `realname`, `type`, `trivia`, `website`, `s
 (6, 'Dj Technik', 'Tomasz Kowalski', 'm', '', '', 999, 6000, 'DJ i producent.'),
 (7, 'Beatmo', 'Adam Nowak', 'm', '', '', 999, 5500, 'Producent muzyczny.'),
 (8, 'Wdowa', NULL, 'b', '', '', 999, 10000, 'Zespół hip-hopowy.'),
-(35, 'Mes', 'Piotr  Szmidt', 'm', '', '', 999, 9000, 'Raper z Krakowa.'),
+(35, 'Mes', 'Piotr  Szmidt', 'm', '', '', 999, 9000, '<p>Raper z <b>Krakowa</b>, &quot;Fach&quot;.</p>'),
 -- Additional artists for Top10 (with Polish characters)
 (9, 'Tede', 'Jacek Graniecki', 'm', '', '', 999, 14000, 'Kontrowersyjny raper.'),
 (10, 'Sokół', 'Wojciech Sosnowski', 'm', '', '', 999, 13000, 'Legenda polskiego hip-hopu.'),
@@ -211,7 +211,7 @@ INSERT INTO `album_artist_lookup` (`albumid`, `artistid`, `status`) VALUES
 -- ============================================
 INSERT INTO `songs` (`id`, `title`, `lyrics`, `status`, `viewed`) VALUES
 -- Required specific song
-(7329, 'Pogoda', 'Słońce świeci jasno nad miastem...', 999, 5000),
+(7329, 'Pogoda', 'Słońce świeci jasno nad miastem...<br />\r\nA my na ławce', 999, 5000),
 -- ISO-8859-2 read as latin-1, as production had it; 0031 repairs it by its id (#27)
 (6190, 'W³a¶nie tak siê bawi...', '', 999, 0),
 -- On no album and by no artist, as three old songs on production are: its page is a 404 (#37)
@@ -340,7 +340,7 @@ INSERT INTO `feattypes` (`id`, `feattype`, `status`) VALUES
 -- Required: News ID 1877 with "Onar wraca z nowym singlem"
 -- ============================================
 INSERT INTO `news` (`ID`, `title`, `news`, `glyph`, `graph`, `viewed`, `added`) VALUES
-(1877, 'ONAR - Jak na pierwszej płycie [wideo]', 'Onar wraca z nowym singlem promującym jego najnowszy album. Artysta prezentuje świeży materiał, który nawiązuje do jego wcześniejszej twórczości.', '', '', 2500, '2024-01-15 10:00:00'),
+(1877, 'ONAR - Jak na pierwszej płycie [wideo]', '<p>Onar wraca z nowym singlem promującym jego najnowszy album.</p><p>Artysta prezentuje świeży materiał, który nawiązuje do jego wcześniejszej twórczości.</p>', '', '', 2500, '2024-01-15 10:00:00'),
 (1, 'Premiera nowego albumu Pezeta', 'Pezet zapowiada nowy album na wiosnę. Fani nie mogą się doczekać!', '', 'test-news-001.jpg', 3000, '2024-02-01 12:00:00'),
 (2, 'Sokół wraca na scenę', 'Po dłuższej przerwie Sokół ogłasza trasę koncertową.', '', '', 2800, '2024-02-15 14:00:00'),
 (3, 'Nowy teledysk Tedego', 'Tede prezentuje nowy klip do singla z nadchodzącego albumu.', '', '', 2600, '2024-03-01 10:00:00'),

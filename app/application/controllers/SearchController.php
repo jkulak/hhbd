@@ -9,6 +9,9 @@ class SearchController extends Zend_Controller_Action
     $this->view->headMeta()->setName('keywords', 'polski hip-hop, albumy');
     $this->view->headTitle()->headTitle('Wyniki wyszukiwania', 'PREPEND');
     $this->view->headMeta()->setName('description', 'Wyniki wyszukiwania www.hhbd.pl');
+    // Each query would be a page of its own to index, thin and like the pages it lists; a
+    // crawler still follows the links to those (#147).
+    $this->view->headMeta()->setName('robots', 'noindex,follow');
     $this->params = $this->getRequest()->getParams();
   }
 
