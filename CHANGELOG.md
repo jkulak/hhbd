@@ -8,6 +8,12 @@ person's decision; nothing releases on its own.
 
 ## Unreleased
 
+## 2026.10.8 — 2026-10-09
+
+hhbd logs in the shared host's format (#101): every line of the app container is JSON, nginx
+keeps no access log of its own, and a start says nothing. A merge through `make ovh-edit`
+keeps the kept album's cover. No migration.
+
 ### Fixed
 - Merging an album into another that has a cover keeps that cover on the page. The merged
   album's cover rows come along as not main, where before they would have been taken as the
