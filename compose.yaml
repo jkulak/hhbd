@@ -26,6 +26,26 @@ services:
       retries: 3
       start_period: 10s
 
+  # The import job (#56): reads a batch, streamed in as a tar, into the catalogue and writes its
+  # images into content/. It runs and exits, so `up` never starts it: make import BATCH=...
+  importer:
+    build:
+      context: .
+      dockerfile: Dockerfile-php
+      target: importer
+    profiles: [jobs]
+    volumes:
+      - ./app:/var/www/html/app
+      - ./content:/var/www/html/content
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_NAME: hhbd
+      DB_USER: hhbd
+      DB_PASSWORD: hhbd_password
+
   # Nginx Web Server
   nginx:
     build:

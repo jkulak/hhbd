@@ -42,7 +42,8 @@ class Model_Image_Api extends Jkl_Model_Api
   /*
   * Adds a photo of an artist (#61) and keeps exactly one main photo per artist: the new one when
   * $main says so or when the artist has none yet. $photo holds the columns: filename, width,
-  * height, sha256, mime, description, source, sourceurl, licence, licence_url, credit, modified.
+  * height, sha256, mime, description, source, sourceurl, licence, licence_url, credit, modified,
+  * addedby (the import's user, #63; 0 when a person added it before there was one).
   * Returns the new row's id.
   */
   public function addArtistPhoto($artistId, array $photo, $main = false)
@@ -56,11 +57,11 @@ class Model_Image_Api extends Jkl_Model_Api
     if ($main && !empty($hasMain)) {
       $this->_db->query('UPDATE artists_photos SET main = ? WHERE artistid = ?', array('n', $artistId));
     }
-    $columns = array('filename', 'width', 'height', 'sha256', 'mime', 'description', 'source', 'sourceurl', 'licence', 'licence_url', 'credit', 'modified');
+    $columns = array('filename', 'width', 'height', 'sha256', 'mime', 'description', 'source', 'sourceurl', 'licence', 'licence_url', 'credit', 'modified', 'addedby');
     $bind = array($artistId, $main ? 'y' : 'n');
     foreach ($columns as $column) {
       $default = in_array($column, array('description', 'source', 'sourceurl'), true) ? '' : null;
-      $bind[] = isset($photo[$column]) ? $photo[$column] : ($column === 'modified' ? 0 : $default);
+      $bind[] = isset($photo[$column]) ? $photo[$column] : (in_array($column, array('modified', 'addedby'), true) ? 0 : $default);
     }
     $this->_db->query(
       'INSERT INTO artists_photos (artistid, main, ' . implode(', ', $columns) . ') VALUES (?, ?' . str_repeat(', ?', count($columns)) . ')',

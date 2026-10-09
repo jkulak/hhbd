@@ -10,15 +10,16 @@ day, and with it every script that deployed there.
 
 | In this repo | On the host | What |
 |---|---|---|
-| `deploy/compose.ovh.yaml` | `/srv/hhbd/compose.yaml` | the stack: nginx, app, db; nothing published |
+| `deploy/compose.ovh.yaml` | `/srv/hhbd/compose.yaml` | the stack: nginx, app, db, and the importer job; nothing published |
 | `deploy/hhbd.enc.env` | `/srv/hhbd/hhbd.enc.env` | the secrets, SOPS-encrypted to the host and personal age keys |
 | `deploy/hhbd.pl.caddyfile` | `/srv/edge/sites/hhbd.pl.caddyfile` | how the shared edge reaches nginx (`hhbd-web:80`) |
 | | `/srv/hhbd/.env` | `IMAGE_TAG=<running tag>`, written by the host's `ci-deploy` |
 | | volumes `hhbd_db_data`, `hhbd_content` | the database and `content/` |
 
 Configuration goes in with `make ovh-install`. Images go out with a release: a CalVer tag
-`vYYYY.MM.N` pushed by a person starts `.github/workflows/release.yml`, which builds both images
-under that one tag, pushes them privately to `ghcr.io/jkulak/hhbd-{app,nginx}`, and runs
+`vYYYY.MM.N` pushed by a person starts `.github/workflows/release.yml`, which builds the app,
+nginx and importer images under that one tag, pushes them privately to
+`ghcr.io/jkulak/hhbd-{app,nginx,importer}`, and runs
 `deploy/ovh-release.sh`: read the running tag with `status hhbd`, `deploy hhbd <tag>`, smoke
 test, and on a failed smoke test deploy the tag read at the start. A release that never becomes
 healthy is taken back by the host itself. Every container has a healthcheck; nginx's renders
@@ -76,6 +77,25 @@ Once, before the first `make ovh-migrate`: production already has the baseline s
 checking that every column the baseline creates is there. Until then `make ovh-migrate` refuses
 a database that has tables but no record.
 
+### Imports
+
+Batches from the content project go into production's catalogue with the importer job (#56,
+[docs/import.md](../docs/import.md)): `importer` in `compose.ovh.yaml`, under the `jobs`
+profile so a deploy never starts it, with the content volume read-write. It is the one container
+with GD, which writes the cover, photo and logo sizes from the original a batch ships (#96).
+
+```bash
+make ovh-import BATCH=/path/to/batch             # a dry run: what would change, nothing written
+make ovh-import BATCH=/path/to/batch MODE=apply  # the rows, and the images into the content volume
+make ovh-import-runs                             # the runs, newest first
+```
+
+`deploy/ovh-import.sh` pulls the importer image of the running tag, logged in to GHCR for the
+pull alone (ci-deploy pulls only what `up` starts), and streams the batch to it as a tar over
+ssh, so no copy is left on the host. Progress comes back on stderr, the report on stdout; the
+run's row in `import_runs` keeps the report too. A batch applied twice changes nothing the
+second time. A release from before the importer has no importer image to pull.
+
 ### How production moved
 
 On 2026-10-08, following CONTRACT.md §10, with no failed request:
@@ -99,7 +119,7 @@ after a fresh backup on the new host; `make ovh-data` and the `gcp-*` targets we
 ### Tests
 
 ```bash
-make test-ovh-stack     # compose.ovh.yaml locally behind a stand-in edge: health, smoke, client address, logs
+make test-ovh-stack     # compose.ovh.yaml locally behind a stand-in edge: health, smoke, client address, logs, an import
 make test-ovh-release   # every path of a release against a stand-in ci-deploy
 make secrets-check      # no plaintext secret or private key in the tree
 ```
