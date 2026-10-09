@@ -127,6 +127,25 @@
         "ref": { "type": "string", "pattern": "^artist:.+$" },
         "hhbd_id": { "$ref": "#/$defs/hhbd_id" },
         "name": { "type": "string", "minLength": 1, "maxLength": 250 },
+        "disambiguation": {
+          "description": "What tells the artist from another of the same name, in the catalogue's language: \"SBM Label\", \"raper z Poznania\", or the year of the first known release when nothing better is known. The importer then matches the artist by its name and this qualifier together, never by the name alone, and the pages show \"Solar (SBM Label)\" (#102).",
+          "type": ["string", "null"],
+          "maxLength": 190
+        },
+        "review": {
+          "description": "Why a person should look at the artist once it is in, such as a name hhbd already has: {\"reason\": \"same name as hhbd artist 2311\", \"suggestions\": [2311]}. An artist with a review has a disambiguation.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["reason"],
+              "properties": {
+                "reason": { "type": "string", "minLength": 1, "maxLength": 255 },
+                "suggestions": { "type": "array", "items": { "type": "integer", "minimum": 1 } }
+              }
+            }
+          ]
+        },
         "type": { "enum": ["m", "f", "b", "x"] },
         "real_name": { "type": ["string", "null"], "maxLength": 255 },
         "aliases": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 190 } },
@@ -149,7 +168,9 @@
         "photos": { "type": "array", "items": { "$ref": "#/$defs/photo" } },
         "external_ids": { "$ref": "#/$defs/external_ids" },
         "provenance": { "$ref": "#/$defs/provenance" }
-      }
+      },
+      "if": { "required": ["review"], "properties": { "review": { "type": "object" } } },
+      "then": { "required": ["disambiguation"], "properties": { "disambiguation": { "type": "string", "minLength": 1 } } }
     },
     "release": {
       "type": "object",

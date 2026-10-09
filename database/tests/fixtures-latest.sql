@@ -35,3 +35,13 @@ UPDATE `artists_photos` SET `credit` = 'Jan Kowalski', `licence` = 'CC BY-SA 4.0
  WHERE `artistid` = 35 AND `main` = 'y';
 INSERT INTO `artists_photos` (`artistid`, `filename`, `description`, `main`, `source`, `sourceurl`, `licence`, `licence_url`, `credit`, `modified`, `addedby`) VALUES
 (35, 'test-artist-030.jpg', 'Mes na koncercie', 'n', 'commons', 'https://commons.wikimedia.org/wiki/File:Mes_koncert.jpg', 'CC BY 4.0', 'https://creativecommons.org/licenses/by/4.0/', 'Anna Nowak', 1, 1100);
+
+-- Two artists of one name, told apart by their qualifiers (#102): each has its own page, title
+-- and slug, a list holding both shows the qualifiers, and the band one of them is in lists him
+-- by his name alone.
+INSERT INTO `artists` (`id`, `name`, `disambiguation`, `urlname`, `type`, `trivia`, `website`, `status`, `viewed`) VALUES
+(64, 'Solar', 'SBM Label', 'solar-sbm-label', 'm', '', '', 999, 900),
+(65, 'Solar', 'raper z Poznania', 'solar-raper-z-poznania', 'm', '', '', 999, 100),
+(66, 'Skład Solara', '', 'sklad-solara', 'b', '', '', 999, 50);
+INSERT INTO `band_lookup` (`artistid`, `bandid`, `status`) VALUES
+(64, 66, 999);

@@ -40,7 +40,8 @@ class ArtistController extends Zend_Controller_Action
         $artist = Model_Artist_Api::getInstance()->find($this->params['id'], true);
 
         // Build canonical URL and redirect if current URL doesn't match
-        $canonicalSlug = Jkl_Tools_Url::createUrl($artist->name . '-p' . $artist->id) . '.html';
+        // The qualifier is in the slug too, so two artists of one name never share one (#102).
+        $canonicalSlug = Jkl_Tools_Url::createUrl($artist->qualifiedName . '-p' . $artist->id) . '.html';
         Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
 
         $artist->addAlbums(Model_Album_Api::getInstance()->getArtistsAlbums($artist->id, array(), false, 'year'));
@@ -90,14 +91,14 @@ class ArtistController extends Zend_Controller_Action
 
         // Open Graph Protocol (see more: http://mgp.me)
         $og = new Jkl_Og('Hhbd.pl');
-        $og->setTitle($artist->name);
+        $og->setTitle($artist->qualifiedName);
         $description = empty($artist->profile) ? $artist->autoDescription : $artist->profile;
         $og->setDescription($description);
         $og->setImage($artist->photos->items[0]->url);
         $og->setType('musician');
         $this->view->og = $og->getMetaData();
 
-        $this->view->headTitle()->headTitle($artist->name, 'PREPEND');
+        $this->view->headTitle()->headTitle($artist->qualifiedName, 'PREPEND');
         // $this->view->headMeta()->setName('description', $artist->name . ' - teksty, dyskografia, biografia '. implode($albumList, ', '));
         if (!empty($artist->description)) {
             $this->view->headMeta()->setName('description', Jkl_Tools_String::trim_str($artist->description, 160));
@@ -105,7 +106,7 @@ class ArtistController extends Zend_Controller_Action
             $this->view->headMeta()->setName('description', Jkl_Tools_String::trim_str($artist->autoDescription, 160));
         }
 
-        $this->view->headMeta()->setName('keywords', $artist->name . ',' . implode(',', $albumListTmp) . ',teksty,dyskografia,biografia');
+        $this->view->headMeta()->setName('keywords', $artist->qualifiedName . ',' . implode(',', $albumListTmp) . ',teksty,dyskografia,biografia');
     }
 
     // description autogeneration, displayed for SEO purposes

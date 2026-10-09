@@ -165,7 +165,7 @@ else
     bad "the importer reads the test batch"
     tail -20 "$T/import.err"
 fi
-check "into the catalogue" "6 created, 3 updated, 1 unchanged, 0 refused" \
+check "into the catalogue" "7 created, 3 updated, 1 unchanged, 0 refused" \
     "$(jq -r '.totals | "\(.created) created, \(.updated) updated, \(.unchanged) unchanged, \(.refused) refused"' "$T/import.json" 2>/dev/null)"
 cover=$(jq -r 'select(.ref == "release:testowy-album") | .cover.sha256' tests/import/batch/batch.ndjson)
 album=$(jq -r '.documents[] | select(.ref == "release:testowy-album") | .url' "$T/import.json" 2>/dev/null)

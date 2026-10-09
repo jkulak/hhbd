@@ -93,7 +93,10 @@ class Model_Song_Container
             $artistObj = new stdClass();
             $artistObj->id = $params['art_id'];
             $artistObj->name = $params['art_name'];
-            $artistObj->url = Jkl_Tools_Url::createUrl($params['art_name']);
+            $artistObj->url = Jkl_Tools_Url::createUrl(Model_Artist_Container::qualifiedNameOf(
+                $params['art_name'],
+                isset($params['art_disambiguation']) ? $params['art_disambiguation'] : ''
+            ));
             $this->artist->add($artistObj);
         }
     }

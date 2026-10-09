@@ -214,7 +214,7 @@ class Model_Song_Api extends Jkl_Model_Api
     public function getMostPopular($limit = 10)
     {
         $limit = intval($limit);
-        $query = 'SELECT *, t1.id as song_id, t1.title as song_title, t1.viewed as song_views, t3.id as alb_id, t3.cover as alb_cover, t3.title as alb_title, t5.id as art_id, t5.name as art_name, ' .
+        $query = 'SELECT *, t1.id as song_id, t1.title as song_title, t1.viewed as song_views, t3.id as alb_id, t3.cover as alb_cover, t3.title as alb_title, t5.id as art_id, t5.name as art_name, t5.disambiguation as art_disambiguation, ' .
                   '(SELECT COUNT(*) FROM hhb_comments WHERE com_object_id = t1.id AND com_object_type = "s") as comment_count ' .
                   'FROM songs t1 ' .
                   'LEFT JOIN album_lookup t2 ON t1.id = t2.songid ' .

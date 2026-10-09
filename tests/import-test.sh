@@ -70,11 +70,11 @@ logo=$(sha logo-label.png)
 
 echo "> a dry run"
 check "the dry run reads every document" "0" "$(import "$BATCH" dry-run dry)"
-check "and reports what an apply would do" "6 created, 3 updated, 1 unchanged, 0 refused" "$(totals dry)"
-check "with a warning for each value hhbd keeps" "3" "$(jq '[.documents[].warnings[]] | length' "$T/dry.json")"
+check "and reports what an apply would do" "7 created, 3 updated, 1 unchanged, 0 refused" "$(totals dry)"
+check "with a warning for each value hhbd keeps, and the namesake to review" "4" "$(jq '[.documents[].warnings[]] | length' "$T/dry.json")"
 check "and leaves no row behind" "$rows_start" "$(rows)"
 check "and no file" "" "$(content | comm -13 "$T/content-start" -)"
-check "but its run, closed" "dry-run 6 1" "$(sql "SELECT CONCAT_WS(' ', mode, created_count, finished IS NOT NULL) FROM import_runs ORDER BY id DESC LIMIT 1")"
+check "but its run, closed" "dry-run 7 1" "$(sql "SELECT CONCAT_WS(' ', mode, created_count, finished IS NOT NULL) FROM import_runs ORDER BY id DESC LIMIT 1")"
 
 echo "> an apply"
 check "the apply reads every document" "0" "$(import "$BATCH" apply apply)"
@@ -105,17 +105,23 @@ check "Eldo: the empty website and start filled, the real name kept" "https://ex
 check "album 1: found by its Discogs master, its catalogue number filled, its tracklist kept" "TEST 0001 3" \
     "$(sql "SELECT CONCAT(catalog_cd, ' ', (SELECT COUNT(*) FROM album_lookup WHERE albumid = 1)) FROM albums WHERE id = 1")"
 check "Mes keeps his Discogs id" "271903" "$(sql "SELECT GROUP_CONCAT(value) FROM external_ids WHERE entity_type = 'artist' AND entity_id = 35 AND source = 'discogs'")"
+check "a namesake the batch tells apart is an artist of its own, Mes himself without a qualifier" "35: new:testowy imiennik" \
+    "$(sql "SELECT GROUP_CONCAT(CONCAT(IF(id = 35, '35', 'new'), ':', disambiguation) ORDER BY id SEPARATOR ' ') FROM artists WHERE name = 'Mes'")"
+check "its page is under the qualified name" "1" \
+    "$(curl -s "$URL$(jq -r '.documents[] | select(.ref == "artist:mes-imiennik") | .url' "$T/apply.json")" | grep -c '<h1>Mes (testowy imiennik)</h1>' || true)"
+check "and the report asks a person to look at it" "1" \
+    "$(jq '[.documents[] | select(.ref == "artist:mes-imiennik") | .warnings[] | select(test("for a person to review: same name as hhbd artist 35"))] | length' "$T/apply.json")"
 check "where each changed group came from, and only those" "core cover tracklist" \
     "$(sql "SELECT GROUP_CONCAT(field ORDER BY field SEPARATOR ' ') FROM import_provenance WHERE entity_type = 'album' AND entity_id = $album")"
 check "Eldo's core is not credited to the batch" "facts" \
     "$(sql "SELECT GROUP_CONCAT(field) FROM import_provenance WHERE entity_type = 'artist' AND entity_id = 2")"
-check "the run holds the report" "apply 10" "$(sql "SELECT CONCAT(mode, ' ', JSON_LENGTH(report, '$.documents')) FROM import_runs ORDER BY id DESC LIMIT 1")"
+check "the run holds the report" "apply 11" "$(sql "SELECT CONCAT(mode, ' ', JSON_LENGTH(report, '$.documents')) FROM import_runs ORDER BY id DESC LIMIT 1")"
 content >"$T/content-applied"
 rows_applied=$(rows)
 
 echo "> the same batch again"
 check "the second apply reads every document" "0" "$(import "$BATCH" apply again)"
-check "and changes nothing" "0 created, 0 updated, 10 unchanged, 0 refused" "$(totals again)"
+check "and changes nothing" "0 created, 0 updated, 11 unchanged, 0 refused" "$(totals again)"
 check "not a row" "$rows_applied" "$(rows)"
 check "not a file" "" "$(content | comm -3 "$T/content-applied" -)"
 
@@ -125,17 +131,22 @@ remove_written >/dev/null
 mkdir -p "$T/broken"
 cp -R "$BATCH/files" "$T/broken/"
 # The album's cover says another hash; the single names the album as its parent; one line is
-# not JSON, one has a type the schema does not know.
+# not JSON, one has a type the schema does not know; one asks for a review without a qualifier,
+# one names a band member by a name two artists share (#102).
 jq -c 'if .ref == "release:testowy-album" then .cover.sha256 = ("0" * 64) else . end' "$BATCH/batch.ndjson" >"$T/broken/batch.ndjson"
 echo '{"kind": "label", "ref": "label:broken", "name": ' >>"$T/broken/batch.ndjson"
 echo '{"kind": "artist", "ref": "artist:x", "name": "X", "type": "q"}' >>"$T/broken/batch.ndjson"
+echo '{"kind": "artist", "ref": "artist:y", "name": "Pezet", "review": {"reason": "same name as hhbd artist 1"}}' >>"$T/broken/batch.ndjson"
+echo '{"kind": "artist", "ref": "artist:z", "name": "Testowy Zespół Solara", "members": [{"ref": "name:Solar"}]}' >>"$T/broken/batch.ndjson"
 rows_fresh=$(rows)
 check "make import fails, as some were refused" "failed" "$([ "$(import "$T/broken" apply broken)" != 0 ] && echo failed)"
-check "those alone" "created created created created updated unchanged refused refused updated updated refused refused" "$(actions broken)"
+check "those alone" "created created created created updated unchanged created refused refused updated updated refused refused refused refused" "$(actions broken)"
 check "the album for its cover's hash" "1" "$(jq '[.documents[] | select(.ref == "release:testowy-album") | .errors[] | select(test("the document says sha256"))] | length' "$T/broken.json")"
 check "the single for the parent that never went in" "1" "$(jq '[.documents[] | select(.ref == "release:testowy-single" or .ref == "release:testowy-singiel") | .errors[] | select(test("release:testowy-album"))] | length' "$T/broken.json")"
 check "the line that is not JSON, and the type the schema refuses" "not a JSON object|\$.type" \
-    "$(jq -r '[.documents[-2].errors[0][0:17], (.documents[-1].errors[0] | split(":")[0])] | join("|")' "$T/broken.json")"
+    "$(jq -r '[.documents[-4].errors[0][0:17], (.documents[-3].errors[0] | split(":")[0])] | join("|")' "$T/broken.json")"
+check "a review without a qualifier, and a name two artists share" "\$: disambiguation is missing|2 artists are called \"Solar\" (hhbd:artist:64 \"SBM Label\", hhbd:artist:65 \"raper z Poznania\")" \
+    "$(jq -r '[.documents[-2].errors[0], (.documents[-1].errors[0] | split(";")[0])] | join("|")' "$T/broken.json")"
 check "nothing of the refused album in the database" "0" "$(sql "SELECT COUNT(*) FROM albums WHERE title IN ('Testowy Album Importu', 'Testowy Singiel')")"
 check "nor in content/, not even half-written" "0" "$(find content -name "$cover.jpg*" -o -name "$single.jpg*" | wc -l | tr -d ' ')"
 check "and the rest went in" "1 1" "$(sql "SELECT CONCAT((SELECT COUNT(*) FROM artists WHERE name = 'Testowy Skład'), ' ', (SELECT COUNT(*) FROM albums WHERE id = 1 AND catalog_cd = 'TEST 0001'))")"
