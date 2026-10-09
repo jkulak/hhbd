@@ -6,7 +6,8 @@
 #
 # The call comes from the environment, so `make edit` needs no quoting of its own:
 #   DO     the operation and its ids: "merge-albums 850 841", "delete-artist 2197", "undo 3",
-#          "set albums 841 title" (the value in VALUE, or VALUE unset for NULL)
+#          "set albums 841 title" (the value in VALUE, or VALUE unset for NULL), "set albums 841"
+#          (the columns in VALUE as a JSON object, '{"title": "...", "notes": null}')
 #   BY     the display name of an hhbd admin, WHY why; neither may be empty
 #   MODE   apply to write; anything else, or nothing, is a dry run
 #

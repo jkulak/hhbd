@@ -2,7 +2,7 @@
 
 /**
  * An admin's edits to the catalogue, each journalled and each undoable (#115): merging two
- * albums or two artists, deleting an album, an artist or a label, setting one field. The command
+ * albums or two artists, deleting an album, an artist or a label, setting a row's fields. The command
  * line (app/tools/edit.php) and the review panel's merge (#103) both come here, so a change
  * leaves the same record whichever way it came.
  *
@@ -26,8 +26,20 @@ class Model_Edit_Api extends Jkl_Model_Api
         'undo'          => array('operation'),
     );
 
-    /** The tables whose one field `set` changes */
+    /**
+     * set's other form: a row's columns and their values as one JSON object, so ten columns are
+     * one operation and one undo rather than ten (#145)
+     */
+    public const SET_COLUMNS = array('table', 'id', 'values');
+
+    /** The tables whose fields `set` changes */
     public const SETTABLE = array('albums', 'artists', 'labels', 'songs');
+
+    /**
+     * The columns the JSON form may not name: the id is the row, and set writes the other two
+     * itself. One column at a time may still correct them.
+     */
+    public const SET_OWN = array('id', 'updatedby', 'updated');
 
     /**
      * Every column that holds an artist's id, as table => columns; a merge points them all at
@@ -126,10 +138,23 @@ class Model_Edit_Api extends Jkl_Model_Api
         if (!isset(self::OPERATIONS[$operation])) {
             throw new InvalidArgumentException(sprintf('No operation "%s"; there are %s.', $operation, implode(', ', array_keys(self::OPERATIONS))));
         }
-        if (count($args) !== count(self::OPERATIONS[$operation])) {
-            throw new InvalidArgumentException(sprintf('%s takes %s.', $operation, implode(', ', self::OPERATIONS[$operation])));
+        $names = self::OPERATIONS[$operation];
+        if ('set' === $operation && count($args) === count(self::SET_COLUMNS)) {
+            $names = self::SET_COLUMNS;
         }
-        $args = array_combine(self::OPERATIONS[$operation], array_values($args));
+        if (count($args) !== count($names)) {
+            throw new InvalidArgumentException(sprintf(
+                '%s takes %s%s.',
+                $operation,
+                implode(', ', $names),
+                'set' === $operation ? ', or ' . implode(', ', self::SET_COLUMNS) . ' as a JSON object' : ''
+            ));
+        }
+        $args = array_combine($names, array_values($args));
+        if (array_key_exists('values', $args)) {
+            // Decoded before the journal has it, so edit_operations keeps the object, not a string.
+            $args['values'] = self::columnsOf($args['values']);
+        }
         if ('' === trim((string) $why)) {
             throw new InvalidArgumentException('Every edit says why.');
         }
@@ -159,7 +184,11 @@ class Model_Edit_Api extends Jkl_Model_Api
                 $this->deleteLabel($this->id($args['id']));
                 break;
             case 'set':
-                $this->setField($args['table'], $this->id($args['id']), $args['column'], $args['value']);
+                if (array_key_exists('values', $args)) {
+                    $this->setColumns($args['table'], $this->id($args['id']), $args['values']);
+                } else {
+                    $this->setColumns($args['table'], $this->id($args['id']), array($args['column'] => $args['value']), false);
+                }
                 break;
             case 'undo':
                 $this->undo($this->id($args['operation']));
@@ -173,6 +202,30 @@ class Model_Edit_Api extends Jkl_Model_Api
     {
         $rows = $this->_db->fetchAll('SELECT into_id FROM album_merges WHERE id = ?', array((int) $albumId));
         return empty($rows) ? null : (int) $rows[0]['into_id'];
+    }
+
+    /**
+     * The columns of set's JSON form, from VALUE: an object of at least one column, each value a
+     * string, a number or null. Anything else is a wrong call, refused before a row is read.
+     *
+     * @return array column => value
+     */
+    public static function columnsOf($json)
+    {
+        $decoded = null === $json ? null : json_decode((string) $json, false, 512, JSON_BIGINT_AS_STRING);
+        if (!$decoded instanceof stdClass) {
+            throw new InvalidArgumentException('set <table> <id> takes its columns as a JSON object in VALUE: {"column": "value", ...}.');
+        }
+        $values = get_object_vars($decoded);
+        if (empty($values)) {
+            throw new InvalidArgumentException('The JSON object in VALUE names no column.');
+        }
+        foreach ($values as $column => $value) {
+            if (null !== $value && !is_string($value) && !is_int($value) && !is_float($value)) {
+                throw new InvalidArgumentException(sprintf('"%s" in VALUE is %s; a column takes a string, a number or null.', $column, json_encode($value)));
+            }
+        }
+        return $values;
     }
 
     /** @return string[] one line per row the last operation changed */
@@ -286,19 +339,30 @@ class Model_Edit_Api extends Jkl_Model_Api
         $this->deleteRow('labels', $label);
     }
 
-    /** @param string|null $value null sets the column NULL */
-    private function setField($table, $id, $column, $value)
+    /**
+     * Sets a row's columns in one change, a null value to NULL, with updatedby and updated as
+     * the admin and now. A column the row lacks refuses them all.
+     *
+     * @param bool $json the JSON form, which may not name SET_OWN; one column may name all but id
+     */
+    private function setColumns($table, $id, array $values, $json = true)
     {
         if (!in_array($table, self::SETTABLE, true)) {
             throw new RuntimeException(sprintf('set changes %s, not %s.', implode(', ', self::SETTABLE), $table));
         }
         $row = $this->one($table, $id);
-        if ('id' === $column || !array_key_exists($column, $row)) {
-            throw new RuntimeException(sprintf('%s has no column "%s" that set may change.', $table, $column));
+        foreach (array_keys($values) as $column) {
+            $column = (string) $column;
+            if (!array_key_exists($column, $row) || 'id' === $column) {
+                throw new RuntimeException(sprintf('%s has no column "%s" that set may change.', $table, $column));
+            }
+            if ($json && in_array($column, self::SET_OWN, true)) {
+                throw new RuntimeException(sprintf('set writes %s itself; leave it out of VALUE.', $column));
+            }
         }
-        $set = array($column => $value);
+        $set = $values;
         foreach (array('updatedby' => $this->auditUserId, 'updated' => $this->now()) as $audit => $now) {
-            if (array_key_exists($audit, $row) && $audit !== $column) {
+            if (array_key_exists($audit, $row) && !array_key_exists($audit, $set)) {
                 $set[$audit] = $now;
             }
         }
