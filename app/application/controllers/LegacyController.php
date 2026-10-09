@@ -5,6 +5,10 @@
  * other sites: each answers with a permanent redirect to the page it named. A slug that names
  * no row, or several, gets the search for its words instead, and not for good, as the row may
  * come with an import.
+ *
+ * They stay for good, and the links in the texts stay as they are (#24): other sites link the
+ * old addresses as well as the new, and a text rewritten to today's would still leave the
+ * links whose slug names several rows going through here to the search.
  */
 class LegacyController extends Zend_Controller_Action
 {
