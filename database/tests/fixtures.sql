@@ -212,6 +212,8 @@ INSERT INTO `album_artist_lookup` (`albumid`, `artistid`, `status`) VALUES
 INSERT INTO `songs` (`id`, `title`, `lyrics`, `status`, `viewed`) VALUES
 -- Required specific song
 (7329, 'Pogoda', 'Słońce świeci jasno nad miastem...', 999, 5000),
+-- ISO-8859-2 read as latin-1, as production had it; 0031 repairs it by its id (#27)
+(6190, 'W³a¶nie tak siê bawi...', '', 999, 0),
 -- Additional songs for Top10
 (1, 'Intro', 'Witamy w świecie hip-hopu...', 999, 8000),
 (2, 'Ulice', 'Chodzę po ulicach miasta...', 999, 7500),
@@ -655,7 +657,9 @@ INSERT INTO `band_lookup` (`artistid`, `bandid`, `status`) VALUES
 (2, 22, 999);
 
 INSERT INTO `altnames_lookup` (`artistid`, `altname`, `status`) VALUES
-(4, 'TEDE', 999);
+(4, 'TEDE', 999),
+-- Stored mangled twice over, as production had JŹW; 0031 repairs it (#27)
+(35, 'JÄ¹ąW', 999);
 
 INSERT INTO `artist_lookup` (`songid`, `artistid`, `status`) VALUES
 (7329, 8, 999);
