@@ -269,9 +269,18 @@ renaming them across 45 tables would risk more than it would clear up.
 | `added` | when the row was added | the database: `DEFAULT current_timestamp()`, and **never** `ON UPDATE`, so an update cannot rewrite it |
 | `addedby` | who added it: an `ID` in the old `users` table; `0` means unknown, `1100` the import | whoever inserts; the archived backoffice did, the importer does |
 | `updated` | when the row was last **edited**, by a person or by the import | whoever edits; nothing automatic |
-| `updatedby` | who edited it, an `ID` in `users`; `1100` the import. The review panel (#103) and `make edit` (#115) write the admin's `hhb_users.usr_id` here instead, so for their edits the number is from the other table | whoever edits |
+| `updatedby` | who edited it, an `ID` in `users`; `1100` the import | whoever edits; the review panel and `make edit` through the admin's linked row (below) |
 | `status` | `999` published, counted by the site; `0` not published (the only two values production holds) | the editor |
 | `viewed` | page views | the application, on every view (`/stat`) |
+
+**One table for who (#132).** `addedby` and `updatedby` name `users`, the old site's accounts,
+which the catalogue's history and the import are in. An admin logs in with an `hhb_users`
+account; `users.hhb_usr_id` links it to the `users` row its edits are written as, and the review
+panel (#103) and `make edit` (#115) write that row's `ID` (`Model_Audit_Api::userIdFor`). An
+admin without a row gets one the first time, under the account's display name. The two admins'
+accounts are linked to the old accounts they built the catalogue with (0033): Kuba to `fee` (1),
+Marcin Kaźmiruk to `muuody` (3). The journal of their edits (`edit_operations.user_id`) and a
+settled review item's `resolved_by` name the account itself, in `hhb_users`.
 
 A logged-in admin sees `added` and `addedby` on the album, artist, song and label pages, as
 one more line of the page's details: "Dodano: 12 maja 2009, 14:03 (Kuba)", with the name from

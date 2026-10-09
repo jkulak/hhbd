@@ -8,6 +8,13 @@ person's decision; nothing releases on its own.
 
 ## Unreleased
 
+### Fixed
+- An admin's edits name them in `updatedby` the way the rest of the history does (#132, migration
+  0033): `updatedby` and `addedby` are `users` IDs, and the review panel and `make edit` wrote the
+  admin's `hhb_users` id instead, which in `users` is someone else. `users.hhb_usr_id` links an
+  admin's account to their `users` row, Kuba's to `fee` and Marcin Kaźmiruk's to `muuody`; the
+  one row the tools had written, artist 2194 from #114, names `fee` now.
+
 ## 2026.10.9 — 2026-10-10
 
 PHP 8.4 from Debian 13's own packages (#37): on a copy of production the same pages answer about

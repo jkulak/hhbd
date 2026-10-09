@@ -377,6 +377,24 @@ check "down: each qualifier folded into its name, under the old key on the name 
 check "up: the names and qualifiers apart again, the archive empty" "64:Solar:SBM Label 65:Solar:raper z Poznania 0" \
     "$(sql "SELECT GROUP_CONCAT(CONCAT(id, ':', name, ':', disambiguation) ORDER BY id SEPARATOR ' ') FROM artists WHERE id IN (64, 65)") $(sql "SELECT COUNT(*) FROM migration_archive WHERE version = '0022'")"
 
+echo "> the edit tools' updatedby, in users (#132)"
+# What the review panel and make edit wrote before 0033: an operation by the admin's account
+# (10) in the journal, and that account's id in the row's updatedby.
+after_0032() { ./scripts/migrate.sh status 2>/dev/null | awk '$1 ~ /^[0-9]{4}$/ && $1 > "0032" && $3 != "pending"' | wc -l | tr -d ' '; }
+./scripts/migrate.sh down "$(after_0032)" >"$T/out" 2>&1 || { bad "down to 0032 succeeds"; cat "$T/out"; }
+updatedby_2=$(sql "SELECT IFNULL(updatedby, 'NULL') FROM albums WHERE id = 2")
+sql "INSERT INTO edit_operations (id, operation, args, user_id, why, path) VALUES (900, 'set', '{}', 10, 'schema-test', 'cli');
+     INSERT INTO edit_journal (operation_id, table_name, action, row_before, row_after) VALUES (900, 'albums', 'changed', JSON_OBJECT('id', 2, 'updatedby', 0), JSON_OBJECT('id', 2, 'updatedby', 10));
+     UPDATE albums SET updatedby = 10 WHERE id = 2"
+./scripts/migrate.sh up >"$T/out" 2>&1 || { bad "up succeeds"; cat "$T/out"; }
+check "up: what the tools wrote names a users row of the account's own, linked to it" "Admin 10" \
+    "$(sql "SELECT CONCAT_WS(' ', u.login, u.hhb_usr_id) FROM albums a JOIN users u ON u.ID = a.updatedby WHERE a.id = 2")"
+./scripts/migrate.sh down "$(after_0032)" >"$T/out" 2>&1 || { bad "down to 0032 succeeds"; cat "$T/out"; }
+check "down: the account's id back, the row and the link gone" "10 0 0" \
+    "$(sql "SELECT CONCAT_WS(' ', (SELECT updatedby FROM albums WHERE id = 2), (SELECT COUNT(*) FROM users WHERE login = 'Admin'), (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'hhb_usr_id'))")"
+sql "DELETE FROM edit_journal WHERE operation_id = 900; DELETE FROM edit_operations WHERE id = 900; UPDATE albums SET updatedby = $updatedby_2 WHERE id = 2"
+./scripts/migrate.sh up >"$T/out" 2>&1 || { bad "up succeeds"; cat "$T/out"; }
+
 echo "> down to the baseline brings the old schema back, and up removes it"
 rows_before=$(sql "SELECT COUNT(*) FROM songs")
 ./scripts/migrate.sh down "$after_baseline" >"$T/out" 2>&1 || { bad "down $after_baseline succeeds"; cat "$T/out"; }
