@@ -5,8 +5,9 @@
 -- covers from the Cover Art Archive and Discogs, each with a known source and licence.
 --
 -- One row per file: the album, the variant (orig, 600, 300 or 75 px), its path under content/,
--- width, height, SHA-256 and MIME type, where it came from and under what licence, and whether
--- it is the album's main cover. A path rather than a bare name, so the covers already on the
+-- width, height, SHA-256 and MIME type, where it came from and under what licence, whether it is
+-- the album's main cover, and whether it is a stand-in to replace when a larger one turns up (a
+-- 600 px Discogs cover shipped because nothing better existed, #96). A path rather than a bare name, so the covers already on the
 -- volume (a/<name> and a/th/<name>-th.jpg) are described where they are; new variants go under
 -- a/<variant>/. app/tools/covers.php fills the table from the files, as the database cannot
 -- read them. albums.cover stays until every reader uses this table. The down drops the table.
@@ -23,6 +24,7 @@ CREATE TABLE `album_covers` (
   `sourceurl` varchar(500) DEFAULT NULL,
   `licence` varchar(64) DEFAULT NULL,
   `main` enum('y','n') NOT NULL DEFAULT 'y',
+  `needs_upgrade` tinyint(1) NOT NULL DEFAULT 0,
   `added` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `u_album_covers` (`albumid`, `variant`, `sha256`),
