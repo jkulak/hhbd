@@ -404,6 +404,34 @@ run_fixture_tests() {
     echo ""
 }
 
+# test_not_found <name> <path> <text>: the path answers 404 and the body does not contain the text
+test_not_found() {
+    local name="$1"
+    local path="$2"
+    local unexpected="$3"
+    local url="${BASE_URL}${path}"
+    local status content
+    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 $CURL_OPTS "$url" 2>/dev/null || echo "000")
+    if [[ "$status" != "404" ]]; then
+        local error="$name - HTTP $status (expected 404)"
+        echo -e "${RED}✗${NC} $error"
+        ERRORS+=("$error")
+        ((FAILED++))
+        return 1
+    fi
+    content=$(curl -s --max-time 10 $CURL_OPTS "$url" 2>/dev/null)
+    if echo "$content" | grep -qi -- "$unexpected"; then
+        local error="$name - Content present: '$unexpected'"
+        echo -e "${RED}✗${NC} $error"
+        ERRORS+=("$error")
+        ((FAILED++))
+        return 1
+    fi
+    echo -e "${GREEN}✓${NC} $name"
+    ((PASSED++))
+    return 0
+}
+
 run_tests() {
     echo "Running tests..."
     echo ""
@@ -448,6 +476,12 @@ run_tests() {
     # User pages
     echo "--- User Pages ---"
     test_page "Login Page" "/uzytkownik/logowanie.html" "Zaloguj"
+    echo ""
+
+    # A .php file that does not exist: nginx's own 404, where PHP-FPM said "File not found." and
+    # nginx logged an error for every bot asking (#34)
+    echo "--- Missing Files ---"
+    test_not_found "A .php file that does not exist is nginx's 404, not PHP-FPM's" "/wp-login.php" "File not found."
     echo ""
 
     # Static pages

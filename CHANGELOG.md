@@ -41,6 +41,9 @@ person's decision; nothing releases on its own.
   `PÓŹNIEJ`), and old song titles in ISO-8859-2 read as latin-1 (`W³a¶nie` for `Właśnie`). The
   migration holds no value from the database, only the sequences, letters and row keys a scan of
   production found; it keeps no copy of the old values and its down undoes nothing.
+- A request for a `.php` file that does not exist, `/wp-login.php` and the like from bots, gets
+  nginx's own 404 without reaching PHP-FPM. Each one used to write an `[error]` line, "Primary
+  script unknown", that showed on the error panels though nothing was wrong (#34).
 - The downs of 0003 and 0004 change the `added` defaults with `MODIFY`. Their `ALTER COLUMN
   ... SET DEFAULT` did nothing, with no error, on a database loaded from a dump, as a restore of
   the nightly backup is: MariaDB 10.11 ignores it when the `current_timestamp()` default came

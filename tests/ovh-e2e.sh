@@ -10,6 +10,7 @@
 #     which compose.yaml and compose.ci.yaml share
 #   - the smoke test passes through the edge
 #   - nginx takes the client's address from X-Real-IP sent by the edge, and from nobody else
+#   - a .php file that does not exist is nginx's own 404, without PHP-FPM or a log line (#34)
 #   - nginx writes no access log and nothing at all on a healthy run; the app container writes
 #     only JSON lines in the shared host's format (#101; CONTRACT.md §9 in gcloud-ovh-migrate),
 #     a PHP error among them, as one line with `error`, `stack` and the edge's `request_id`
@@ -89,12 +90,16 @@ for line in sys.stdin:
         print(line[:120])'
 }
 # Runs a PHP file in the app, as a request through the edge: probe <name> <php> [curl options]
+# nginx passes on only a script its own copy of public/ has (#34), so an empty file of the same
+# name goes there too; the PHP runs in the app.
 probe() {
     local name=$1 php=$2
     shift 2
     printf '%s' "$php" | docker exec -i "$PROJECT-app-blue-1" sh -c "cat > /var/www/html/app/public/$name.php"
+    docker exec "$PROJECT-nginx-blue-1" touch "/var/www/html/app/public/$name.php"
     via_edge "$@" "http://hhbd.pl/$name.php"
     docker exec "$PROJECT-app-blue-1" rm -f "/var/www/html/app/public/$name.php"
+    docker exec "$PROJECT-nginx-blue-1" rm -f "/var/www/html/app/public/$name.php"
 }
 
 if [ "${STACKTEST_PREBUILT:-}" = 1 ]; then
@@ -189,8 +194,10 @@ else
     bad "an X-Real-IP sent by the client through the edge is replaced (got '$seen')"
 fi
 printf '%s' "$addr" | docker exec -i "$PROJECT-app-blue-1" sh -c 'cat > /var/www/html/app/public/addr.php'
+docker exec "$PROJECT-nginx-blue-1" touch /var/www/html/app/public/addr.php
 seen=$(docker run --rm --network edge busybox:1.37.0 wget -q -O - --header 'Host: hhbd.pl' --header 'X-Real-IP: 198.51.100.9' http://hhbd-blue-web/addr.php)
 docker exec "$PROJECT-app-blue-1" rm -f /var/www/html/app/public/addr.php
+docker exec "$PROJECT-nginx-blue-1" rm -f /var/www/html/app/public/addr.php
 case "$seen" in
     172.30.0.*) ok "X-Real-IP from anywhere but the edge is ignored ($seen)" ;;
     *)          bad "X-Real-IP from anywhere but the edge is ignored (got '$seen')" ;;
@@ -215,6 +222,10 @@ check "and nginx serves it from the content volume" "200 image/jpeg" \
     "$(via_edge -o /dev/null -w '%{http_code} %{content_type}' "http://hhbd.pl/content/a/600/$cover.jpg")"
 check "its progress lines are JSON in the host's format, one per document and one for the run" "12 " \
     "$(grep -c '"logger":"importer"' "$T/import.err") $(grep '^{' "$T/import.err" | not_contract)"
+
+echo "> a .php file that does not exist (#34)"
+check "answers nginx's own 404, never reaching PHP-FPM" "404 nginx" \
+    "$(via_edge -o "$T/missing" -w '%{http_code}' http://hhbd.pl/wp-login.php) $(grep -o nginx "$T/missing" | head -1)"
 
 echo "> the logs"
 check "nginx wrote no access-log line for the requests above, and nothing else on a healthy run" "0" \
