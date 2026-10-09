@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jkulak/hhbd/blob/main/app/docs/import.schema.json",
+  "title": "One document of an hhbd import batch",
+  "description": "A batch is NDJSON: one document per line, labels first, then artists, releases and standalone images, so that every reference points at something already read. docs/import.md explains the fields, how documents are matched to rows, and what the importer reports. app/tools/import.php validates every document against the same rules (Model_Import_Validator) before it writes anything.",
+  "oneOf": [
+    { "$ref": "#/$defs/label" },
+    { "$ref": "#/$defs/artist" },
+    { "$ref": "#/$defs/release" },
+    { "$ref": "#/$defs/image" }
+  ],
+  "$defs": {
+    "ref": {
+      "description": "A row this batch or hhbd already has: a document's own ref (artist:taco-hemingway), an hhbd id (hhbd:artist:2241), an external id (discogs:artist:4320863) or a name (name:Taco Hemingway).",
+      "type": "string",
+      "pattern": "^((artist|label|release):.+|hhbd:(artist|label|album|song):[1-9][0-9]*|(discogs|musicbrainz|wikidata|deezer|itunes|plwiki|barcode|isrc):[a-z0-9_]+:.+|name:.+)$"
+    },
+    "hhbd_id": {
+      "description": "The row's id in hhbd when the sender knows it; matched after external ids.",
+      "type": ["integer", "null"],
+      "minimum": 1
+    },
+    "external_ids": {
+      "description": "Every id the row has elsewhere, as {\"source:kind\": \"value\"}; the vocabulary is database/README.md's. Values are normalised before they are matched (barcodes as GTIN-14).",
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^(discogs:(master|release|artist|label)|musicbrainz:(release_group|release|recording|artist|label)|wikidata:item|deezer:(album|artist)|itunes:(collection|artist)|plwiki:pageid|barcode:gtin14|isrc:isrc)$"
+      },
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "provenance": {
+      "description": "Where each group of fields came from: core (names, titles, dates, types), tracklist, cover, photos, facts.",
+      "type": "object",
+      "propertyNames": { "enum": ["core", "tracklist", "cover", "photos", "facts", "logo"] },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["source", "source_ref", "fetched_at"],
+        "properties": {
+          "source": { "$ref": "#/$defs/source" },
+          "source_ref": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "fetched_at": { "type": "string", "format": "date-time" },
+          "licence": { "type": ["string", "null"], "maxLength": 64 },
+          "overridden_from": {}
+        }
+      }
+    },
+    "source": {
+      "enum": ["bandcamp", "bn", "commons", "coverartarchive", "deezer", "discogs", "glamrap", "itunes", "musicbrainz", "plwiki", "wikidata"]
+    },
+    "file": {
+      "description": "An image file shipped with the batch, under its files/ directory. The importer checks the header against width, height and mime and the content against sha256 before it moves the file into content/.",
+      "type": "object",
+      "required": ["path", "width", "height", "sha256", "mime"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^files/[^/]+$" },
+        "width": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "mime": { "enum": ["image/jpeg", "image/png"] }
+      }
+    },
+    "credit_fields": {
+      "description": "What a licence asks to show next to an image.",
+      "type": "object",
+      "properties": {
+        "source": { "type": ["string", "null"], "maxLength": 32 },
+        "source_url": { "type": ["string", "null"], "maxLength": 500 },
+        "licence": { "type": ["string", "null"], "maxLength": 64 },
+        "licence_url": { "type": ["string", "null"], "maxLength": 500 },
+        "credit": { "type": ["string", "null"], "maxLength": 255 },
+        "modified": { "type": "boolean" }
+      }
+    },
+    "cover": {
+      "type": "object",
+      "required": ["variants"],
+      "properties": {
+        "variants": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "allOf": [
+              { "$ref": "#/$defs/file" },
+              {
+                "type": "object",
+                "required": ["variant"],
+                "properties": { "variant": { "enum": ["orig", "600", "300", "75"] } }
+              }
+            ]
+          }
+        },
+        "source": { "type": ["string", "null"], "maxLength": 32 },
+        "source_url": { "type": ["string", "null"], "maxLength": 500 },
+        "licence": { "type": ["string", "null"], "maxLength": 64 }
+      }
+    },
+    "photo": {
+      "allOf": [
+        { "$ref": "#/$defs/file" },
+        { "$ref": "#/$defs/credit_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "main": { "type": "boolean" },
+            "description": { "type": ["string", "null"] }
+          }
+        }
+      ]
+    },
+    "label": {
+      "type": "object",
+      "required": ["kind", "ref", "name"],
+      "properties": {
+        "kind": { "const": "label" },
+        "ref": { "type": "string", "pattern": "^label:.+$" },
+        "hhbd_id": { "$ref": "#/$defs/hhbd_id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 250 },
+        "website": { "type": ["string", "null"], "maxLength": 255 },
+        "profile": { "type": ["string", "null"] },
+        "logo": {
+          "oneOf": [
+            { "type": "null" },
+            { "allOf": [{ "$ref": "#/$defs/file" }, { "$ref": "#/$defs/credit_fields" }] }
+          ]
+        },
+        "external_ids": { "$ref": "#/$defs/external_ids" },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      }
+    },
+    "artist": {
+      "type": "object",
+      "required": ["kind", "ref", "name"],
+      "properties": {
+        "kind": { "const": "artist" },
+        "ref": { "type": "string", "pattern": "^artist:.+$" },
+        "hhbd_id": { "$ref": "#/$defs/hhbd_id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 250 },
+        "type": { "enum": ["m", "f", "b", "x"] },
+        "real_name": { "type": ["string", "null"], "maxLength": 255 },
+        "aliases": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 190 } },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["ref"],
+            "properties": {
+              "ref": { "$ref": "#/$defs/ref" },
+              "since": { "type": ["string", "null"], "format": "date" },
+              "until": { "type": ["string", "null"], "format": "date" }
+            }
+          }
+        },
+        "cities": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 100 } },
+        "active_since": { "type": ["string", "null"], "format": "date" },
+        "website": { "type": ["string", "null"], "maxLength": 255 },
+        "profile": { "type": ["string", "null"] },
+        "photos": { "type": "array", "items": { "$ref": "#/$defs/photo" } },
+        "external_ids": { "$ref": "#/$defs/external_ids" },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      }
+    },
+    "release": {
+      "type": "object",
+      "required": ["kind", "ref", "title", "artists"],
+      "properties": {
+        "kind": { "const": "release" },
+        "ref": { "type": "string", "pattern": "^release:.+$" },
+        "hhbd_id": { "$ref": "#/$defs/hhbd_id" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "artists": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["ref", "role", "position"],
+            "properties": {
+              "ref": { "$ref": "#/$defs/ref" },
+              "role": { "enum": ["main", "featured"] },
+              "position": { "type": "integer", "minimum": 1, "maximum": 127 },
+              "credited_as": { "type": ["string", "null"], "maxLength": 255 }
+            }
+          }
+        },
+        "release_type": { "enum": ["album", "ep", "mixtape", "compilation", "beat_tape", "single", "other"] },
+        "release_date": { "type": ["string", "null"], "format": "date" },
+        "release_date_precision": { "enum": ["day", "month", "year"] },
+        "announced": { "type": "boolean" },
+        "label": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "object", "required": ["ref"], "properties": { "ref": { "$ref": "#/$defs/ref" } } }
+          ]
+        },
+        "catalog_numbers": {
+          "type": "object",
+          "propertyNames": { "enum": ["cd", "lp", "mc", "digital"] },
+          "additionalProperties": { "type": ["string", "null"], "maxLength": 255 }
+        },
+        "formats": { "type": "array", "items": { "enum": ["cd", "lp", "mc", "digital"] }, "uniqueItems": true },
+        "legal": { "type": "boolean" },
+        "parent_release": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "object", "required": ["ref"], "properties": { "ref": { "$ref": "#/$defs/ref" } } }
+          ]
+        },
+        "description": { "type": ["string", "null"] },
+        "cover": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/cover" }] },
+        "tracklist": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["disc", "position", "title"],
+            "properties": {
+              "disc": { "type": "integer", "minimum": 1, "maximum": 99 },
+              "position": { "type": "integer", "minimum": 1, "maximum": 99 },
+              "title": { "type": "string", "minLength": 1, "maxLength": 255 },
+              "length_seconds": { "type": ["integer", "null"], "minimum": 1 },
+              "isrc": { "type": ["string", "null"] },
+              "instrumental": { "type": "boolean" },
+              "external_ids": { "$ref": "#/$defs/external_ids" },
+              "credits": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["ref", "role"],
+                  "properties": {
+                    "ref": { "$ref": "#/$defs/ref" },
+                    "role": { "enum": ["performer", "feature", "producer", "scratch", "remix"] },
+                    "feat_type": { "type": ["string", "null"], "maxLength": 64 },
+                    "remix_name": { "type": ["string", "null"], "maxLength": 255 }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "external_ids": { "$ref": "#/$defs/external_ids" },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      }
+    },
+    "image": {
+      "type": "object",
+      "required": ["kind", "target", "role"],
+      "properties": {
+        "kind": { "const": "image" },
+        "target": {
+          "type": "object",
+          "required": ["entity", "ref"],
+          "properties": {
+            "entity": { "enum": ["album", "artist", "label"] },
+            "ref": { "$ref": "#/$defs/ref" }
+          }
+        },
+        "role": { "enum": ["cover", "photo", "logo"] },
+        "variants": { "$ref": "#/$defs/cover/properties/variants" },
+        "photo": { "$ref": "#/$defs/photo" },
+        "source": { "type": ["string", "null"], "maxLength": 32 },
+        "source_url": { "type": ["string", "null"], "maxLength": 500 },
+        "licence": { "type": ["string", "null"], "maxLength": 64 },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      },
+      "allOf": [
+        { "if": { "properties": { "role": { "const": "cover" } } }, "then": { "required": ["variants"] } },
+        { "if": { "properties": { "role": { "enum": ["photo", "logo"] } } }, "then": { "required": ["photo"] } }
+      ]
+    }
+  }
+}
