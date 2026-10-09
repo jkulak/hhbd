@@ -10,9 +10,13 @@ person's decision; nothing releases on its own.
 
 ## 2026.10.6 — 2026-10-09
 
-Nothing on the site changes. The first release through the shared host's template: the
-`Deploy` workflow builds the three images and rolls the app and nginx out with the template's
-release script, and keeps them only once the smoke test a release has always had to pass does.
+The first release through the shared host's template: the `Deploy` workflow builds the three
+images and rolls the app and nginx out with the template's release script, and keeps them only
+once the smoke test a release has always had to pass does. Published from `250c63c`, it also
+brings the code for migrations 0024 to 0028, which production's database has run since
+2026-10-09: no zero dates (#88) and the pages asking the database for less (#69). The server's
+`NO_ZERO_IN_DATE,NO_ZERO_DATE` comes with the compose file `make ovh-install` puts on the host
+and a `make ovh-db-up`.
 
 ### Changed
 - Production's stack is laid out as the shared OVH host's service template has every service do
