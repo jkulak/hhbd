@@ -737,6 +737,16 @@ INSERT INTO `album_lookup` (`songid`, `albumid`, `track`, `status`) VALUES
 (14, 9999, 1, 999),
 (15, 9999, 0, 999);
 
+-- ============================================
+-- 26. THE PLACEHOLDER LABEL "BRAK" (27), as production has it (#55)
+-- Miejski Rytm (48) points at it; migration 0017 gives the album labelid NULL and deletes the
+-- label.
+-- ============================================
+INSERT INTO `labels` (`id`, `name`, `website`, `logo`, `status`, `viewed`) VALUES
+(27, 'BRAK', '', '', 0, 0);
+
+UPDATE `albums` SET `labelid` = 27 WHERE `id` = 48;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================

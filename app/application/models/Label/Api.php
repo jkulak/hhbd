@@ -52,7 +52,7 @@ class Model_Label_Api extends Jkl_Model_Api
     {
         $query = "SELECT t1.id AS lab_id, t1.`name`, t1.`website`, count(t2.id) AS album_count
               FROM labels t1, albums t2
-              WHERE (t1.id!=27 AND t2.`labelid`=t1.id)
+              WHERE (t2.`labelid`=t1.id)
               GROUP BY t1.`id`
               ORDER BY t1.`name`";
         return $this->getList($query);
@@ -63,7 +63,7 @@ class Model_Label_Api extends Jkl_Model_Api
         $limit = intval($limit);
         $query = "SELECT count(t2.id) AS album_count, t1.`id` AS lab_id, t1.`name`
               FROM labels t1, albums t2
-              WHERE (t2.`labelid`=t1.`id` AND t1.`id`<>27)
+              WHERE (t2.`labelid`=t1.`id`)
               GROUP BY t1.`id`
               ORDER BY album_count DESC" .
                   (isset($limit) ? " LIMIT $limit" : '');
@@ -80,7 +80,7 @@ class Model_Label_Api extends Jkl_Model_Api
 
         $query = "SELECT count(t2.id) AS album_count, t1.`id` AS lab_id, t1.`name`
               FROM labels t1, albums t2
-              WHERE (t2.`labelid`=t1.`id` AND t1.`id`<>27 AND t1.`name` LIKE '%$like%')
+              WHERE (t2.`labelid`=t1.`id` AND t1.`name` LIKE '%$like%')
               GROUP BY t1.`id`
               ORDER BY t1.`viewed` DESC" .
                   (($limit != null) ? ' LIMIT ' . $limit : '') .
