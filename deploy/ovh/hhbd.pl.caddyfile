@@ -9,5 +9,7 @@ hhbd.pl, www.hhbd.pl {
 	import access_log
 	import security_headers
 	import compress
-	import proxy hhbd-web:80
+	# The live colour's nginx, which ci-deploy rewrites as it moves the edge from one colour to
+	# the other (CONTRACT.md §3 in gcloud-ovh-migrate).
+	import ../live/hhbd.caddyfile
 }
