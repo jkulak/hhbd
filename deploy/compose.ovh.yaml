@@ -20,6 +20,9 @@ services:
         condition: service_healthy
     volumes:
       - content:/var/www/html/content:ro
+    # What the host's nightly backup takes from this container (its CONTRACT.md §8).
+    labels:
+      backup.volumes: content
     networks:
       default: {}
       edge:
@@ -77,6 +80,11 @@ services:
     # Keep compose.yaml and compose.ci.yaml on the same flags, so tests see what production sees.
     command: >
       --innodb-buffer-pool-size=96M --innodb-buffer-pool-dump-at-shutdown=1 --innodb-buffer-pool-load-at-startup=1 --max-connections=20 --innodb-log-file-size=16M --innodb-flush-log-at-trx-commit=2 --innodb-read-io-threads=4 --innodb-write-io-threads=1 --table-open-cache=400 --innodb-stats-on-metadata=0 --transaction-isolation=READ-COMMITTED --skip-name-resolve --key-buffer-size=8M --aria-pagecache-buffer-size=32M
+    # The host's nightly backup dumps this database, as root with the password this container
+    # was started with, read inside it (its CONTRACT.md §8).
+    labels:
+      backup.mariadb: hhbd
+      backup.password-env: MYSQL_ROOT_PASSWORD
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?}
       MYSQL_DATABASE: hhbd
@@ -97,7 +105,7 @@ services:
           memory: 320M
 
 volumes:
-  # The database. Backed up as a dump of hhbd-db-1:hhbd, not as a volume.
+  # The database. Backed up as a dump, as db's labels say, not as a volume.
   db_data:
   # Covers, photos and logos, hhbd_content on the host. Only nginx reads it; nothing in the
   # stack writes it since the backoffice was archived. Backed up as a volume.
