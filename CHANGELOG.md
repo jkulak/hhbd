@@ -8,6 +8,12 @@ decision; nothing tags on its own.
 ## Unreleased
 
 ### Added
+- An artist page shows all the artist's photos, the main one first and the rest in a gallery,
+  each captioned with its author, licence and any change, as CC licences require (#61).
+  Migration 0020 makes `artists_photos.artistid` an int and adds width, height, SHA-256, MIME
+  type, licence, licence URL, credit and a modified flag, one file once per artist;
+  `make photos-backfill` and `make ovh-photos-backfill` record the files' facts, and
+  `Model_Image_Api::addArtistPhoto()` keeps one main photo per artist.
 - `album_covers` (migration 0019, with a down) describes each cover file: variant, path, size,
   SHA-256, MIME type, source, licence (#60). The album page and the lists read it, with the
   file's width and height on the `<img>`, and fall back to `albums.cover` for an album without
