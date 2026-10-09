@@ -74,6 +74,8 @@ check "and reports what an apply would do" "7 created, 3 updated, 1 unchanged, 0
 check "with a warning for each value hhbd keeps, and the namesake and the stand-in cover to review" "5" "$(jq '[.documents[].warnings[]] | length' "$T/dry.json")"
 check "and leaves no row behind" "$rows_start" "$(rows)"
 check "and no file" "" "$(content | comm -13 "$T/content-start" -)"
+check "its progress on stderr is one JSON line per document and one for the run, in the host's format (#101)" "12 12" \
+    "$(grep -c '^{' "$T/dry.err") $(grep '^{' "$T/dry.err" | jq -c 'select((.time | test("^[0-9-]{10}T[0-9:]{8}[.][0-9]{3}Z$")) and .level == "info" and (.msg | length > 0) and .logger == "importer")' | grep -c .)"
 check "but its run, closed" "dry-run 7 1" "$(sql "SELECT CONCAT_WS(' ', mode, created_count, finished IS NOT NULL) FROM import_runs ORDER BY id DESC LIMIT 1")"
 
 echo "> an apply"

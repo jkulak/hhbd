@@ -7,6 +7,12 @@ ENV LC_ALL=C.UTF-8
 # Install perl for Unicode normalization (Unicode::Normalize is included)
 RUN apk add --no-cache perl
 
+# Nothing but the errors, in nginx's own format, on stderr (#101): the entrypoint's start-up
+# lines are quiet, and the main error log, which conf.d cannot reach, goes from notice to warn,
+# so a start says nothing.
+ENV NGINX_ENTRYPOINT_QUIET_LOGS=1
+RUN sed -i 's#^error_log .*#error_log /dev/stderr warn;#' /etc/nginx/nginx.conf && grep -q '^error_log /dev/stderr warn;' /etc/nginx/nginx.conf
+
 # Copy nginx configuration
 COPY conf/nginx/default.conf /etc/nginx/conf.d/default.conf
 
