@@ -129,6 +129,33 @@ foreach ($imageTypes as $type => $config) {
     echo "  Generated: $generated, Skipped: $skipped\n";
     $totalGenerated += $generated;
     $totalSkipped += $skipped;
+
+    // Album lists show a 75 px thumbnail from content/a/th/, named after the cover with -th.jpg
+    // for its extension; a cover without one is a missing file to make check-images (#47).
+    if ($type === 'a') {
+        $thumbDir = $outputDir . '/th';
+        if (!is_dir($thumbDir) && !mkdir($thumbDir, 0755, true)) {
+            echo "Error: Could not create directory: $thumbDir\n";
+            continue;
+        }
+        $thumbs = 0;
+        foreach (glob($outputDir . '/' . $prefix . '-*.jpg') as $cover) {
+            $thumbPath = $thumbDir . '/' . substr(basename($cover), 0, -4) . '-th.jpg';
+            if (file_exists($thumbPath)) {
+                continue;
+            }
+            $source = imagecreatefromjpeg($cover);
+            $thumb = imagecreatetruecolor(75, 75);
+            imagecopyresampled($thumb, $source, 0, 0, 0, 0, 75, 75, imagesx($source), imagesy($source));
+            if (imagejpeg($thumb, $thumbPath, 85)) {
+                $thumbs++;
+            }
+            imagedestroy($source);
+            imagedestroy($thumb);
+        }
+        echo "  Thumbnails generated: $thumbs\n";
+        $totalGenerated += $thumbs;
+    }
 }
 
 echo "\n=== Summary ===\n";

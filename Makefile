@@ -51,6 +51,10 @@ ovh-migrate-down: ## Revert the last applied migration on production's database,
 ovh-migrate-baseline: ## Once: record the baseline on production's database, which already has its schema
 	MIGRATE_TARGET=ovh ./scripts/migrate.sh baseline
 
+.PHONY: ovh-check-images
+ovh-check-images: ## List the covers, photos and logos production's catalogue names but its content volume lacks
+	DB_TARGET=ovh ./scripts/check-images.sh
+
 .PHONY: ovh-import-runs
 ovh-import-runs: ## List the last import runs on production's database, newest first; N=50 for more
 	DB_TARGET=ovh ./scripts/import-runs.sh $(or $(N),20)
@@ -107,6 +111,10 @@ migrate-new: ## Create the next migration's up and down files: make migrate-new 
 .PHONY: migrate-baseline
 migrate-baseline: ## Record the baseline on a local database that already has the schema, such as a loaded production dump
 	./scripts/migrate.sh baseline
+
+.PHONY: check-images
+check-images: ## List the covers, photos and logos the local catalogue names but content/ lacks
+	./scripts/check-images.sh
 
 .PHONY: import-runs
 import-runs: ## List the last import runs on the local database, newest first; N=50 for more
