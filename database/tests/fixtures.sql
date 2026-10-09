@@ -640,6 +640,32 @@ INSERT INTO `city_artist_lookup` (`cityid`, `artistid`, `status`) VALUES
 (3, 46, 0),
 (1, 99999, 999);
 
+-- ============================================
+-- 19. DUPLICATES, which migration 0011 removes before it adds unique keys (#57)
+-- Production had exact copies in several link tables. These are of the same kind, plus a copy
+-- with a different status and an alternative name that differs only in case, so the row the
+-- migration keeps and what its down puts back can be checked.
+-- ============================================
+INSERT INTO `album_artist_lookup` (`albumid`, `artistid`, `status`) VALUES
+(535, 8, 999),
+(535, 8, 0);
+
+INSERT INTO `band_lookup` (`artistid`, `bandid`, `status`) VALUES
+(2, 22, 999);
+
+INSERT INTO `altnames_lookup` (`artistid`, `altname`, `status`) VALUES
+(4, 'TEDE', 999);
+
+INSERT INTO `artist_lookup` (`songid`, `artistid`, `status`) VALUES
+(7329, 8, 999);
+
+INSERT INTO `collection` (`ID`, `albumid`, `userid`, `added`) VALUES
+(1, 535, 1, '2010-05-01 10:00:00'),
+(2, 535, 1, '2010-05-02 10:00:00');
+
+INSERT INTO `ratings` (`ID`, `albumid`, `userid`, `rate`, `added`) VALUES
+(1001, 535, 1, 5, '2010-05-02 10:00:00');
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================
