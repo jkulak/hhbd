@@ -61,38 +61,25 @@ Production runs on the shared OVH host, behind its Caddy edge and Cloudflare, si
 
 ## Development
 
-### Dev Container (Recommended)
+### Local development
 
-The project includes a VS Code Dev Container for a consistent PHP 8.4 development environment, from Debian 13's packages as the images have it.
+There is no PHP on the host: everything runs in the stack's containers.
 
-**Prerequisites:**
+1. Copy `compose.override.example.yaml` to `compose.override.yaml` (git-ignored). In development mode the app runs the `builder` stage, which has composer, and re-reads the code on every change.
+2. `docker compose up -d`, then `docker compose exec app composer install` for `app/vendor` with the dev dependencies.
+3. `make reset-db` for the database, and `make hooks` for the git hooks.
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop)
-- [VS Code](https://code.visualstudio.com/) with [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
-
-**Getting Started:**
-
-1. Open the project folder in VS Code
-2. When prompted, click "Reopen in Container" (or use Command Palette: `Dev Containers: Reopen in Container`)
-3. VS Code will build the container and install dependencies automatically
-
-**Included tools:**
-
-- PHP 8.4 with GD, MySQLi, PDO extensions
-- Composer 2
-- Xdebug 3 (pre-configured for VS Code debugging)
-- PHP CodeSniffer
-
-**Running tests in dev container:**
+**Running the unit tests** (in the importer's image, which has GD; no stack needed):
 
 ```bash
-cd app && ./vendor/bin/phpunit -c tests/phpunit.xml
+make test-unit
 ```
 
-**Running code sniffer:**
+**Checking and fixing the code style** (php-cs-fixer, PSR-12):
 
 ```bash
-cd app && ./vendor/bin/phpcs --standard=PSR12 application/
+make cs
+make cs-fix
 ```
 
 ### Code Refactoring with Rector
@@ -132,20 +119,12 @@ Generate code statistics and metrics to understand your codebase.
 **Quick statistics with phploc:**
 
 ```bash
-# Inside the dev container
-cd app && ./vendor/bin/phploc application/ library/
-
-# Outside (host), let Docker run it in the app container
 docker compose exec app ./vendor/bin/phploc application/ library/
 ```
 
 **Comprehensive metrics with PHPMetrics:**
 
 ```bash
-# Inside the dev container
-cd app && ./vendor/bin/phpmetrics --report-html=tests/phpmetrics application/ library/
-
-# Outside (host)
 docker compose exec app ./vendor/bin/phpmetrics --report-html=tests/phpmetrics application/ library/
 
 # View the report at: app/tests/phpmetrics/index.html

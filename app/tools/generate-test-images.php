@@ -8,6 +8,7 @@
  * - Album covers (content/a/)
  * - Artist photos (content/p/)
  * - Label logos (content/l/)
+ * - News images (content/news/)
  *
  * Usage:
  *   php app/tools/generate-test-images.php
@@ -22,6 +23,7 @@ $imageTypes = [
     'a' => ['count' => 50, 'prefix' => 'test-cover', 'label' => 'ALBUM'],  // Album covers
     'p' => ['count' => 30, 'prefix' => 'test-artist', 'label' => 'ARTIST'], // Artist photos
     'l' => ['count' => 15, 'prefix' => 'test-label', 'label' => 'LABEL'],   // Label logos
+    'news' => ['count' => 3, 'prefix' => 'test-news', 'label' => 'NEWS'],  // News images (#133)
 ];
 $imageSize = 100; // 100x100 pixels
 
