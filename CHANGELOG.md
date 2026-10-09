@@ -56,6 +56,11 @@ decision; nothing tags on its own.
   backoffice gets written from scratch.
 
 ### Fixed
+- Every link table has a unique key, so the database refuses a link stored twice (#57).
+  Migration 0011 first removed the copies production held (album_artist_lookup 7, band_lookup
+  8, artist_lookup 1, music_lookup 3, collection 3, ratings 2), keeping the published or the
+  oldest row, and archived them so its down puts them back. `album_lookup` waits: 162 track
+  positions on 19 albums hold different songs.
 - Artist pages show the cities the archived backoffice recorded: they were in
   `city_artist_lookup`, which no page read, while the pages read `artist_city_lookup` (#64).
   Migration 0010 moves the old table's pairs over (168 on production, once each; three more
