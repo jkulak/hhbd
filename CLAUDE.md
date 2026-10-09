@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Where the work is
+
+Every task is a GitHub issue in jkulak/hhbd: what waits for later carries the `backlog` label, and the pull request that does it closes it. Nothing is tracked in `tasks/` files for this repository; those are only for hand-overs to other repositories.
+
 ## Project Overview
 
 HHBD is a Polish Hip-Hop Database - a content management system for music catalog featuring artists, albums, songs, labels, user profiles, comments, ratings, and community features. Built with **Zend Framework 1** (shardj/zf1-future) and **PHP 8.4**.
