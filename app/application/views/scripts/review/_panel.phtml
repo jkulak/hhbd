@@ -1,0 +1,62 @@
+<?php
+/**
+ * What an import left to settle about this row, for an admin only (#103). Each action is a
+ * form posting to admin/do-przejrzenia/rozstrzygnij.html with the session's token; it comes
+ * back here.
+ *
+ * Takes: items (Model_Review_Container[]), messages (string[]), back (this page's path).
+ */
+$types = array('album' => 'album', 'ep' => 'EP', 'mixtape' => 'mixtape', 'compilation' => 'kompilacja', 'beat_tape' => 'beat tape', 'single' => 'singiel', 'other' => 'inne');
+$form = function ($item, $do, $value, $label, $field = null) {
+    $html = '<form method="post" action="' . $this->url(array(), 'adminReviewSettle') . '" class="review-action">'
+        . '<input type="hidden" name="token" value="' . $this->escape(Jkl_Csrf::token()) . '" />'
+        . '<input type="hidden" name="id" value="' . (int) $item->id . '" />'
+        . '<input type="hidden" name="do" value="' . $this->escape($do) . '" />'
+        . '<input type="hidden" name="back" value="' . $this->escape($this->back) . '" />';
+    $html .= null === $field
+        ? '<input type="hidden" name="value" value="' . $this->escape($value) . '" />'
+        : $field;
+    return $html . '<input type="text" name="note" placeholder="notatka (opcjonalnie)" /> <button type="submit">' . $this->escape($label) . '</button></form>';
+};
+?>
+<?php if (!empty($this->messages) || !empty($this->items)): ?>
+<section class="review-panel" style="border: 2px solid #d0c17e; background: #f9f5e3; padding: 10px; margin: 10px 0;">
+  <h2>Do przejrzenia <small>(widzi to tylko admin; <a href="<?php echo $this->url(array(), 'adminReview') ?>">wszystkie</a>)</small></h2>
+  <?php foreach ((array) $this->messages as $message): ?>
+    <p class="review-message"><?php echo $this->escape($message) ?></p>
+  <?php endforeach ?>
+  <?php foreach ((array) $this->items as $item): ?>
+    <div class="review-item" id="review-<?php echo $item->id ?>">
+      <h3><?php echo $this->escape($item->getLabel()) ?></h3>
+      <?php if ('' !== $item->getText()): ?><p><?php echo $this->escape($item->getText()) ?></p><?php endif ?>
+      <?php if ('namesake' === $item->reason): ?>
+        <?php foreach ($item->getSuggestions() as $id): ?>
+          <?php $other = Model_Artist_Api::getInstance()->find($id) ?>
+          <?php if (null !== $other): ?>
+            <?php echo $form($item, 'merge', $id, 'Połącz z: ' . $other->qualifiedName . ' (id ' . $id . ')') ?>
+            <p><a href="<?php echo $other->getUrl() ?>"><?php echo $this->escape($other->qualifiedName) ?></a>: tam przejdą wszystkie albumy, utwory, zdjęcia i komentarze tego wykonawcy, a ta strona przekieruje.</p>
+          <?php endif ?>
+        <?php endforeach ?>
+        <?php echo $form($item, 'keep', '', 'To inny wykonawca') ?>
+        <?php echo $form($item, 'qualifier', '', 'Zmień dopisek', '<input type="text" name="value" maxlength="190" placeholder="np. raper z Poznania" />') ?>
+      <?php elseif ('cover_placeholder' === $item->reason): ?>
+        <p>Lepsza okładka przyjdzie z następnym importem i zastąpi tę.</p>
+        <?php echo $form($item, 'accept', '', 'Ta okładka zostaje') ?>
+      <?php elseif ('date_disputed' === $item->reason): ?>
+        <?php foreach ($item->getValues() as $value): ?>
+          <?php echo $form($item, 'pick', $value, 'Data: ' . $value) ?>
+        <?php endforeach ?>
+        <?php echo $form($item, 'pick', '', 'Inna data', '<input type="text" name="value" placeholder="2016, 2016-11 albo 2016-11-03" />') ?>
+      <?php elseif ('type_disputed' === $item->reason): ?>
+        <?php foreach ($item->getValues() as $value): ?>
+          <?php if (isset($types[$value])): ?><?php echo $form($item, 'pick', $value, 'Typ: ' . $types[$value]) ?><?php endif ?>
+        <?php endforeach ?>
+        <?php $select = '<select name="value">'; foreach ($types as $value => $name) { $select .= '<option value="' . $value . '">' . $name . '</option>'; } ?>
+        <?php echo $form($item, 'pick', '', 'Inny typ', $select . '</select>') ?>
+      <?php elseif ('single_source' === $item->reason): ?>
+        <?php echo $form($item, 'accept', '', 'Sprawdzone, zostaje') ?>
+      <?php endif ?>
+    </div>
+  <?php endforeach ?>
+</section>
+<?php endif ?>

@@ -97,11 +97,25 @@ An artist document says which one it means:
   External ids and `hhbd_id` still match first, and a row found that way gets the qualifier
   where it has none.
 - **`review`**, `{"reason": "same name as hhbd artist 2311", "suggestions": [2311]}`. This asks a
-  person to look at the artist and needs a `disambiguation`. Until hhbd keeps review items
-  (#103), the reason is a warning in the report.
+  person to look at the artist and needs a `disambiguation`. It opens a review item; see below.
 - **A document with neither** is matched by its name as before. When the name belongs to more
   than one artist, the document is refused, and the error lists them. It needs an id or a
   qualifier.
+
+## What a person settles
+
+A document can say what the batch could not settle on its own. The importer opens a review item
+for it (#103), and the report warns of each one. An admin sees the open items on the page of
+the row they are about, and all of them under "Do przejrzenia". Reading the same batch again
+opens no second item.
+
+| From | Reason | The admin |
+|---|---|---|
+| an artist's `review` | `namesake` | merges it into a suggested artist, keeps it apart, or changes its qualifier |
+| a cover with `needs_upgrade` | `cover_placeholder` | keeps it; a larger cover in a later batch replaces it and closes the item |
+| a release's `review`, `{"reason": "date_disputed", "values": ["2013", "2013-05-17"]}` | `date_disputed` | picks one of the values, or types another |
+| a release's `review`, `{"reason": "type_disputed", "values": ["single", "ep"]}` | `type_disputed` | picks one, or another type |
+| a release's `review`, `{"reason": "single_source", "note": "..."}` | `single_source` | marks it checked |
 
 ## A row hhbd has
 
@@ -115,7 +129,8 @@ a person to decide. The same goes for:
   a second value is a warning, and hhbd keeps its own;
 - a tracklist: an album with tracks keeps them, and a batch with another number of tracks is a
   warning;
-- a cover or a logo: an album or label that has one keeps it;
+- a cover or a logo: an album or label that has one keeps it, unless every cover it shows is
+  a stand-in (`needs_upgrade`) and the batch's is larger: that one takes its place (#103);
 - photos: one the artist has (the same original) is not added again, and an artist gets five
   at most (#96).
 
@@ -128,7 +143,8 @@ Links (aliases, members, cities, credits) are added where missing; none is remov
 | label | `name`, `website`, `profile` | `labels` |
 | label | `logo` | `content/l/<sha256>.png`, 300 px on the longer side, `labels.logo` |
 | artist | `name`, `disambiguation`, `type`, `real_name`, `active_since`, `website`, `profile` | `artists` |
-| artist | `review` | a warning in the report, until #103 |
+| artist | `review` | `review_items`, reason `namesake` (#103) |
+| release | `review` | `review_items`, its `reason` (#103) |
 | artist | `aliases` | `altnames_lookup` |
 | artist | `members` | `band_lookup`, and the artist's type becomes `b` (#65) |
 | artist | `cities` | `artist_city_lookup`, a city made when it is new (#64) |

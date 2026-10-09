@@ -45,3 +45,14 @@ INSERT INTO `artists` (`id`, `name`, `disambiguation`, `urlname`, `type`, `trivi
 (66, 'Skład Solara', '', 'sklad-solara', 'b', '', '', 999, 50);
 INSERT INTO `band_lookup` (`artistid`, `bandid`, `status`) VALUES
 (64, 66, 999);
+
+-- One open review item of each reason (#103), for the panel an admin sees on the page and for
+-- the list: Solar from Poznań may be the SBM one, Superextra's cover is a stand-in, the
+-- sources disagree on Podmiejski Gwar's date and Muzyka Poważna's type, and only Discogs
+-- knows Morska Bryza.
+INSERT INTO `review_items` (`id`, `entity_type`, `entity_id`, `reason`, `detail`, `run_id`, `created`) VALUES
+(1, 'artist', 65, 'namesake', '{"text": "same name as hhbd artist 64", "suggestions": [64]}', 1, '2026-10-09 12:00:00'),
+(2, 'album', 535, 'cover_placeholder', '{"text": "discogs, 600 × 600 px"}', 1, '2026-10-09 12:00:01'),
+(3, 'album', 50, 'date_disputed', '{"text": "Discogs says 2013, MusicBrainz 2013-05-17", "values": ["2013", "2013-05-17"]}', 1, '2026-10-09 12:00:02'),
+(4, 'album', 2, 'type_disputed', '{"values": ["single", "ep"]}', 1, '2026-10-09 12:00:03'),
+(5, 'album', 46, 'single_source', '{"text": "only Discogs knows it"}', 1, '2026-10-09 12:00:04');

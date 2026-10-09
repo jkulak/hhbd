@@ -356,7 +356,8 @@ INSERT INTO `hhb_users` (`usr_id`, `usr_email`, `usr_password`, `usr_display_nam
 (7, 'test7@example.com', MD5('password7'), 'TestUser7', 'no', NOW(), NOW(), NOW(), 1),
 (8, 'test8@example.com', MD5('password8'), 'TestUser8', 'no', NOW(), NOW(), NOW(), 1),
 (9, 'test9@example.com', MD5('password9'), 'TestUser9', 'no', NOW(), NOW(), NOW(), 1),
-(10, 'admin@example.com', MD5('adminpass'), 'Admin', 'yes', NOW(), NOW(), NOW(), 100);
+-- Hashed with the salt Model_User adds, so the tests can log in as this admin: adminpass.
+(10, 'admin@example.com', MD5(CONCAT('adminpass', 'this is long enough safety salt!')), 'Admin', 'yes', NOW(), NOW(), NOW(), 100);
 
 -- ============================================
 -- 12. RATINGS (Individual user ratings)

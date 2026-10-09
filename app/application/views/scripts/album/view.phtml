@@ -1,5 +1,6 @@
 <div id="main">
     <h1><?php echo $this->partial('album/_artists.phtml', array('album' => $this->album)) ?> - <?php echo $this->album->title ?><?php echo $this->partial('album/_markers.phtml', array('album' => $this->album)) ?></h1>
+  <?php if ($this->IsAdmin()): ?><?php echo $this->partial('review/_panel.phtml', array('items' => $this->reviewItems, 'messages' => $this->reviewMessages, 'back' => strtok($_SERVER['REQUEST_URI'], '?'))) ?><?php endif ?>
   <?php echo $this->partial('common/_share.phtml', array('currentUrl' => $this->currentUrl, 'title' => $this->title)) ?>
 	<div id="picture">
 	  <img src="<?php echo $this->album->cover ?>"<?php if ($this->album->coverWidth): ?> width="<?php echo $this->album->coverWidth ?>" height="<?php echo $this->album->coverHeight ?>"<?php endif ?> alt="Okładka albumu <?php echo $this->album->title ?>" title="<?php echo $this->album->title . ' - ' . $this->album->artistNames ?>" class="image" />

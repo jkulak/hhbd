@@ -257,7 +257,7 @@ else
 fi
 
 echo "> utf8mb4 with the Polish collation"
-check "every table is utf8mb4_polish_ci, but the byte-compared ones and the runner's own" "utf8mb4_bin 5, utf8mb4_general_ci 1, utf8mb4_polish_ci 44" "$(sql "SELECT GROUP_CONCAT(CONCAT(c, ' ', n) ORDER BY c SEPARATOR ', ') FROM (SELECT table_collation c, COUNT(*) n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' GROUP BY table_collation) x")"
+check "every table is utf8mb4_polish_ci, but the byte-compared ones and the runner's own" "utf8mb4_bin 7, utf8mb4_general_ci 1, utf8mb4_polish_ci 44" "$(sql "SELECT GROUP_CONCAT(CONCAT(c, ' ', n) ORDER BY c SEPARATOR ', ') FROM (SELECT table_collation c, COUNT(*) n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' GROUP BY table_collation) x")"
 check "no column is left in utf8mb3" "0" "$(count "character_set_name = 'utf8mb3'")"
 if sql "INSERT INTO artists (name, urlname, type, status, trivia, website) VALUES ('Zabson', 'zabson-2', 'm', 999, '', '')" >"$T/out" 2>&1; then
     ok "Zabson is a name of its own next to Żabson"
@@ -306,16 +306,18 @@ sql "DELETE FROM artists WHERE id = 9002"
 # The down folds each qualifier into its name; one a plain name already holds stops it before
 # it changes anything.
 sql "INSERT INTO artists (id, name, urlname, type, status, trivia, website) VALUES (9003, 'Solar (SBM Label)', 'solar-sbm-label-2', 'm', 999, '', '')"
-since_0021=$(find database/migrations -name '[0-9][0-9][0-9][0-9]-*.up.sql' | awk -F/ '{ print $NF }' | awk -F- '$1 > "0021"' | wc -l | tr -d ' ')
+# How many migrations after 0021 are applied: going down that many reaches 0022's down last.
+after_0021() { ./scripts/migrate.sh status 2>/dev/null | awk '$1 ~ /^[0-9]{4}$/ && $1 > "0021" && $3 != "pending"' | wc -l | tr -d ' '; }
+since_0021=$(after_0021)
 if ./scripts/migrate.sh down "$since_0021" >"$T/out" 2>&1; then
     bad "a down that would make two artists one name is refused"
 else
     check "a down that would make two artists one name is refused, naming it" "1" "$(grep -c "Solar (SBM Label)" "$T/out")"
 fi
-check "and leaves the names and the qualifier column as they were" "64:Solar:SBM Label 65:Solar:raper z Poznania 0 pending" \
+check "and leaves the names and the qualifier column as they were" "64:Solar:SBM Label 65:Solar:raper z Poznania $((since_0021 - 1)) pending" \
     "$(sql "SELECT GROUP_CONCAT(CONCAT(id, ':', name, ':', disambiguation) ORDER BY id SEPARATOR ' ') FROM artists WHERE id IN (64, 65)") $(./scripts/migrate.sh status 2>/dev/null | grep -oE '[0-9]+ pending')"
 sql "DELETE FROM artists WHERE id = 9003"
-./scripts/migrate.sh down "$since_0021" >"$T/out" 2>&1 || { bad "the down succeeds once the name is free"; cat "$T/out"; }
+./scripts/migrate.sh down "$(after_0021)" >"$T/out" 2>&1 || { bad "the down succeeds once the name is free"; cat "$T/out"; }
 check "down: each qualifier folded into its name, under the old key on the name alone" "64:Solar (SBM Label) 65:Solar (raper z Poznania) name" \
     "$(sql "SELECT GROUP_CONCAT(CONCAT(id, ':', name) ORDER BY id SEPARATOR ' ') FROM artists WHERE id IN (64, 65)") $(sql "SELECT GROUP_CONCAT(column_name) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'artists' AND index_name = 'name' AND non_unique = 0")"
 ./scripts/migrate.sh up >"$T/out" 2>&1 || { bad "up succeeds"; cat "$T/out"; }
@@ -327,7 +329,7 @@ rows_before=$(sql "SELECT COUNT(*) FROM songs")
 ./scripts/migrate.sh down "$after_baseline" >"$T/out" 2>&1 || { bad "down $after_baseline succeeds"; cat "$T/out"; }
 check "after down: 44 tables on MyISAM again, hhb_comments and the migrations' own on InnoDB" "InnoDB 2, MyISAM 44" "$(engines)"
 check "after down: no row lost in the conversions" "$rows_before" "$(sql "SELECT COUNT(*) FROM songs")"
-check "after down: none of the import's tables" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('external_ids', 'import_runs', 'import_provenance', 'album_covers')")"
+check "after down: none of the import's tables" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('external_ids', 'import_runs', 'import_provenance', 'album_covers', 'review_items', 'artist_merges')")"
 check "after down: no import user" "0" "$(sql "SELECT COUNT(*) FROM users WHERE ID = 1100")"
 check "after down: the old city table again, duplicate and orphan included" "1:1:999 1:99999:999 2:35:0 2:35:999 3:46:0" "$(pairs city_artist_lookup)"
 check "after down: the table the pages read as the fixtures had it" "1:1:999" "$(pairs artist_city_lookup)"
