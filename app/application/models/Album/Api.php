@@ -90,8 +90,8 @@ class Model_Album_Api extends Jkl_Model_Api
         $page = intval($page - 1);
         $page = ($page < 1) ? 0 : $page;
         $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id as lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
-          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3, labels AS t4 ' .
-          'WHERE (t3.title LIKE "%' . $like . '%" AND t1.id=t2.artistid AND t2.albumid=t3.id AND t4.id=t3.labelid) ' .
+          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          'WHERE (t3.title LIKE "%' . $like . '%" AND t1.id=t2.artistid AND t2.albumid=t3.id) ' .
           'ORDER BY t3.viewed DESC' .
           (($limit != null) ? ' LIMIT ' . $limit : '') .
           ' OFFSET ' . ($page * $limit);
@@ -118,8 +118,8 @@ class Model_Album_Api extends Jkl_Model_Api
     {
         $count = intval($count);
         $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id as lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
-          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3, labels AS t4 ' .
-          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t4.id=t3.labelid) ' .
+          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id) ' .
           'ORDER BY t3.viewed DESC ' .
           'LIMIT ' . $count;
         return $this->getList($query);
@@ -129,8 +129,8 @@ class Model_Album_Api extends Jkl_Model_Api
     {
         $count = intval($count);
         $query = 'SELECT *, t1.id AS alb_id, t2.rating AS rating, t3.artistid AS art_id, t4.id AS lab_id ' .
-          'FROM albums t1, ratings_avg t2, album_artist_lookup t3, labels t4 ' .
-          'WHERE (t1.id=t2.albumid AND t3.albumid=t1.id AND t4.id=t1.labelid) ' .
+          'FROM albums t1 LEFT JOIN labels t4 ON t4.id=t1.labelid, ratings_avg t2, album_artist_lookup t3 ' .
+          'WHERE (t1.id=t2.albumid AND t3.albumid=t1.id) ' .
           'ORDER BY t2.rating DESC ' .
           'LIMIT ' . $count;
         return $this->getList($query);
@@ -144,8 +144,8 @@ class Model_Album_Api extends Jkl_Model_Api
         $page = intval($page - 1);
         $page = ($page < 1) ? 0 : $page;
         $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id as lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
-          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3, labels AS t4 ' .
-          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t4.id=t3.labelid AND t3.year' . '<="' . date('Y-m-d') . '") ' .
+          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t3.year' . '<="' . date('Y-m-d') . '") ' .
           'ORDER BY t3.year DESC ' .
           'LIMIT ' . $count . ' ' .
           'OFFSET ' . ($page * $count);
@@ -157,8 +157,8 @@ class Model_Album_Api extends Jkl_Model_Api
         $page = intval($page - 1);
         $page = ($page < 1) ? 0 : $page;
         $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id AS lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
-          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3, labels AS t4 ' .
-          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t4.id=t3.labelid AND t3.year' . '>"' . date('Y-m-d') . '") ' .
+          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t3.year' . '>"' . date('Y-m-d') . '") ' .
           'ORDER BY t3.year ASC ' .
           'LIMIT ' . $count . ' ' .
           'OFFSET ' . ($page * $count);
@@ -184,8 +184,8 @@ class Model_Album_Api extends Jkl_Model_Api
             }
         }
         $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id as lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
-          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3, labels AS t4 ' .
-          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t4.id=t3.labelid AND t1.id="' . $id . '"' .
+          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t1.id="' . $id . '"' .
           $excludeCondition .
           ') ' .
           'ORDER BY t3.' . $order . ' DESC ' .
@@ -222,8 +222,8 @@ class Model_Album_Api extends Jkl_Model_Api
             }
         }
         $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id as lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
-          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3, labels AS t4 ' .
-          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t4.id=t3.labelid AND t4.id="' . $id . '"' .
+          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t4.id="' . $id . '"' .
           $excludeCondition .
           ') ' .
           'ORDER BY t3.viewed DESC ' .
@@ -384,8 +384,8 @@ class Model_Album_Api extends Jkl_Model_Api
     {
         $limit = intval($limit);
         $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id as lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
-          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3, labels AS t4 ' .
-          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t4.id=t3.labelid) ' .
+          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id) ' .
           'ORDER BY t3.added DESC ' .
           'LIMIT ' . $limit;
         return $this->getList($query);

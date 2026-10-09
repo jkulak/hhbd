@@ -8,6 +8,17 @@ decision; nothing tags on its own.
 ## Unreleased
 
 ### Changed
+- Tracklists read a track's disc from a disc column once it exists, and from the old
+  disc * 100 + position encoding until then (#59, first step); an album of several discs is
+  numbered 1-01, 2-01 either way. The migration that adds the column can follow this release.
+- An album without a label shows in every album list and its page renders, with the label left
+  out of its description (#55, first step). Lists joined labels with an inner join, so an
+  album with no label vanished from them; the placeholder label "BRAK" (27) now reads as no
+  label too, so the 247 albums on it no longer say "wydany przez wytwórnię ," with no name.
+- Release dates are shown to the precision they are known, read from a precision column once
+  it exists and from the zero parts of the date until then (#54, first step). Nothing on the
+  pages changes yet: this release reads both shapes, so the migration that stores dates with a
+  precision can follow it.
 - `deploy/compose.ovh.yaml` labels what the host's nightly backup takes: the database on `db`,
   dumped with the root password the container already has, and the `content` volume on `nginx`.
 - The release job runs in the `production` environment, which keeps the deploy key and admits
