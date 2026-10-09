@@ -66,6 +66,9 @@ class ArtistController extends Zend_Controller_Action
         $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . '/' . $canonicalSlug;
 
         $this->view->comments = Model_Comment_Api::getInstance()->getComments($artist->id, Model_Comment_Container::TYPE_ARTIST);
+        // Where its data came from, for the credits its sources ask for, and its ids elsewhere (#62).
+        $this->view->provenance = Model_Provenance_Api::getInstance()->getForEntity('artist', (int) $artist->id);
+        $this->view->externalIds = Model_ExternalId_Api::getInstance()->getForEntity('artist', (int) $artist->id);
 
         // seo
         $albumListTmp = array();

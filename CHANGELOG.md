@@ -7,6 +7,15 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
+### Added
+- The album and artist pages show "Data provided by Discogs.", linked to the Discogs page,
+  when any of their data came through Discogs's API, and an album page links where it can be
+  heard on Deezer and Apple Music when its ids are known; the about page says the site is not
+  affiliated with Discogs (#62). Whether a credit is due comes from `import_provenance`: data
+  from Discogs's CC0 dump is recorded with that licence and needs none.
+- `make reset-db` loads `database/tests/fixtures-latest.sql` after the migrations, for the
+  tables they add, which the baseline fixtures cannot fill.
+
 ### Fixed
 - A cover, thumbnail, photo or logo the catalogue names but the content volume lacks shows a
   placeholder instead of a broken image: nginx answers it with a 404 whose body is a
