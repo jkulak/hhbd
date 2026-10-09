@@ -609,8 +609,9 @@ which only the importer's image has.
 | Album covers | 50 | `content/a/` | `test-cover-001.jpg` to `test-cover-050.jpg` |
 | Artist photos | 30 | `content/p/` | `test-artist-001.jpg` to `test-artist-030.jpg` |
 | Label logos | 15 | `content/l/` | `test-label-001.jpg` to `test-label-015.jpg` |
+| News images | 3 | `content/news/` | `test-news-001.jpg` to `test-news-003.jpg`; news 1 shows the first (#133) |
 
-**Total:** 95 placeholder images (100x100px, ~1.5KB each)
+**Total:** 98 placeholder images (100x100px, ~1.5KB each)
 
 ### What the smoke test needs
 

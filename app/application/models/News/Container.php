@@ -28,7 +28,8 @@ class Model_News_Container
         $this->title = $params['nws_title'];
         $this->content = ($full) ? $params['nws_content'] : Jkl_Tools_String::trim_str(strip_tags($params['nws_content']), 200);
         if (!empty($params['nws_attachment_url'])) {
-            $this->attachment = new Model_Image_Container(array('url' => $configApp['paths']['news']['image'] . $params['nws_attachment_url']));
+            // The file name encoded: old names hold spaces, Polish letters and a literal % (#133)
+            $this->attachment = new Model_Image_Container(array('url' => $configApp['paths']['newsImagePath'] . rawurlencode($params['nws_attachment_url'])));
         }
         $this->added = $params['nws_added'];
         $this->addedNormalized = Jkl_Tools_Date::getNormalDate($params['nws_added']);
