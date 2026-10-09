@@ -504,6 +504,7 @@ run_tests() {
     # (#26): the rows below have the same slug here and on production
     echo "--- Old Addresses ---"
     test_redirect_301 "An old artist address (/n/) goes to the artist's page" "/n/Mes" "/mes-p35.html"
+    test_page_absent "A visitor does not see who added an album, which only an admin does" "/wdowa-superextra-a535.html" "Dodano:"
     test_redirect_301 "The later form (/wykonawca/), in any case, too" "/wykonawca/mes" "/mes-p35.html"
     test_redirect_301 "An old album address (/a/) goes to the album's page" "/a/superextra" "/wdowa-superextra-a535.html"
     test_redirect_301 "An old label address (/l/) goes to the label's page" "/l/alkopoligamia" "/alkopoligamia-l58.html"
