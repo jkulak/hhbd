@@ -2,8 +2,17 @@
 #
 # Drop the local hhbd database and build it again the way production's is: the schema from the
 # migrations, the test fixtures the smoke test runs on loaded onto the baseline, every later
-# migration run over that data, and then the fixtures for the tables those migrations created. Run before and after a piece of work, so the database
-# never carries what the last one left in it.
+# migration run over that data, and then the fixtures for the tables those migrations created.
+# Run before and after a piece of work, so the database never carries what the last one left in
+# it.
+#
+# The result is kept as a dump inside the db container, under a key made of everything that
+# decides it: the migrations, the fixtures, and the scripts that run them. A later reset with
+# the same key loads that dump, a second's work, instead of running thirty migrations over the
+# fixtures again, and gets the same database row for row; a change to any of those files makes
+# a new key, and the next reset builds it from scratch. The day is part of the key too, so the
+# rows that take their date from the clock are never older than today, as a fresh build's are.
+# RESET_DB_FULL=1 always builds it.
 #
 # It acts on one thing only: the running db container of this checkout's compose project, on
 # the local Docker engine. Before a single statement reaches a database it refuses a remote
@@ -24,33 +33,50 @@ FIXTURES=database/tests/fixtures.sql
 # fixtures cannot hold.
 LATEST_FIXTURES=database/tests/fixtures-latest.sql
 started=$(date +%s)
+key=$({ date -u +%F; cat database/migrations/*.sql "$FIXTURES" "$LATEST_FIXTURES" scripts/migrate.sh scripts/lib-db.sh scripts/reset-db.sh; } | shasum -a 256 | cut -c1-16)
+snapshot=/tmp/hhbd-reset-$key.sql
 
 cid=$(local_db_container) || exit 1
 project=$(docker compose config 2>/dev/null | sed -n 's/^name: //p' | head -1)
 database=$(docker exec "$cid" sh -c 'printf %s "${MYSQL_DATABASE:?}"')
 migrate() { MIGRATE_TARGET=container MIGRATE_CONTAINER=$cid ./scripts/migrate.sh "$@" | sed 's/^/  /'; }
 
-echo "> 1/5 dropping and creating $database in $project"
 # The hhbd user's grants are on hhbd.*, not on the database object, so they survive the drop.
 # shellcheck disable=SC2016
-printf 'DROP DATABASE IF EXISTS `%s`; CREATE DATABASE `%s`\n' "$database" "$database" | container_sql "$cid"
+recreate() { printf 'DROP DATABASE IF EXISTS `%s`; CREATE DATABASE `%s`\n' "$database" "$database" | container_sql "$cid"; }
 
-echo "> 2/5 the baseline schema, from the migrations"
-migrate up 0001
+if [ "${RESET_DB_FULL:-}" != 1 ] && docker exec "$cid" test -s "$snapshot"; then
+    echo "> 1/2 dropping and creating $database in $project"
+    recreate
+    echo "> 2/2 loading the migrations' and fixtures' result kept as $snapshot"
+    # shellcheck disable=SC2016
+    docker exec "$cid" sh -c 'MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?}" exec mariadb -uroot --default-character-set=utf8mb4 "${MYSQL_DATABASE:?}" < "$1"' -- "$snapshot"
+    how="from the kept result"
+else
+    echo "> 1/5 dropping and creating $database in $project"
+    recreate
 
-echo "> 3/5 loading $FIXTURES"
-container_sql "$cid" db <"$FIXTURES"
+    echo "> 2/5 the baseline schema, from the migrations"
+    migrate up 0001
 
-echo "> 4/5 the migrations after the baseline, over that data"
-migrate up
+    echo "> 3/5 loading $FIXTURES"
+    container_sql "$cid" db <"$FIXTURES"
 
-echo "> 5/5 loading $LATEST_FIXTURES"
-container_sql "$cid" db <"$LATEST_FIXTURES"
+    echo "> 4/5 the migrations after the baseline, over that data"
+    migrate up
+
+    echo "> 5/5 loading $LATEST_FIXTURES"
+    container_sql "$cid" db <"$LATEST_FIXTURES"
+
+    # Kept for the next reset; an older result goes, as its files or its day are not today's.
+    # shellcheck disable=SC2016
+    docker exec "$cid" sh -c 'rm -f /tmp/hhbd-reset-*.sql && MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?}" exec mariadb-dump -uroot --default-character-set=utf8mb4 --single-transaction --hex-blob --skip-dump-date "${MYSQL_DATABASE:?}" > "$1"' -- "$snapshot"
+    how="built from the migrations"
+fi
 
 tables=$(printf 'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = "BASE TABLE" AND table_name <> "schema_migrations"\n' | container_sql "$cid" db)
-rows=0
-for t in $(printf 'SHOW FULL TABLES WHERE Table_type = "BASE TABLE"\n' | container_sql "$cid" db | cut -f1 | grep -vx schema_migrations); do
-    # shellcheck disable=SC2016
-    rows=$((rows + $(printf 'SELECT COUNT(*) FROM `%s`\n' "$t" | container_sql "$cid" db)))
-done
-echo "ok $database in $project: $tables tables, $rows rows, at the latest migration, in $(( $(date +%s) - started ))s"
+# Every table's rows in one query, built by a first one: two calls into the container, not one
+# per table.
+# shellcheck disable=SC2016
+rows=$(printf 'SELECT CONCAT("SELECT ", GROUP_CONCAT(CONCAT("(SELECT COUNT(*) FROM `", table_name, "`)") SEPARATOR " + ")) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = "BASE TABLE" AND table_name <> "schema_migrations"\n' | container_sql "$cid" db | container_sql "$cid" db)
+echo "ok $database in $project: $tables tables, $rows rows, at the latest migration, $how, in $(( $(date +%s) - started ))s"
