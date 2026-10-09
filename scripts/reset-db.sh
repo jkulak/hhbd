@@ -9,7 +9,8 @@
 # The result is kept as a dump inside the db container, under a key made of everything that
 # decides it: the migrations, the fixtures, and the scripts that run them. A later reset with
 # the same key loads that dump, a second's work, instead of running thirty migrations over the
-# fixtures again, and gets the same database row for row; a change to any of those files makes
+# fixtures again, and gets the same tables and rows, as a restore of a backup would (database/
+# README.md says where MariaDB tells the two apart); a change to any of those files makes
 # a new key, and the next reset builds it from scratch. The day is part of the key too, so the
 # rows that take their date from the clock are never older than today, as a fresh build's are.
 # RESET_DB_FULL=1 always builds it.
