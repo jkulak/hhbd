@@ -618,6 +618,28 @@ INSERT INTO `artists_photos` (`id`, `artistid`, `filename`, `description`, `main
 (29, 50, 'test-artist-029.jpg', 'Zdjęcie testowe Żabsona', 'y', '', '', 1, NOW()),
 (30, 51, 'test-artist-030.jpg', 'Zdjęcie testowe Borixona', 'y', '', '', 1, NOW());
 
+-- ============================================
+-- 18. CITIES and the two artist-city tables
+-- The application reads artist_city_lookup; the archived backoffice wrote city_artist_lookup.
+-- Migration 0010 moves the second into the first (#64), so Mes and Miuosh show their cities
+-- only once it has run. Pezet's pair is in both tables, Mes's twice with different statuses,
+-- and the last old row names an artist that does not exist: what the migration has to handle.
+-- ============================================
+INSERT INTO `cities` (`id`, `name`, `status`) VALUES
+(1, 'Warszawa', 999),
+(2, 'Kraków', 999),
+(3, 'Katowice', 999);
+
+INSERT INTO `artist_city_lookup` (`cityid`, `artistid`, `status`) VALUES
+(1, 1, 999);
+
+INSERT INTO `city_artist_lookup` (`cityid`, `artistid`, `status`) VALUES
+(1, 1, 999),
+(2, 35, 999),
+(2, 35, 0),
+(3, 46, 0),
+(1, 99999, 999);
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================
