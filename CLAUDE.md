@@ -226,6 +226,8 @@ GitHub Actions workflows (`.github/workflows/`):
 
 The first three run on pull requests (and by hand), never again on the push a merge makes to `main`; a newer push to a pull request cancels the older run. `deploy.yml` runs on a published release, `gh release create vYYYY.MM.N`.
 
+The workflows that build images log in to Docker Hub first, with the repository's `DOCKERHUB_TOKEN` secret and `DOCKERHUB_USERNAME` variable: GitHub's runners share their addresses with every other build, and Docker Hub's anonymous limit, counted per address, failed ours with 429 (#135). Without the secret, as on a fork's pull request, the step is skipped.
+
 ## Important Notes
 
 - **Legacy codebase**: Uses Zend Framework 1 (EOL but maintained by shardj/zf1-future)

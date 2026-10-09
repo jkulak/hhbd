@@ -64,6 +64,12 @@ person's decision; nothing releases on its own.
   scope, where the shared one meant the app's image was built from scratch on every run; and
   the production stack test gets its images built with the layer cache.
 
+- CI logs in to Docker Hub before it builds (#135): GitHub's runners share their addresses with
+  every other build, so Docker Hub's anonymous limit, counted per address, was used up by others
+  and failed ours with 429, a pull request that changed one line of CLAUDE.md among them. The
+  token is the repository's `DOCKERHUB_TOKEN` secret, the user its `DOCKERHUB_USERNAME`
+  variable.
+
 ### Removed
 - The VS Code dev container (#136): nobody uses it. What it did moves to the local stack, as the
   host has no PHP: the development override runs the app on the `builder` stage, so
