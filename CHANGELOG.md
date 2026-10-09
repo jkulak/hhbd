@@ -8,6 +8,21 @@ person's decision; nothing releases on its own.
 
 ## Unreleased
 
+### Changed
+- The importer's image is Debian's own PHP 7.4 with GD from packages, where the official image
+  compiled GD on every build that missed the layer cache: the same PHP 7.4.33, JPEG, PNG and
+  WebP, 349 MB instead of 747 MB, and nothing to compile. The builder stage compiles no GD
+  either; CI makes its test images in the importer's image, `make test-images`.
+- `make reset-db` keeps the result of a build from the migrations and loads it on the next
+  reset, in under a second, until a migration, a fixture, one of its scripts or the day changes;
+  `RESET_DB_FULL=1` always builds. `make test-reset-db` checks the two give the same database,
+  checksum for checksum.
+- CI: the smoke workflow runs in two halves at once, the site's pages and the tools that change
+  the database; the reset and migration tests no longer run the smoke test again, and count
+  rows in one query rather than one per table; each image keeps its layer cache under its own
+  scope, where the shared one meant the app's image was built from scratch on every run; and
+  the production stack test gets its images built with the layer cache.
+
 ### Fixed
 - nginx passes a response larger than its buffers, such as `/sitemap-songs.xml`, straight on
   instead of spooling it to a temporary file. That spooling wrote a `warn` line in nginx's own
