@@ -90,6 +90,9 @@ class Model_Edit_Api extends Jkl_Model_Api
 
     private $operationId;
     private $userId;
+
+    /** The users row the edits are written as, in updatedby (#132) */
+    private $auditUserId;
     /** @var string[] one line per row changed, for stdout */
     private $lines = array();
     /** @var array table => the columns that identify one of its rows */
@@ -131,6 +134,7 @@ class Model_Edit_Api extends Jkl_Model_Api
             throw new InvalidArgumentException('Every edit says why.');
         }
         $this->userId = (int) $userId;
+        $this->auditUserId = Model_Audit_Api::getInstance()->userIdFor($this->userId);
         $this->lines = array();
         $this->_db->query(
             'INSERT INTO edit_operations (operation, args, user_id, why, path) VALUES (?, ?, ?, ?, ?)',
@@ -293,7 +297,7 @@ class Model_Edit_Api extends Jkl_Model_Api
             throw new RuntimeException(sprintf('%s has no column "%s" that set may change.', $table, $column));
         }
         $set = array($column => $value);
-        foreach (array('updatedby' => $this->userId, 'updated' => $this->now()) as $audit => $now) {
+        foreach (array('updatedby' => $this->auditUserId, 'updated' => $this->now()) as $audit => $now) {
             if (array_key_exists($audit, $row) && $audit !== $column) {
                 $set[$audit] = $now;
             }
@@ -423,7 +427,7 @@ class Model_Edit_Api extends Jkl_Model_Api
 
     private function touch($table, $id)
     {
-        $this->changeRow($table, $this->one($table, $id), array('updatedby' => $this->userId, 'updated' => $this->now()));
+        $this->changeRow($table, $this->one($table, $id), array('updatedby' => $this->auditUserId, 'updated' => $this->now()));
     }
 
     private function journal($table, $action, $before, $after)

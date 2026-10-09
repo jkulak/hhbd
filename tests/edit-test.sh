@@ -89,6 +89,9 @@ trap cleanup EXIT
 
 echo "> make reset-db"
 make -s reset-db >"$T/out" 2>&1 || { bad "make reset-db succeeds"; cat "$T/out"; exit 1; }
+# The admin's users row, which their first edit makes (#132; review-test.sh checks that): here up
+# front, so the dumps before an edit and after its undo compare the edits alone.
+sql "INSERT INTO users (login, urlname, added, status, hhb_usr_id) VALUES ('Admin', '', NOW(), 0, 10)"
 
 echo "> the merges and deletes know every column that names an album or a label"
 covered=$(docker compose exec -T app php -r 'class Jkl_Model_Api {} require "/var/www/html/app/application/models/Edit/Api.php"; foreach (array_merge(Model_Edit_Api::ALBUM_COLUMNS, Model_Edit_Api::LABEL_COLUMNS) as $t => $cs) { foreach ($cs as $c) { echo "$t.$c\n"; } } echo "albums.epfor\nalbums.labelid\n";' | sort | paste -sd' ' -)
@@ -154,7 +157,8 @@ undo delete-label
 echo "> setting a field"
 dump >"$T/set.before"
 check "set: applied" "0" "$(DO="set albums 1 title" VALUE='Jestem "Hip Hopem"' MODE=apply BY=Admin WHY="edit-test: a title with quotes" make -s edit >"$T/set" 2>&1; echo $?)"
-check "set: the value went in as given, with the admin as updatedby" 'Jestem "Hip Hopem" 10' "$(sql "SELECT CONCAT(title, ' ', updatedby) FROM albums WHERE id = 1")"
+# updatedby names the admin's row in users, linked to the account (10) by hhb_usr_id (#132)
+check "set: the value went in as given, with the admin's users row as updatedby" "Jestem \"Hip Hopem\" $(sql "SELECT ID FROM users WHERE hhb_usr_id = 10")" "$(sql "SELECT CONCAT(title, ' ', updatedby) FROM albums WHERE id = 1")"
 check "set: undone" "0" "$(edit set-undo "undo $(last_operation)" apply)"
 check "set: NULL without VALUE" "0 NULL" "$(DO="set artists 2 realname" MODE=apply BY=Admin WHY="edit-test: null" make -s edit >/dev/null 2>&1; echo "$? $(sql "SELECT IFNULL(realname, 'NULL') FROM artists WHERE id = 2")")"
 check "set: undone too" "0" "$(edit set-null-undo "undo $(last_operation)" apply)"
