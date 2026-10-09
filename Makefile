@@ -1,14 +1,9 @@
 # Everything runs in Docker or over ssh; nothing is installed on this Mac.
 #
-# OVH_HOST (and OVH_SSH_USER, ubuntu by default) come from the environment or from .env,
-# which is never committed. See .env.example.
+# OVH_HOST (and OVH_SSH_USER, ubuntu by default) come from gcloud-ovh-migrate's .env, which
+# deploy/ovh/ovh.mk loads: the host's address is written down there, once.
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-
--include .env
-export OVH_HOST OVH_SSH_USER
-
-SECRETS_FILE := deploy/hhbd.enc.env
 
 .PHONY: help
 help: ## List every target
@@ -17,9 +12,9 @@ help: ## List every target
 
 # --- The OVH host -------------------------------------------------------------------------
 
-.PHONY: ovh-install
-ovh-install: ## Install the compose file, hhbd.enc.env and the hhbd.pl edge snippet on the OVH host, and reload the edge
-	./deploy/ovh-install.sh
+# The shared host's own targets, word for word the same in every service on it: ovh-install,
+# ovh-secrets-set, -show, -edit and -check, ovh-stack-test and ovh-logs.
+include deploy/ovh/ovh.mk
 
 .PHONY: ovh-db-up
 ovh-db-up: ## Start only the database on the OVH host, so the data can go in before the first deploy
@@ -32,8 +27,8 @@ ovh-ps: ## Show hhbd's containers on the OVH host and their health
 	  'sudo docker ps -a --filter label=com.docker.compose.project=hhbd --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"'
 
 .PHONY: ovh-smoke
-ovh-smoke: ## Smoke-test hhbd.pl on the OVH host directly, before the DNS points at it
-	SMOKE_CURL_OPTS="--connect-to hhbd.pl:443:$${OVH_HOST:?OVH_HOST is not set}:443 --insecure" ./tests/smoke-test.sh https://hhbd.pl
+ovh-smoke: ## Smoke-test https://hhbd.pl on production's data, as a release is checked before it is kept
+	./deploy/ovh/smoke.sh
 
 .PHONY: ovh-migrate-status
 ovh-migrate-status: ## Show which migrations production's database on the OVH host has applied
@@ -73,38 +68,23 @@ ovh-check-images: ## List the covers, photos and logos production's catalogue na
 
 .PHONY: ovh-import
 ovh-import: ## Read an import batch into production's catalogue: make ovh-import BATCH=<dir> MODE=apply (a dry run without MODE)
-	@./deploy/ovh-import.sh "$${BATCH:?BATCH is the batch directory}" $(or $(MODE),dry-run)
+	@./deploy/ovh/import.sh "$${BATCH:?BATCH is the batch directory}" $(or $(MODE),dry-run)
 
 .PHONY: ovh-import-runs
 ovh-import-runs: ## List the last import runs on production's database, newest first; N=50 for more
 	DB_TARGET=ovh ./scripts/import-runs.sh $(or $(N),20)
 
 # --- Secrets ------------------------------------------------------------------------------
+# ovh-secrets-set, -show, -edit and -check come with deploy/ovh/ovh.mk.
 
-.PHONY: secrets-check
-secrets-check: ## Fail if a plaintext secret or a private key is about to be committed
-	./scripts/secrets-check.sh
-
-.PHONY: secrets-init
-secrets-init: ## Create deploy/hhbd.enc.env once, with database passwords generated straight into it
-	@[ ! -e $(SECRETS_FILE) ] || { echo "x $(SECRETS_FILE) exists; change a value with make secrets-set" >&2; exit 1; }
+.PHONY: ovh-secrets-init
+ovh-secrets-init: ## Create deploy/ovh/hhbd.enc.env once, with database passwords generated straight into it
+	@[ ! -e $(OVH_SECRETS) ] || { echo "x $(OVH_SECRETS) exists; change a value with make ovh-secrets-set" >&2; exit 1; }
 	@for key in DB_PASSWORD DB_ROOT_PASSWORD; do \
-	  LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32 | ./scripts/secrets.sh set $(SECRETS_FILE) $$key || exit 1; \
+	  LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32 | ./scripts/secrets.sh set $(OVH_SECRETS) $$key || exit 1; \
 	done
-	@printf 'jkulak' | ./scripts/secrets.sh set $(SECRETS_FILE) GHCR_USER
-	@echo "Next: make secrets-set KEY=GHCR_READ_TOKEN (a classic PAT with read:packages only)"
-
-.PHONY: secrets-set
-secrets-set: ## Set one value from a hidden prompt: make secrets-set KEY=NAME
-	./scripts/secrets.sh set $(SECRETS_FILE) "$(KEY)"
-
-.PHONY: secrets-show
-secrets-show: ## List the variable names in deploy/hhbd.enc.env, never their values
-	./scripts/secrets.sh show $(SECRETS_FILE)
-
-.PHONY: secrets-edit
-secrets-edit: ## Edit deploy/hhbd.enc.env in place (vi in a container)
-	./scripts/secrets.sh edit $(SECRETS_FILE)
+	@printf 'jkulak' | ./scripts/secrets.sh set $(OVH_SECRETS) GHCR_USER
+	@echo "Next: make ovh-secrets-set KEY=GHCR_READ_TOKEN (a classic PAT with read:packages only)"
 
 # --- The local database -------------------------------------------------------------------
 
@@ -158,13 +138,11 @@ import-runs: ## List the last import runs on the local database, newest first; N
 smoke: ## Smoke-test the local stack (docker compose up first): make smoke URL=http://localhost:8080
 	./tests/smoke-test.sh $(or $(URL),http://localhost:8080)
 
-.PHONY: test-ovh-release
-test-ovh-release: ## Run every path of a release against a stand-in ci-deploy (no Docker, no network)
-	./tests/ovh-release-test.sh
-
-.PHONY: test-ovh-stack
-test-ovh-stack: ## Run deploy/compose.ovh.yaml locally behind a stand-in edge and check it
-	./tests/ovh-stack-test.sh
+# This repository's own test of the production stack, past what make ovh-stack-test checks in
+# every service on the host.
+.PHONY: ovh-e2e
+ovh-e2e: ## Run deploy/ovh/compose.yaml here behind a stand-in edge: smoke test, client address, logs, an import
+	./tests/ovh-e2e.sh
 
 .PHONY: test-reset-db
 test-reset-db: ## Check make reset-db against the running local stack: make test-reset-db URL=http://localhost:8080

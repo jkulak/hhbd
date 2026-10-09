@@ -1,11 +1,36 @@
 # Changelog
 
 Releases use CalVer, `YYYY.MM.N`: the year, the month, and a counter that starts at 0 each
-month (`2026.10.0`, `2026.10.1`, `2026.11.0`). A release is the git tag `vYYYY.MM.N`, and
-pushing it is what deploys it (`.github/workflows/release.yml`). Tagging is a person's
-decision; nothing tags on its own.
+month (`2026.10.0`, `2026.10.1`, `2026.11.0`). A release is the git tag `vYYYY.MM.N`,
+published as a release — `gh release create vYYYY.MM.N` — which is what deploys it
+(`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Releasing is a
+person's decision; nothing releases on its own.
 
 ## Unreleased
+
+### Changed
+- Production's stack is laid out as the shared OVH host's service template has every service do
+  it (#108). Production runs as before: the same files go to the same places on the host.
+  - The stack, the edge snippet and the secrets live in `deploy/ovh/`, with a `service.env`
+    naming the service and its three images. The install, release and stack-test scripts,
+    `deploy/ovh/ovh.mk`, the secrets scripts and the deploy workflow are the template's, word
+    for word, so a change to them there reaches every service on the host.
+  - A release is `gh release create vYYYY.MM.N`. The `Deploy` workflow builds the app, nginx
+    and importer images and rolls them out with `scripts/ovh-release.sh`, which runs
+    `deploy/ovh/smoke.sh` and puts the release before back when it fails. A tag pushed on its
+    own deploys nothing now; the `Release` workflow, `deploy/ovh-release.sh` and its test are
+    gone, the release flow being the template's to test.
+  - `make ovh-stack-test` checks the stack against the host's contract and serves it behind the
+    edge's real configuration; `deploy/ovh/stack-test-setup.sh` migrates and seeds its database
+    first. It reads past the log lines of `nginx` and `app` until #101.
+  - This repository's own test of the stack is `make ovh-e2e` (was `make test-ovh-stack`), and
+    the import script is `deploy/ovh/import.sh`.
+  - The secrets targets are `make ovh-secrets-set`, `-show`, `-edit`, `-check` and `-init`
+    (were `make secrets-*`).
+  - The host's address is read from gcloud-ovh-migrate's `.env`; `OVH_HOST` and `OVH_SSH_USER`
+    left `.env.example`.
+  - `make ovh-smoke` runs the release's smoke test against `https://hhbd.pl`. The way around
+    Cloudflare it took before the DNS moved is closed at the edge.
 
 ## 2026.10.5 — 2026-10-09
 

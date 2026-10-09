@@ -10,15 +10,15 @@ hhbd-new/
 ├── content/              # User-uploaded images (artists, albums, news)
 ├── database/             # SQL dumps for database initialization
 ├── conf/                 # Nginx and PHP configuration
-├── deploy/               # Production on the shared OVH host
-├── scripts/              # Secrets gate and SOPS helper
-├── tests/                # Smoke test, production stack and release tests
+├── deploy/ovh/           # Production on the shared OVH host
+├── scripts/              # Database tools, and the OVH host's install, release and secrets scripts
+├── tests/                # Smoke test, and the production stack's end-to-end test
 └── compose.yaml          # Docker services configuration
 ```
 
 The old admin panel (`backoffice/`) is archived on the branch `backoffice-archive`; nothing runs it, and it will not be revived: a future backoffice gets written from scratch.
 
-Production runs on the shared OVH host, behind its Caddy edge and Cloudflare, since 2026-10-08. A release is a CalVer tag `vYYYY.MM.N`; see [deploy/README.md](deploy/README.md).
+Production runs on the shared OVH host, behind its Caddy edge and Cloudflare, since 2026-10-08. A release is `gh release create vYYYY.MM.N`; see [deploy/ovh/README.md](deploy/ovh/README.md).
 
 ## Quick Start
 
@@ -287,6 +287,6 @@ Tests run on GitHub Actions for every pull request, and not again on the push a 
 
 - **Unit Tests**: `.github/workflows/unit-tests.yml` - PHPUnit tests with coverage
 - **Smoke Tests**: `.github/workflows/smoke-tests.yml` - Integration tests with Docker
-- **Deploy checks**: `.github/workflows/deploy-checks.yml` - the secrets gate, the release flow, and the production stack behind a stand-in edge
+- **Deploy checks**: `.github/workflows/deploy-checks.yml` - the secrets gate, and the production stack behind a stand-in edge
 
-A pushed release tag `vYYYY.MM.N` runs `.github/workflows/release.yml`, which builds the app and nginx images and deploys them to the OVH host, and builds the importer's image for `make ovh-import`.
+A published release, `gh release create vYYYY.MM.N`, runs `.github/workflows/deploy.yml`, which builds the app, nginx and importer images, rolls the app and nginx out on the OVH host, and leaves the importer's for `make ovh-import`.

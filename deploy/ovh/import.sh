@@ -3,14 +3,14 @@
 # HHBD - read an import batch into production's catalogue on the shared OVH host (#56)
 #
 # The batch goes over ssh as a tar on stdin into a one-off importer container (the `jobs`
-# profile in deploy/compose.ovh.yaml) of the running release's tag, so no copy of it is left on
+# profile in deploy/ovh/compose.yaml) of the running release's tag, so no copy of it is left on
 # the host. Each document's line comes back on stderr as it is read, the report, JSON, on
 # stdout; import_runs keeps the report too (make ovh-import-runs).
 #
 # ci-deploy pulls only the services `up` starts, so the importer image is pulled here first,
 # logged in to GHCR for exactly as long as the pull takes, as ci-deploy does.
 #
-# Usage: ./deploy/ovh-import.sh <batch directory> [dry-run|apply]     (or make ovh-import)
+# Usage: ./deploy/ovh/import.sh <batch directory> [dry-run|apply]     (or make ovh-import)
 #
 set -euo pipefail
 
@@ -18,7 +18,7 @@ BATCH=${1:-}
 MODE=${2:-dry-run}
 HOST=${OVH_HOST:-}
 USER_=${OVH_SSH_USER:-ubuntu}
-[ -n "$HOST" ] || { echo "x OVH_HOST is not set. Put it in .env or export it." >&2; exit 2; }
+[ -n "$HOST" ] || { echo "x OVH_HOST is not set: it lives in gcloud-ovh-migrate's .env, which make loads" >&2; exit 2; }
 [ -d "$BATCH" ] || { echo "x usage: $0 <batch directory> [dry-run|apply]" >&2; exit 2; }
 case "$MODE" in
     dry-run|apply) ;;

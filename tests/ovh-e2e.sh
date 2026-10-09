@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# deploy/compose.ovh.yaml on this machine, as the OVH host runs it: images built from this
+# deploy/ovh/compose.yaml on this machine, as the OVH host runs it: images built from this
 # checkout, the external `edge` network on its fixed subnet, and a stand-in for the shared edge
 # at the edge's fixed address, proxying the way the edge's `proxy` snippet does.
 #
@@ -30,7 +30,7 @@ pass=0
 fail=0
 
 export IMAGE_TAG=$TAG DB_PASSWORD=throwaway DB_ROOT_PASSWORD=throwaway-root
-compose() { docker compose -p "$PROJECT" -f deploy/compose.ovh.yaml "$@"; }
+compose() { docker compose -p "$PROJECT" -f deploy/ovh/compose.yaml "$@"; }
 
 if docker network inspect edge >/dev/null 2>&1; then
     echo "x a Docker network called edge exists already; this test makes its own and will not touch that one" >&2
@@ -120,7 +120,7 @@ check "the database runs with production's cache sizes (buffer pool, key cache, 
     "$(docker exec "$PROJECT-db-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -uroot -N -B -e "SELECT CONCAT_WS(\" \", @@innodb_buffer_pool_size, @@key_buffer_size, @@aria_pagecache_buffer_size)"')"
 db_flags() { sed -n '/^  db:/,/^  [a-z]/p' "$1" | sed -n '/command: >/{n;p;}' | sed 's/^ *//'; }
 check "compose.yaml and compose.ci.yaml run the database with production's flags" \
-    "$(db_flags deploy/compose.ovh.yaml) | $(db_flags deploy/compose.ovh.yaml)" "$(db_flags compose.yaml) | $(db_flags compose.ci.yaml)"
+    "$(db_flags deploy/ovh/compose.yaml) | $(db_flags deploy/ovh/compose.yaml)" "$(db_flags compose.yaml) | $(db_flags compose.ci.yaml)"
 
 for _ in $(seq 1 30); do
     via_edge -o /dev/null http://hhbd.pl/ && break
