@@ -32,7 +32,7 @@ last one left. CI sets its database up the same way, so what passes here passes 
 It acts only on the running db container of this checkout's compose project, on the local
 Docker engine, and refuses anything else before a statement reaches a database: a Docker
 context or `DOCKER_HOST` that is not a local socket, a project with no running db, or a db
-container started from another directory or from `deploy/compose.ovh.yaml`.
+container started from another directory or from `deploy/ovh/compose.yaml`.
 `make test-reset-db` checks all of that against the running stack; CI runs it after the smoke
 test.
 
@@ -106,7 +106,7 @@ that already has that schema records it instead:
 
 ```bash
 make migrate-baseline        # the local database
-make ovh-migrate-baseline    # production, once; see deploy/README.md
+make ovh-migrate-baseline    # production, once; see deploy/ovh/README.md
 ```
 
 `baseline` compares every column the baseline would create with what the database has, refuses
@@ -118,7 +118,7 @@ when it has tables: the baseline would otherwise recreate them.
 
 Production's database is migrated from the Mac, over ssh into `hhbd-db-1` on the OVH host, with
 `make ovh-migrate` before the release that needs the change; `make ovh-migrate-down` asks for a
-typed confirmation. [deploy/README.md](../deploy/README.md) has the order.
+typed confirmation. [deploy/ovh/README.md](../deploy/ovh/README.md) has the order.
 
 ## Character set and collation
 

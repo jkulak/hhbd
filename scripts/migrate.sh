@@ -23,7 +23,7 @@
 #   container   the container MIGRATE_CONTAINER names, on the local engine: for tests, and for
 #               a stack under another project name
 #   ovh         production's database on the OVH host, over ssh as the admin account, with
-#               OVH_HOST from .env; `down` asks for a typed confirmation there
+#               OVH_HOST from gcloud-ovh-migrate's .env; `down` asks for a typed confirmation there
 #
 # Each file runs as one mariadb session, as root with the container's own password; nothing
 # secret passes through here. MariaDB commits DDL as it goes, so a file that fails halfway has
