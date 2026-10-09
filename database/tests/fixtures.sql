@@ -684,6 +684,24 @@ INSERT INTO `band_lookup` (`artistid`, `bandid`, `status`) VALUES
 (1, 61, 999),
 (99999, 63, 999);
 
+-- ============================================
+-- 21. ROLES as production has them, for migration 0013 (#66)
+-- The role row 0 without a name, which every credit without a role joins, and an unused test
+-- role the migration deletes. DJ 600V (36) is credited "scratch" elsewhere, so his credit
+-- without a role gets that one; Ero JWP (41) has no other credit and Bęsiu (42) has two roles,
+-- so theirs stay without one.
+-- ============================================
+INSERT INTO `feattypes` (`id`, `feattype`, `status`) VALUES
+(0, NULL, 999),
+(34, 'testest', 999);
+
+INSERT INTO `feature_lookup` (`songid`, `artistid`, `feattype`, `status`) VALUES
+(6, 36, 0, 999),
+(7, 41, 0, 999),
+(8, 42, 1, 999),
+(9, 42, 2, 999),
+(10, 42, 0, 999);
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================
