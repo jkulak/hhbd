@@ -214,6 +214,18 @@ Rules the link tables follow, and the migration that set each one:
   a role to a role-less credit only where all the artist's other credits share one (223 on
   production); the other 356 stay at 0, because any role for them would be a guess.
 
+## Release types
+
+`albums.release_type` says what a release is (0014, #53): `album`, `ep`, `mixtape`,
+`compilation`, `beat_tape`, `single` or `other`. The page shows it next to the title (`[EP]`,
+`[mixtape]`, …; nothing for an album), and `[nielegal]` for a release with `legal = 'n'`.
+`media_digital` and `catalog_digital` sit next to the CD, LP and cassette columns, so a
+digital-only release no longer passes for a CD.
+
+The older columns stay: `singiel` and `epfor` (the album an EP or single preceded, which the
+page still links as "Singiel do:"). 0014 typed every album they flag as a `single` when it has
+one to three tracks and an `ep` otherwise: 12 singles and 60 EPs on production.
+
 ## External ids
 
 `external_ids` (0006, #51) holds the ids a catalog row has in other databases: Discogs,
