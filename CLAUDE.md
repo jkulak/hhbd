@@ -64,7 +64,7 @@ For production-like data instead, load a dump and record the baseline with `make
 
 ### The database
 
-- `make reset-db` drops the local `hhbd` database and builds it again from the migrations and the fixtures. Run it before and after a piece of work. It acts only on the running db container of this checkout's compose project on the local Docker engine, and refuses anything else.
+- `make reset-db` drops the local `hhbd` database and builds it again from the migrations and the fixtures, or loads the kept result of that build while those files have not changed (`RESET_DB_FULL=1` always builds). Run it before and after a piece of work. It acts only on the running db container of this checkout's compose project on the local Docker engine, and refuses anything else.
 - Every schema or data change is a migration in `database/migrations/`, `NNNN-slug.up.sql` with its `.down.sql`: `make migrate-new NAME=...`, `make migrate`, `make migrate-down`, `make migrate-status`. Keep each one small and compatible with the release that is running. Production gets them with `make ovh-migrate` before the release that needs them ([deploy/ovh/README.md](deploy/ovh/README.md)). Details in [database/README.md](database/README.md).
 
 ## Common Commands
@@ -218,7 +218,7 @@ Production itself runs `deploy/ovh/compose.yaml` on the shared OVH host, behind 
 
 GitHub Actions workflows (`.github/workflows/`):
 - **unit-tests.yml** - PHPUnit tests with coverage
-- **smoke-tests.yml** - Integration tests with Docker
+- **smoke-tests.yml** - Integration tests with Docker, in two halves at once on two runners: the site's pages, and the tools that change the database
 - **deploy-checks.yml** - The secrets gate, and the production stack behind a stand-in edge
 - **deploy.yml** - For a published release, builds the app, nginx and importer images and rolls the first two out on the OVH host; the shared host's template, word for word
 
