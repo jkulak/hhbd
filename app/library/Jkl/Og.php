@@ -45,8 +45,8 @@ class Jkl_Og
     }
     
     if (isset($this->_description)) {
-      $description = Jkl_Tools_String::trim_str($this->_description, 297);
-      $ogMeta .= '<meta property="og:description" content="' . str_replace('"', '&quot;', $description) . '" />' . "\n";
+      $description = Jkl_Tools_String::metaDescription($this->_description, 297);
+      $ogMeta .= '<meta property="og:description" content="' . htmlspecialchars($description, ENT_QUOTES, 'UTF-8') . '" />' . "\n";
     }
     
     if (isset($this->_image)) {
