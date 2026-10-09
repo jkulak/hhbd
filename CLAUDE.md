@@ -174,6 +174,8 @@ Custom routes defined in [app/application/configs/routes.xml](app/application/co
 
 Parse logic extracts ID from URL suffix before `.html`.
 
+The addresses before these (`/n/peja`, `/a/...`, `/l/...`, `/s/...`, `/wykonawca/...`, `/news/223`) redirect to today's pages through `LegacyController`, by the slug kept in each table's `urlname` (#26).
+
 ### Configuration
 
 **application.ini sections:**
