@@ -57,6 +57,12 @@ class Model_News_Api extends Jkl_Model_Api
     /*
     * Get news detail
     */
+    /** Whether there is a news $id, for its page to ask before it builds it (#147) */
+    public function exists($id)
+    {
+        return $this->has('news', $id);
+    }
+
     public function find($id, $full = false)
     {
         $id = intval($id);

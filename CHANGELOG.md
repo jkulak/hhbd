@@ -8,6 +8,10 @@ person's decision; nothing releases on its own.
 
 ## Unreleased
 
+Search engines may read hhbd.pl again (#147): `robots.txt` had kept every one of them out since
+the code came back in January. Once this is released, adding hhbd.pl to Google Search Console
+and submitting `https://hhbd.pl/sitemap-index.xml` is a step for Kuba, with his account.
+
 ### Added
 - `make edit` and `make ovh-edit` set several columns of a row in one operation (#145):
   `DO="set albums 535" VALUE='{"title": "...", "year": "2010-06-15", "notes": null}'`. One
@@ -15,6 +19,21 @@ person's decision; nothing releases on its own.
   the row lacks, `id`, `updated` or `updatedby` in the object refuses all of them.
 
 ### Fixed
+- `robots.txt` lets search engines in and names the sitemap index; it said `Disallow: /` to all
+  of them since the first commit (#147). The old site said `Allow: /` from 2011 to 2016.
+- The sitemaps can be read (#147). The index parses now: absolute addresses, no stray tag, no
+  text after its end. Every sitemap is `application/xml`, each address its page's canonical
+  one, and the song sitemap lists every song with a page instead of the newest 10,000.
+- The application sees a request that reached the edge over HTTPS as HTTPS: nginx passes the
+  edge's `X-Forwarded-Proto` on (#147). Canonical tags read `https://` only because Cloudflare
+  rewrote them, and the sitemaps said `http://`.
+- A missing album, artist, song, label or news item is a 404 at its own address (#147), where
+  it redirected to `/a.html` and the like first. The error page is a page of the site, titled
+  "Nie ma takiej strony", not a second document inside it titled "Zend Framework Default
+  Application", and it is `noindex`, as are search results and the login and registration
+  pages.
+- Meta descriptions carry no HTML (#147): an artist's had its description's tags, a song's its
+  lyrics' `<br />`, a news item's its whole text, and the cut could split a Polish letter.
 - `make edit DO="set ..." VALUE=` sets an empty string, as it says; the tool dropped the empty
   argument on the way and refused the call.
 - An admin's edits name them in `updatedby` the way the rest of the history does (#132, migration

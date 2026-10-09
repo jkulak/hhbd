@@ -29,6 +29,9 @@ class LabelController extends Zend_Controller_Action
     public function viewAction()
     {
         $params = $this->getRequest()->getParams();
+        if (!Model_Label_Api::getInstance()->exists($params['id'])) {
+            throw new Zend_Controller_Action_Exception('No label ' . (int) $params['id'], 404);
+        }
         $label = Model_Label_Api::getInstance()->find($params['id'], true);
 
         // Build canonical URL and redirect if current URL doesn't match
@@ -57,7 +60,7 @@ class LabelController extends Zend_Controller_Action
 
         $this->view->headTitle()->set($label->name . ' - Hhbd.pl');
         $this->view->headMeta()->setName('keywords', $label->name . ',' . implode(',', $artists) . ',wytwórnia,polski hip-hop');
-        $this->view->headMeta()->setName('description', $label->name . ' to wytwórnia wydająca polski hip-hop, w jej szeregach są tacy artyści jak: ' . implode(', ', $artists));
+        $this->view->headMeta()->setName('description', Jkl_Tools_String::metaDescription($label->name . ' to wytwórnia wydająca polski hip-hop, w jej szeregach są tacy artyści jak: ' . implode(', ', $artists)));
     }
 
     // description autogeneration, displayedfor SEO purposes

@@ -30,4 +30,14 @@ abstract class Jkl_Model_Api
             throw new Jkl_Model_Exception('oh no!', Jkl_Model_Exception::EXCEPTION_DB_CONNECTION_FAILED);
         }
     }
+
+    /**
+     * Whether $table has a row with this id. A page asks before it builds the row, so a row that
+     * is not there is a 404 at its own address rather than a page made of nothing, which
+     * redirected to /a.html and the like (#147).
+     */
+    protected function has($table, $id)
+    {
+        return !empty($this->_db->fetchAll("SELECT 1 FROM `$table` WHERE id = ?", array((int) $id)));
+    }
 }
