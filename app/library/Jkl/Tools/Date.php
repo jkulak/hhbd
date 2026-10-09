@@ -20,7 +20,7 @@ class Jkl_Tools_Date
   /*
   * A date as a page shows it, to the precision it is known: "15 stycznia 2020",
   * "któregoś maja 2020" (the month) or "2020" (the year). Without a precision it is read from
-  * the date itself, as the albums held it before migration 0015: zero parts for what is not
+  * the date itself, as the albums held them before #54's migration: zero parts for what is not
   * known (2020-05-00, 2020-00-00). With one, the date is a whole one (2020-05-01) and the
   * precision says which parts mean anything (#54).
   */

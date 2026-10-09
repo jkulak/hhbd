@@ -90,7 +90,7 @@ class Model_Album_Container
             ? $params['release_date_precision']
             : Jkl_Tools_Date::precisionOf($this->releaseDate);
         $this->releaseDateNormalized = Jkl_Tools_Date::getNormalDate($this->releaseDate, $this->releaseDatePrecision);
-        // Before migration 0015 there is no announced column, and the date decides.
+        // Until #54's migration adds the announced column, the date decides.
         $this->announced = isset($params['announced']) ? (bool) $params['announced'] : null;
 
         $this->catalogNumber = self::catalogNumberOf($params);
