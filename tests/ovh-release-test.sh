@@ -26,10 +26,12 @@ case "$1" in
     *) exit 64 ;;
 esac
 SH
-# The stand-in smoke test: fails while $T/smoke-fails exists, and records its curl options.
+# The stand-in smoke test: fails while $T/smoke-fails exists, and records its curl options and
+# what it was told it is checking.
 cat >"$T/smoke" <<'SH'
 #!/usr/bin/env bash
 echo "${SMOKE_CURL_OPTS:-}" >"$T/smoke-opts"
+echo "${SMOKE_TARGET:-}" >"$T/smoke-target"
 [ ! -e "$T/smoke-fails" ]
 SH
 chmod +x "$T/ci-deploy" "$T/smoke"
@@ -75,6 +77,7 @@ check "an unhealthy release fails without a smoke test or a second deploy" \
 
 release v2026.10.0 v2026.10.1
 check "the smoke test goes through the public name by default" "" "$(cat "$T/smoke-opts")"
+check "and checks production's data, not the fixtures" "production" "$(cat "$T/smoke-target")"
 
 echo v2026.10.0 >"$T/running"; rm -f "$T/sent" "$T/smoke-fails"
 CI_DEPLOY_SSH="$T/ci-deploy" SMOKE="$T/smoke" OVH_HOST=ovh.example SMOKE_VIA_ORIGIN=true \
