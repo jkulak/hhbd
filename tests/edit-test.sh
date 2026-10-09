@@ -6,7 +6,7 @@
 #   - merging two albums, merging two artists, deleting an album, an artist and a label, and
 #     setting a field each do what they say, leave no row naming what went, and journal one
 #     row per row changed
-#   - a merged album's page answers 301 with the album kept
+#   - a merged album's page answers 301 with the album kept, which keeps showing its own cover
 #   - undoing each of them gives back the data exactly: a dump taken before the operation and
 #     one taken after the undo are the same
 #   - an operation is undone once, and an undo is not undone
@@ -124,6 +124,14 @@ check "an operation is undone once" "2 was undone already" \
     "$(edit undo-twice "undo $operation" apply) $(grep -o 'was undone already' "$T/undo-twice")"
 check "and an undo is not undone" "2 An undo is not undone" \
     "$(edit undo-undo "undo $(last_operation)" apply) $(grep -o 'An undo is not undone' "$T/undo-undo")"
+
+echo "> merging an album into one with a cover of its own"
+sql "INSERT INTO album_covers (albumid, variant, path, width, height, sha256, mime, source) VALUES (535, '600', 'a/600/kept.jpg', 600, 600, REPEAT('a', 64), 'image/jpeg', 'test'), (47, '600', 'a/600/merged.jpg', 600, 600, REPEAT('b', 64), 'image/jpeg', 'test')"
+apply merge-covers "merge-albums 47 535"
+check "merge-covers: the kept album still shows its own cover, the merged one's kept behind it" "a/600/kept.jpg:y a/600/merged.jpg:n" \
+    "$(sql "SELECT GROUP_CONCAT(CONCAT(path, ':', main) ORDER BY path SEPARATOR ' ') FROM album_covers WHERE albumid = 535")"
+undo merge-covers
+sql "DELETE FROM album_covers WHERE sha256 IN (REPEAT('a', 64), REPEAT('b', 64))"
 
 echo "> merging two artists"
 apply merge-artists "merge-artists 35 2"

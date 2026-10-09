@@ -8,6 +8,11 @@ person's decision; nothing releases on its own.
 
 ## Unreleased
 
+### Fixed
+- Merging an album into another that has a cover keeps that cover on the page. The merged
+  album's cover rows come along as not main, where before they would have been taken as the
+  newer cover. #114's dry run showed it, so album 850 was deleted rather than merged.
+
 ### Changed
 - hhbd logs in the shared host's format (#101; CONTRACT.md §9 in gcloud-ovh-migrate): one JSON
   object per line with `time` in UTC, `level`, `msg`, `logger`, and the edge's `request_id` on
