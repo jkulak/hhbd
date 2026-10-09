@@ -766,6 +766,16 @@ INSERT INTO `album_artist_lookup` (`albumid`, `artistid`, `status`) VALUES
 (923, 1, 999),
 (778, 2, 999);
 
+-- Two of the image files production lacks for good, as 0029 names them (#47): an album's cover
+-- and an artist's only photo. The rows stop naming them.
+INSERT INTO `albums` (`id`, `title`, `labelid`, `year`, `legal`, `cover`, `artistabout`, `status`, `viewed`) VALUES
+(576, 'Prawda Naga', NULL, '2010-11-26', 'y', 'wally-prawda-naga-hhbdpl.jpg', '', 999, 5);
+INSERT INTO `album_artist_lookup` (`albumid`, `artistid`, `status`) VALUES (576, 2, 999);
+INSERT INTO `artists` (`id`, `name`, `realname`, `type`, `trivia`, `website`, `status`, `viewed`, `profile`) VALUES
+(2258, 'Enemis', NULL, 'm', '', '', 999, 5, NULL);
+INSERT INTO `artists_photos` (`id`, `artistid`, `filename`, `description`, `main`, `source`, `sourceurl`, `addedby`, `added`) VALUES
+(120, 2258, 'Enemis-1-hhbdpl.jpg', '', 'y', '', '', 1, '2014-11-02 12:00:00');
+
 -- Zero and partial dates in the columns 0024-0027 clear (#88), as production held them: a band
 -- formed in 1998 and still on, one formed in March 1998 that split in 2003, a member who joined
 -- in 1998 and left in December 2003, a user who never logged in nor changed anything, one with

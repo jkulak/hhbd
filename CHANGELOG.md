@@ -8,6 +8,18 @@ person's decision; nothing releases on its own.
 
 ## Unreleased
 
+### Fixed
+- The catalogue no longer names the 89 image files production has lacked since its content was
+  restored from a 2014 snapshot (#47): 87 album covers, one artist photo and one label logo.
+  - They are in no backup, archive or old disk.
+  - Migration 0029 clears the album covers and the logo, and deletes the photo's row. It
+    archives every value, so its down puts them back.
+  - The pages show the placeholder, as they do for an album that never had a cover, and
+    `make ovh-check-images` is clean.
+  - The covers come back through the import: an album with no `album_covers` row takes the
+    cover a batch brings. The one of them that kept a thumbnail (576) has it marked
+    `needs_upgrade`, so a larger cover replaces it.
+
 ## 2026.10.6 — 2026-10-09
 
 The first release through the shared host's template: the `Deploy` workflow builds the three

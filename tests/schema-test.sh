@@ -35,6 +35,8 @@
 #   - the catalogue is utf8mb4 with the Polish collation: Ż is not Z, case does not count,
 #     Polish order, and a four-byte character survives an insert and a page view (#71)
 #   - the lookups the pages make by artist, album, label and views have indexes (#69)
+#   - the image files production lacks for good are no longer named, and the down names them
+#     again (#47)
 #   - no date, datetime or timestamp column holds a zero part, the server runs with
 #     NO_ZERO_IN_DATE and NO_ZERO_DATE, the CHECKs refuse one even in a session that allows it,
 #     partial dates keep their year or month as a precision, and the downs put every zero date
@@ -322,6 +324,10 @@ else
     ok "and so does the CHECK, in a session that allows zero dates"
 fi
 
+echo "> image files production lacks for good"
+check "an album's lost cover and an artist's lost photo are no longer named (#47)" "576: 0 1" \
+    "$(sql "SELECT CONCAT((SELECT CONCAT(id, ':', cover) FROM albums WHERE id = 576), ' ', (SELECT COUNT(*) FROM artists_photos WHERE id = 120), ' ', (SELECT COUNT(*) FROM migration_archive WHERE version = '0029' AND table_name = 'artists_photos'))")"
+
 echo "> artists who share a name"
 check "an artist's name is unique with its qualifier, not alone" "name,disambiguation" \
     "$(sql "SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'artists' AND index_name = 'u_artists_name' AND non_unique = 0")"
@@ -389,6 +395,8 @@ check "after down: no archive" "0" "$(sql "SELECT COUNT(*) FROM information_sche
 check "after down: added changes on update again, in 11 tables plus the lyrics log" "12" "$(count "$TIMES_WITH_ON_UPDATE")"
 check "after down: the catalog's added has no default" "0" "$(count "table_name IN ($CATALOG) AND column_name = 'added' AND column_default = 'current_timestamp()'")"
 check "after down: album_prices.added defaults to the zero date again" "album_prices.added" "$(col "column_default LIKE '%0000-00-00%'")"
+check "after down: the lost cover and photo named again" "wally-prawda-naga-hhbdpl.jpg Enemis-1-hhbdpl.jpg" \
+    "$(sql "SELECT CONCAT((SELECT cover FROM albums WHERE id = 576), ' ', (SELECT filename FROM artists_photos WHERE id = 120))")"
 check "after down: the zero and partial dates back as the fixtures had them" "1998-00-00 0000-00-00 1998-03-00 2003-00-00 | 1998-00-00 2003-12-00 | 0000-00-00 00:00:00 0000-00-00 00:00:00 0000-00-00 00:00:00 | 0000-00-00 00:00:00" \
     "$(sql "SELECT CONCAT_WS(' | ', (SELECT GROUP_CONCAT(CONCAT_WS(' ', since, till) ORDER BY id SEPARATOR ' ') FROM artists WHERE id IN (22, 23)), (SELECT CONCAT_WS(' ', insince, awaysince) FROM band_lookup WHERE artistid = 35 AND bandid = 23), (SELECT CONCAT_WS(' ', (SELECT usr_added FROM hhb_users WHERE usr_id = 8), usr_updated, usr_last_login) FROM hhb_users WHERE usr_id = 9), (SELECT expires FROM news WHERE ID = 2))")"
 check "after down: the qualifiers folded into the names" "64:Solar (SBM Label) 65:Solar (raper z Poznania)" \
