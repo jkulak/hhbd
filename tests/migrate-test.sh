@@ -119,10 +119,13 @@ if migrate baseline; then ok "baseline records 0001 without running it ($(last |
 migrate status
 check "status shows the baseline applied and only what came after it pending" "1 applied, $((migration_count - 1)) pending" "$(summary)"
 if migrate baseline; then bad "a second baseline is refused"; else check "a second baseline is refused" "already records" "$(has 'already records')"; fi
-sql "DROP TABLE schema_migrations; ALTER TABLE albums ADD COLUMN not_in_any_migration INT"
+# At the baseline the albums hold the zero dates the fixtures have, which a table rebuild under
+# the server's sql_mode refuses to copy (#88); so these changes by hand take the fixtures' session.
+legacy="SET SESSION sql_mode = 'NO_AUTO_VALUE_ON_ZERO';"
+sql "$legacy DROP TABLE schema_migrations; ALTER TABLE albums ADD COLUMN not_in_any_migration INT"
 migrate baseline
 check "baseline notes a column no migration describes" "albums.not_in_any_migration" "$(has 'albums.not_in_any_migration')"
-sql "DROP TABLE schema_migrations; ALTER TABLE albums DROP COLUMN not_in_any_migration, DROP COLUMN legal"
+sql "$legacy DROP TABLE schema_migrations; ALTER TABLE albums DROP COLUMN not_in_any_migration, DROP COLUMN legal"
 if migrate baseline; then bad "baseline on a schema missing a column is refused"; else check "baseline on a schema missing a column is refused, naming it" "albums.legal" "$(has 'albums.legal')"; fi
 
 echo "> what the files must look like"
