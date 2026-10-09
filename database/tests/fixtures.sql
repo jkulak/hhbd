@@ -713,6 +713,13 @@ UPDATE `albums` SET `epfor` = 2 WHERE `id` = 46;
 UPDATE `albums` SET `legal` = 'n' WHERE `id` = 47;
 UPDATE `albums` SET `media_cd` = 1, `media_lp` = 1 WHERE `id` = 535;
 
+-- ============================================
+-- 23. AN ALBUM WITHOUT A LABEL (#55)
+-- Leśna Ścieżka (47), a nielegal, came out on no label, which labelid NULL says. Lists used to
+-- join labels without LEFT, so it vanished from the artist's page.
+-- ============================================
+UPDATE `albums` SET `labelid` = NULL WHERE `id` = 47;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================

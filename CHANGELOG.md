@@ -8,6 +8,10 @@ decision; nothing tags on its own.
 ## Unreleased
 
 ### Changed
+- An album without a label shows in every album list and its page renders, with the label left
+  out of its description (#55, first step). Lists joined labels with an inner join, so an
+  album with no label vanished from them; the placeholder label "BRAK" (27) now reads as no
+  label too, so the 247 albums on it no longer say "wydany przez wytwórnię ," with no name.
 - Release dates are shown to the precision they are known, read from a precision column once
   it exists and from the zero parts of the date until then (#54, first step). Nothing on the
   pages changes yet: this release reads both shapes, so the migration that stores dates with a
