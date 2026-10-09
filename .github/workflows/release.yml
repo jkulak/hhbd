@@ -25,6 +25,9 @@ env:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # The deploy key is the environment's: it admits release tags alone, so a run from a branch
+    # never sees it.
+    environment: production
     steps:
       - name: Refuse anything but a release tag
         run: |

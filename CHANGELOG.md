@@ -7,6 +7,10 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
+### Changed
+- The release job runs in the `production` environment, which keeps the deploy key and admits
+  release tags alone, instead of reading it from repository secrets any branch could read.
+
 ### Added
 - The import has its own row in `users` (migration 0008, with a down): `ID` 1100, login
   `import`, no password. The importer writes it into `addedby` for what it creates and into
