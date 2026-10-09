@@ -6,27 +6,21 @@ Big picture
 - HHBD (Hip-Hop Database) is a Polish Hip-Hop content management system for music catalog featuring artists, albums, songs, labels, user profiles, comments, ratings, and community features.
 - Legacy PHP 8.4 app using Zend Framework 1 (maintained via shardj/zf1-future) served by Nginx + PHP-FPM.
 - Services (Docker Compose): app (PHP-FPM), nginx (8080), db (MariaDB 10.11), adminer (8082).
-- Dockerfile-php uses multi-stage build: 'builder' stage (with GD for test image generation, used in CI), 'production' stage (minimal runtime, used in dev and on the OVH host).
+- Dockerfile-php builds every PHP image from Debian 13's PHP 8.4 packages: 'builder' (FPM with composer, used by CI and in development), 'production' (the OVH host), 'importer' (GD, the import job and the test images).
 - Frontend app lives in [app/](app/); entrypoint is [app/public/index.php](app/public/index.php). Config in [app/application/configs/application.ini](app/application/configs/application.ini) and routes in [app/application/configs/routes.xml](app/application/configs/routes.xml).
 - Backoffice: none on `main`. The procedural PHP admin panels (`admin/`, `xadmin/`) are archived on the branch `backoffice-archive`, nothing runs them, and they will not be revived or kept compatible; a future backoffice gets written from scratch.
 - Frontend assets: jQuery 1.4.4, custom CSS/JS, tipsy tooltips. Main files at [app/public/css/s.css](app/public/css/s.css) and [app/public/js/s.js](app/public/js/s.js).
 
 Development workflow
 - **Initial setup (new clone)**: 
-  1. Start services: `docker compose up -d --build` (from host, not inside dev container)
-  2. Seed DB: `make reset-db` (the schema from `database/migrations/`, the fixtures from `database/tests/fixtures.sql`)
-  3. Generate images: `make test-images` (in the importer's image, the one with GD)
-  4. Open in VS Code → "Reopen in Container" (dev container auto-installs composer deps)
+  1. Copy `compose.override.example.yaml` to `compose.override.yaml`, then start services: `docker compose up -d --build`
+  2. Install `app/vendor`: `docker compose exec app composer install`; the git hooks: `make hooks`
+  3. Seed DB: `make reset-db` (the schema from `database/migrations/`, the fixtures from `database/tests/fixtures.sql`)
+  4. Generate images: `make test-images` (in the importer's image, the one with GD)
   5. **Alternative DB setup (production-like data)**: Copy production dump to `database/dev/init.sql` (git-ignored). Docker will auto-import on first start; then `make migrate-baseline`. See [database/README.md](database/README.md) for details.
-- **Dev container networking**: Dev container auto-connects to `hhbd_default` docker network via `postStartCommand`. If tests fail to reach nginx, manually run: `docker network connect hhbd_default $(hostname)`
-- **Run tests from dev container**:
-  - Unit tests: `Cmd+K J U` or `cd app && ./vendor/bin/phpunit -c tests/phpunit.xml`
-  - Smoke tests: `Cmd+K J S` or `bash ./tests/smoke-test.sh http://nginx:80`
-  - All tests: `Cmd+K J A`
-- **Run tests from host/CI**: Use `http://localhost:8080` for smoke tests (port mapping works)
+- **Run tests**: unit tests `make test-unit` (in the importer's image, no stack needed); smoke tests `make smoke` (against `http://localhost:8080`)
 - View logs: `docker compose logs -f` or `docker compose logs app`
-- Code style check: `app/vendor/bin/php-cs-fixer fix --dry-run --diff` (auto-fix: omit `--dry-run`)
-- **File permissions**: Don't try to `chmod` files in dev container - workspace is mounted from host (macOS). Use `bash script.sh` to run scripts.
+- Code style check: `make cs` (auto-fix: `make cs-fix`), php-cs-fixer in the app's image
 
 Key conventions and patterns
 - MVC with ZF1:
@@ -55,10 +49,7 @@ Configuration and env
 - **Legacy tables**: The database contains unused legacy tables from earlier versions. Active tables include `hhb_users`, `artists`, `albums`, `songs`, `labels`, `comments`, `album_ratings`, `song_ratings`, etc. Legacy tables like `users`, `users_admins`, `users_activations` are NOT used by the current application. Always use `hhb_users` for user operations.
 
 Gotchas (do these)
-- **Dev container setup order**: Run `docker compose up` from **host** first (creates `hhbd_default` network), then open in VS Code. Opening VS Code first means dev container can't connect to network on startup.
-- **No local dev tools**: There are no tools like php, python, or node installed locally. All development is done inside Docker containers or the VS Code Dev Container.
-- **Docker-outside-of-docker**: Dev container talks to Docker daemon on host. Paths in `docker compose` commands must be host paths, not `/workspaces/hhbd` paths.
-- **File permissions with mounted volumes**: Dev container workspace is mounted from macOS. Can't `chmod` files - use `bash script.sh` instead of `./script.sh`. Git's `core.fileMode` is set to `true` but chmod may fail silently.
+- **No local dev tools**: There is no PHP, python or node on the host. PHP runs in the stack's images, through the `make` targets; the pre-commit hook runs it there too.
 - **CI bind mount issue**: After `docker compose up` in CI, run `docker compose exec -T app composer install` because bind-mounted `./app` hides the image's vendor/. This is already wired in [.github/workflows/smoke-tests.yml](.github/workflows/smoke-tests.yml).
 - After any container rebuild in dev, run `composer install` (volume hides container vendor).
 - Target PHP 8.4 (Debian 13's packages, Dockerfile-php). Maintain ZF1 naming/autoloading (PSR-0, `Jkl_` prefix maps to `library/Jkl/`).
@@ -76,10 +67,8 @@ Examples to follow
 Testing and CI
 - Unit tests live in [app/tests/unit/](app/tests/unit/) (e.g., `Library/Jkl/DbTest.php`, `ViewHelpers/LoggedInTest.php`). Use the existing bootstrap and config at [app/tests/phpunit.xml](app/tests/phpunit.xml) and [app/tests/bootstrap.php](app/tests/bootstrap.php).
 - Smoke tests script at [tests/smoke-test.sh](tests/smoke-test.sh) expects deterministically seeded data from [database/tests/fixtures.sql](database/tests/fixtures.sql). 
-  - From dev container: `bash ./tests/smoke-test.sh http://nginx:80` (uses docker service name + Host header)
-  - From host/CI: `bash ./tests/smoke-test.sh http://localhost:8080` (uses port mapping)
+  - `make smoke`, or `bash ./tests/smoke-test.sh http://localhost:8080` (uses port mapping)
   - Script auto-detects when to add `-H Host:localhost` curl header based on URL
-- **VS Code task keybindings**: `Cmd+K J U` (unit), `Cmd+K J S` (smoke), `Cmd+K J A` (all tests)
 - GitHub Actions workflows:
   - [.github/workflows/smoke-tests.yml](.github/workflows/smoke-tests.yml): uses `compose.ci.yaml` (production env) + seeds DB + generates test images + runs `bash ./tests/smoke-test.sh`. Tails PHP/app logs on failure.
   - [.github/workflows/unit-tests.yml](.github/workflows/unit-tests.yml): runs PHPUnit inside app container.
