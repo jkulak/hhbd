@@ -30,20 +30,23 @@ class Jkl_Db
 
   /*
   * FechtAll
+  *
+  * $bind holds values for the query's ? or :name placeholders. New code passes values that way
+  * rather than escaping them into the query string, since they may come from outside sources.
   */
-  public function fetchAll($query)
+  public function fetchAll($query, array $bind = array())
   {
     $this->_queryCount++;
-    return $this->_db->fetchAll($query);
+    return $this->_db->fetchAll($query, $bind);
   }
-  
+
   /*
-  * Used for non cached queries (like UPDATE)
+  * Used for non cached queries (like UPDATE); $bind as in fetchAll()
   */
-  public function query($query)
+  public function query($query, array $bind = array())
   {
     $this->_queryCount++;
-    return $this->_db->query($query);
+    return $this->_db->query($query, $bind);
   }
   
   public function getQueryCount()

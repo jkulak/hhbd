@@ -137,12 +137,63 @@ For migrations that follow from it:
 
 - **A data fix leaves `updated` and `updatedby` alone.** Repairing encodings or links (#24, #27)
   is not an edit by a person; which migration changed what is recorded in `schema_migrations`.
-- **A new table records its own history**: `added timestamp NOT NULL DEFAULT current_timestamp()`,
-  and an `updated` that only its writers set.
+- **A new table records its own history**: `added datetime NOT NULL DEFAULT current_timestamp()`,
+  and an `updated` that only its writers set. `datetime`, like the catalog's own `added`: a
+  `timestamp` cannot hold a time after 2038-01-19.
 - **No column defaults to a zero date** (`'0000-00-00 …'`): strict SQL modes reject it.
 
 One thing is known lost and cannot be recovered from the database: 58 of the 120 `added`
 values in `artists_photos`, overwritten in one mass update while `added` still had `ON UPDATE`.
+
+## External ids
+
+`external_ids` (0006, #51) holds the ids a catalog row has in other databases: Discogs,
+MusicBrainz, Wikidata and the rest. An import looks a row up by these before anything else, so
+a batch that runs twice finds the rows it created the first time instead of adding them again.
+
+| Column | Holds |
+|---|---|
+| `entity_type`, `entity_id` | the row: `album`, `artist`, `label` or `song`, and its `id` |
+| `source`, `kind`, `value` | the id, written `source:kind:value` in a batch: `discogs:master:1234567` |
+| `added` | when it was recorded |
+
+A row may carry any number of ids, since sources split, merge and add them over time; **an id
+belongs to at most one row**, which the primary key `(source, kind, value)` enforces. A second
+row claiming the same id is a duplicate to look at, not an id to move, so
+`Model_ExternalId_Api::add()` refuses it with `Model_ExternalId_ConflictException`. There is no
+foreign key: one column cannot reference four tables. Deleting a catalog row leaves its ids
+behind; whoever deletes one deletes them too.
+
+The vocabulary is closed. Anything outside it is refused, so a typo in a batch cannot invent a
+source nobody looks up:
+
+| `source` | `kind` | `value`, as stored |
+|---|---|---|
+| `discogs` | `master`, `release`, `artist`, `label` | a positive number |
+| `musicbrainz` | `release_group`, `release`, `recording`, `artist`, `label` | a UUID, lower case |
+| `wikidata` | `item` | `Q` and a number, upper case |
+| `deezer` | `album`, `artist` | a positive number |
+| `itunes` | `collection`, `artist` | a positive number |
+| `plwiki` | `pageid` | a positive number: the page id, which survives a rename the title does not |
+| `barcode` | `gtin14` | 14 digits |
+| `isrc` | `isrc` | 12 characters, upper case, no dashes |
+
+**Values are normalised before they are stored or looked up**, by
+`Model_ExternalId_Api::normalise()`, so one id written two ways is one value. Barcodes become
+GTIN-14: digits only, left-padded with zeros, so the EAN-13 `0 190295 868383` a Discogs release
+shows and the UPC-A `190295868383` MusicBrainz has for the same record are both
+`00190295868383`. Write through the model rather than with a bare `INSERT`; the model also binds
+every value instead of putting it into the query.
+
+The columns compare bytes (`utf8mb4_bin`): an id matches exactly or not at all, whatever
+collation the catalog tables move to (#71).
+
+Every id a row has:
+
+```sql
+SELECT source, kind, value, added FROM external_ids
+ WHERE entity_type = 'album' AND entity_id = 535 ORDER BY source, kind, value;
+```
 
 ## Test fixtures
 
