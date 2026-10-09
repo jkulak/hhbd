@@ -727,6 +727,16 @@ UPDATE `albums` SET `labelid` = NULL WHERE `id` = 47;
 UPDATE `album_lookup` SET `track` = 101 WHERE `albumid` = 3 AND `songid` = 11;
 UPDATE `album_lookup` SET `track` = 201 WHERE `albumid` = 3 AND `songid` = 12;
 
+-- ============================================
+-- 25. TRACKS AT POSITION 0, and tracks of an album that does not exist (#59)
+-- Migration 0016 puts song 30, at position 0 on Światła Miasta (4), last on its disc, and
+-- deletes the two rows of album 9999, which has no row in albums.
+-- ============================================
+INSERT INTO `album_lookup` (`songid`, `albumid`, `track`, `status`) VALUES
+(30, 4, 0, 999),
+(14, 9999, 1, 999),
+(15, 9999, 0, 999);
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================
