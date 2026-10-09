@@ -176,7 +176,7 @@ class AlbumController extends Zend_Controller_Action
             '';
         } else {
             $description = 'Album "' . $album->title . '", został wydany' . $byLabel .
-            ', premiera odbyła się ' . $album->releaseDateNormalized . '. ' .
+            (!empty($album->releaseDateNormalized) ? ', premiera odbyła się ' . $album->releaseDateNormalized : '') . '. ' .
             (!empty($album->tracklist->items) ? 'Album zawiera ' . sizeof($album->tracklist->items) . ' utworów' . (($album->duration != "--") ? ' i trwa ' . $album->duration : ''). '. ' .
             'Płyta rozpoczyna się utworem "' . $album->tracklist->items[0]->title . '", a kończy utworem "' . $album->tracklist->items[sizeof($album->tracklist->items) - 1]->title . '". ' : '');
         }
