@@ -133,6 +133,30 @@ connects with `utf8mb4` too; MariaDB's `utf8` is the three-byte `utf8mb3`.
 `utf8mb3_general_ci` cannot: a four-byte character, or two names kept apart only by a Polish
 letter.
 
+## Artists who share a name
+
+Two artists may have one name, told apart by `artists.disambiguation` (0022, #102). The
+qualifier is short and in the catalogue's language:
+- what the artist is known by: "SBM Label", "raper z Poznania", "producent";
+- the year of the first known release, when nothing better is known.
+
+The unique key is the name and the qualifier together. A name without a qualifier (`''`, the
+default) still belongs to one artist, so a second plain "Solar" is refused.
+
+Where the qualifier shows (`Model_Artist_Container`):
+- **The artist's own page always shows it.** That covers the heading, the title, Open Graph and
+  the slug: `qualifiedName`, "Solar (SBM Label)", at `solar-sbm-label-p64.html`.
+- **A list shows it only when the list holds two artists of that name.** This is `displayName`,
+  set by `qualifyNamesakes()`: every list `Model_Artist_Api` returns, the search results and an
+  album's credits. A page that names one Solar says "Solar".
+
+Nothing in hhbd looks an artist up by its name except the importer. Where a name alone fits
+several artists, it names none of them (see [docs/import.md](../docs/import.md)).
+
+0022's down folds each qualifier into the name, "Solar (SBM Label)", so the old key on the name
+holds. It keeps the pair in `migration_archive`, and the up splits it again. Before it changes
+anything, the down refuses if a folded name is one another artist already has.
+
 ## Audit columns
 
 What the columns that record a row's history mean, and how they are kept (#48). The names
@@ -430,7 +454,7 @@ run: an import run with provenance, and external ids.
 
 | Table | Records | Notes |
 |-------|---------|-------|
-| artists | 51 | Including Pezet, Eldo, Mes (ID 35), etc. |
+| artists | 51 | Including Pezet, Eldo, Mes (ID 35), etc.; `fixtures-latest.sql` adds two Solars (64, 65) with qualifiers and their band (66) |
 | albums | 50 | Including "Jestem Hip Hopem", Superextra (ID 535) |
 | songs | 31 | Including Pogoda (ID 7329) with features |
 | labels | 15 | Including Alkopoligamia (ID 58), Asfalt |

@@ -37,7 +37,7 @@ class Model_Artist_Api extends Jkl_Model_Api
         foreach ($result as $params) {
             $artists->add(new Model_Artist_Container($params));
         }
-        return $artists;
+        return Model_Artist_Container::qualifyNamesakes($artists);
     }
 
     public function getFirstLetters()
@@ -67,7 +67,7 @@ class Model_Artist_Api extends Jkl_Model_Api
             $artists->add(new Model_Artist_Container($params));
         }
 
-        return $artists;
+        return Model_Artist_Container::qualifyNamesakes($artists);
     }
 
     public function getLike($like = '', $limit = 15, $page = 1)
@@ -91,7 +91,7 @@ class Model_Artist_Api extends Jkl_Model_Api
             $artists->add(new Model_Artist_Container($params));
         }
 
-        return $artists;
+        return Model_Artist_Container::qualifyNamesakes($artists);
     }
 
     public function getNicknamesLike($like = '', $limit = 15, $page = 1)
@@ -116,7 +116,7 @@ class Model_Artist_Api extends Jkl_Model_Api
             $artists->add(new Model_Artist_Container($params));
         }
 
-        return $artists;
+        return Model_Artist_Container::qualifyNamesakes($artists);
     }
 
     public function getMostPopular($limit = 40)
@@ -138,7 +138,7 @@ class Model_Artist_Api extends Jkl_Model_Api
             $artists->add(new Model_Artist_Container($params));
         }
 
-        return $artists;
+        return Model_Artist_Container::qualifyNamesakes($artists);
     }
 
     public function getNewest($limit = 20)
@@ -183,7 +183,7 @@ class Model_Artist_Api extends Jkl_Model_Api
     private function _getMembers($id)
     {
         $id = intval($id);
-        $query = 'SELECT t1.name, t1.id as art_id, t2.insince, t2.awaysince FROM artists AS t1, band_lookup AS t2 ' .
+        $query = 'SELECT t1.name, t1.disambiguation, t1.id as art_id, t2.insince, t2.awaysince FROM artists AS t1, band_lookup AS t2 ' .
                   'WHERE (t1.id=t2.artistid AND t2.bandid=' . $id . ') ORDER BY t1.name';
         return $this->getList($query);
     }
@@ -191,7 +191,7 @@ class Model_Artist_Api extends Jkl_Model_Api
     private function _getProjects($id)
     {
         $id = intval($id);
-        $query = 'SELECT t1.name, t1.id as art_id, t2.insince AS since, t2.awaysince AS till FROM artists AS t1, band_lookup AS t2 ' .
+        $query = 'SELECT t1.name, t1.disambiguation, t1.id as art_id, t2.insince AS since, t2.awaysince AS till FROM artists AS t1, band_lookup AS t2 ' .
                   'WHERE (t1.id=t2.bandid AND t2.artistid=' . $id . ') ORDER BY t1.name';
         return $this->getList($query);
     }
@@ -223,7 +223,7 @@ class Model_Artist_Api extends Jkl_Model_Api
             $featuring->add($artist);
         }
 
-        return $featuring;
+        return Model_Artist_Container::qualifyNamesakes($featuring);
     }
 
     public function getSongMusic($id)
@@ -262,7 +262,7 @@ class Model_Artist_Api extends Jkl_Model_Api
     public function getWithMostProjectAlbums($limit = 10)
     {
         $limit = intval($limit);
-        $query = "SELECT t4.`id` AS art_id, t4.`name`, count(*) AS albumCount
+        $query = "SELECT t4.`id` AS art_id, t4.`name`, t4.`disambiguation`, count(*) AS albumCount
      FROM albums t1, album_artist_lookup t2, band_lookup t3, artists t4
      WHERE (t3.`bandid`=t2.`artistid` AND t3.`artistid`=t4.`id` AND t1.`id`=t2.`albumid`)
      GROUP BY t4.id
@@ -276,7 +276,7 @@ class Model_Artist_Api extends Jkl_Model_Api
     {
         $limit = intval($limit);
 
-        $query = "SELECT t3.`id` AS art_id, t3.`name`, count(*) AS albumCount
+        $query = "SELECT t3.`id` AS art_id, t3.`name`, t3.`disambiguation`, count(*) AS albumCount
      FROM albums t1, album_artist_lookup t2, artists t3
      WHERE (t3.`id`=t2.`artistid` AND t1.`id`=t2.`albumid` AND t3.`id`<>190)
      GROUP BY t3.id
@@ -289,7 +289,7 @@ class Model_Artist_Api extends Jkl_Model_Api
     public function getRecentlyAdded($limit = 10)
     {
         $limit = intval($limit);
-        $query = "SELECT t1.id AS art_id, t1.`name`
+        $query = "SELECT t1.id AS art_id, t1.`name`, t1.`disambiguation`
     FROM artists t1
     ORDER BY t1.`added` DESC" .
         (($limit != null) ? ' LIMIT ' . $limit : '');

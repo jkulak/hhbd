@@ -34,6 +34,9 @@
 #   - an artist's photo file appears once per artist; artistid is an int (#61)
 #   - the catalogue is utf8mb4 with the Polish collation: Ż is not Z, case does not count,
 #     Polish order, and a four-byte character survives an insert and a page view (#71)
+#   - two artists may share a name with different qualifiers, but a name without one is one
+#     artist's; the down folds the qualifier into the name, refuses before changing anything
+#     when that name is taken, and the up splits it again, unless the archive went too (#102)
 #   - going down to the baseline brings the old schema back, and up removes it again
 #
 # It changes rows to prove these and ends with make reset-db, so the database ends as a reset
@@ -279,6 +282,46 @@ fi
 # microphone could not be stored, so the down would rightly refuse.
 sql "DELETE FROM artists WHERE id = 9001 OR name IN ('Zabson', 'Lux Testowy', 'Łoś Testowy', 'Mazur Testowy', 'Zenek Testowy')"
 
+echo "> artists who share a name"
+check "an artist's name is unique with its qualifier, not alone" "name,disambiguation" \
+    "$(sql "SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'artists' AND index_name = 'u_artists_name' AND non_unique = 0")"
+check "two Solars stand side by side, each with its qualifier" "64:Solar:SBM Label 65:Solar:raper z Poznania" \
+    "$(sql "SELECT GROUP_CONCAT(CONCAT(id, ':', name, ':', disambiguation) ORDER BY id SEPARATOR ' ') FROM artists WHERE id IN (64, 65)")"
+if sql "INSERT INTO artists (id, name, urlname, type, status, trivia, website) VALUES (9002, 'Solar', 'solar', 'm', 999, '', '')" >"$T/out" 2>&1; then
+    ok "a third Solar without a qualifier can join them"
+else
+    bad "a third Solar without a qualifier can join them"; cat "$T/out"
+fi
+if sql "INSERT INTO artists (name, urlname, type, status, trivia, website) VALUES ('solar', 'solar-2', 'm', 999, '', '')" >"$T/out" 2>&1; then
+    bad "but not a fourth: a name without a qualifier is still one artist's"
+else
+    ok "but not a fourth: a name without a qualifier is still one artist's"
+fi
+if sql "INSERT INTO artists (name, disambiguation, urlname, type, status, trivia, website) VALUES ('Solar', 'sbm label', 'solar-3', 'm', 999, '', '')" >"$T/out" 2>&1; then
+    bad "and a qualifier names one artist of a name"
+else
+    ok "and a qualifier names one artist of a name"
+fi
+sql "DELETE FROM artists WHERE id = 9002"
+# The down folds each qualifier into its name; one a plain name already holds stops it before
+# it changes anything.
+sql "INSERT INTO artists (id, name, urlname, type, status, trivia, website) VALUES (9003, 'Solar (SBM Label)', 'solar-sbm-label-2', 'm', 999, '', '')"
+since_0021=$(find database/migrations -name '[0-9][0-9][0-9][0-9]-*.up.sql' | awk -F/ '{ print $NF }' | awk -F- '$1 > "0021"' | wc -l | tr -d ' ')
+if ./scripts/migrate.sh down "$since_0021" >"$T/out" 2>&1; then
+    bad "a down that would make two artists one name is refused"
+else
+    check "a down that would make two artists one name is refused, naming it" "1" "$(grep -c "Solar (SBM Label)" "$T/out")"
+fi
+check "and leaves the names and the qualifier column as they were" "64:Solar:SBM Label 65:Solar:raper z Poznania 0 pending" \
+    "$(sql "SELECT GROUP_CONCAT(CONCAT(id, ':', name, ':', disambiguation) ORDER BY id SEPARATOR ' ') FROM artists WHERE id IN (64, 65)") $(./scripts/migrate.sh status 2>/dev/null | grep -oE '[0-9]+ pending')"
+sql "DELETE FROM artists WHERE id = 9003"
+./scripts/migrate.sh down "$since_0021" >"$T/out" 2>&1 || { bad "the down succeeds once the name is free"; cat "$T/out"; }
+check "down: each qualifier folded into its name, under the old key on the name alone" "64:Solar (SBM Label) 65:Solar (raper z Poznania) name" \
+    "$(sql "SELECT GROUP_CONCAT(CONCAT(id, ':', name) ORDER BY id SEPARATOR ' ') FROM artists WHERE id IN (64, 65)") $(sql "SELECT GROUP_CONCAT(column_name) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'artists' AND index_name = 'name' AND non_unique = 0")"
+./scripts/migrate.sh up >"$T/out" 2>&1 || { bad "up succeeds"; cat "$T/out"; }
+check "up: the names and qualifiers apart again, the archive empty" "64:Solar:SBM Label 65:Solar:raper z Poznania 0" \
+    "$(sql "SELECT GROUP_CONCAT(CONCAT(id, ':', name, ':', disambiguation) ORDER BY id SEPARATOR ' ') FROM artists WHERE id IN (64, 65)") $(sql "SELECT COUNT(*) FROM migration_archive WHERE version = '0022'")"
+
 echo "> down to the baseline brings the old schema back, and up removes it"
 rows_before=$(sql "SELECT COUNT(*) FROM songs")
 ./scripts/migrate.sh down "$after_baseline" >"$T/out" 2>&1 || { bad "down $after_baseline succeeds"; cat "$T/out"; }
@@ -304,6 +347,8 @@ check "after down: no archive" "0" "$(sql "SELECT COUNT(*) FROM information_sche
 check "after down: added changes on update again, in 11 tables plus the lyrics log" "12" "$(count "$TIMES_WITH_ON_UPDATE")"
 check "after down: the catalog's added has no default" "0" "$(count "table_name IN ($CATALOG) AND column_name = 'added' AND column_default = 'current_timestamp()'")"
 check "after down: album_prices.added defaults to the zero date again" "album_prices.added" "$(col "column_default LIKE '%0000-00-00%'")"
+check "after down: the qualifiers folded into the names" "64:Solar (SBM Label) 65:Solar (raper z Poznania)" \
+    "$(sql "SELECT GROUP_CONCAT(CONCAT(id, ':', name) ORDER BY id SEPARATOR ' ') FROM artists WHERE id IN (64, 65)")"
 ./scripts/migrate.sh up >"$T/out" 2>&1 || { bad "up succeeds"; cat "$T/out"; }
 check "after up again: every table InnoDB" "InnoDB $(tables)" "$(engines)"
 check "after up again: no row lost" "$rows_before" "$(sql "SELECT COUNT(*) FROM songs")"
@@ -313,6 +358,9 @@ check "after up again: the cities merged as before" "1:1:999 2:35:999 3:46:0" "$
 check "after up again: the keys and one row per key" "$UNIQUE_TABLES album_artist:999 band:1" "$(uniques) $(dupes | cut -d' ' -f1-2)"
 check "after up again: the bands typed again" "60:b 61:b 62:b 63:x" "$(types)"
 check "after up again: the roles cleaned again" "1 row 0, 0 testest, 1 key 6:36:1 7:41:0 10:42:0" "$(roles) $(credits)"
+# Below 0009 the archive itself is gone, and the pairs with it: the names stay whole.
+check "after up again: the folded names kept, with no qualifier" "64:Solar (SBM Label): 65:Solar (raper z Poznania):" \
+    "$(sql "SELECT GROUP_CONCAT(CONCAT(id, ':', name, ':', disambiguation) ORDER BY id SEPARATOR ' ') FROM artists WHERE id IN (64, 65)")"
 
 echo "> back to the fixtures"
 if make -s reset-db >"$T/out" 2>&1; then ok "make reset-db leaves the database as the fixtures have it"; else bad "make reset-db leaves the database as the fixtures have it"; cat "$T/out"; fi

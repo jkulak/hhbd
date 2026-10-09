@@ -29,8 +29,15 @@ class SearchController extends Zend_Controller_Action
     if (!isset($type) or $type=='wykonawca') {
       $artists = Model_Artist_Api::getInstance()->getLike($searchQuery, $limit, $page);
       $nicknames = Model_Artist_Api::getInstance()->getNicknamesLike($searchQuery, $limit, $page);
+      // One entry per artist, found by name or by nickname; by id, since two artists may
+      // share a name (#102), and those two show their qualifiers.
+      $byId = array();
+      foreach (array_merge($artists->items, $nicknames->items) as $artist) {
+        $byId += array($artist->id => $artist);
+      }
       $resultArtists = new Jkl_List();
-      $resultArtists->items = array_slice(array_unique(array_merge($artists->items, $nicknames->items)), 0, $limit);
+      $resultArtists->items = array_slice(array_values($byId), 0, $limit);
+      Model_Artist_Container::qualifyNamesakes($resultArtists);
       $this->view->resultArtists = $resultArtists;
     }
 
