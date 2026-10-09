@@ -76,7 +76,7 @@ class CommentController extends Zend_Controller_Action
             case 'wykonawca':
                 $entity = Model_Artist_Api::getInstance()->find($this->params['com_object_id']);
                 if ($entity) {
-                    $redirect = Jkl_Tools_Url::createUrl($entity->name . '-p' . $entity->id . '.html');
+                    $redirect = Jkl_Tools_Url::createUrl($entity->qualifiedName . '-p' . $entity->id . '.html');
                 }
                 break;
 

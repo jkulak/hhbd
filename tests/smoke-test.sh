@@ -382,6 +382,12 @@ run_fixture_tests() {
     test_page_multi "An artist's other photos are in a gallery, captioned (Mes)" "/mes-p35.html" "Zdjęcia" "Anna Nowak" "(zmodyfikowane)"
     test_page "A joint album links both its artists" "/pezet-jestem-hip-hopem-a1.html" "&amp; <a href"
     test_page "A joint album is listed on each artist's page, named after both" "/eldo-p2.html" "Pezet & Eldo - Jestem Hip Hopem"
+    test_page_multi "An artist sharing a name has a page, title and slug with the qualifier" "/solar-sbm-label-p64.html" "<h1>Solar (SBM Label)</h1>" 'og:title" content="Solar (SBM Label)"'
+    test_page_multi "And so has the other artist of that name" "/solar-raper-z-poznania-p65.html" "<h1>Solar (raper z Poznania)</h1>" 'og:title" content="Solar (raper z Poznania)"'
+    test_redirect_301 "A namesake's slug without the qualifier redirects to the one with it" "/solar-p64.html" "/solar-sbm-label-p64.html"
+    test_page_multi "A search finding both shows each one's qualifier" "/szukaj.html?q=Solar" "Solar (SBM Label)" "Solar (raper z Poznania)"
+    test_page "A page listing one of them links him" "/sklad-solara-p66.html" 'href="/solar-sbm-label-p64.html"'
+    test_page_absent "under his name alone" "/sklad-solara-p66.html" "(SBM Label)"
     echo ""
 }
 

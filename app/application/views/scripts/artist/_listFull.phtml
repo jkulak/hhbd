@@ -3,13 +3,13 @@
     <li>
       <?php if (!empty($artist->photo->items[0])): ?>
         <a href="<?php echo $artist->getUrl(); ?>">
-          <img src="<?php echo $artist->photo->items[0]->url ?>" alt="<?php echo $artist->name ?>"
-          title="<?php echo $artist->name ?>"
+          <img src="<?php echo $artist->photo->items[0]->url ?>" alt="<?php echo $artist->displayName ?>"
+          title="<?php echo $artist->displayName ?>"
           class="thumb" />
         </a>
       <?php endif ?>
 
-      <span><a href="<?php echo $artist->getUrl(); ?>"><?php echo $artist->name ?></a></span>
+      <span><a href="<?php echo $artist->getUrl(); ?>"><?php echo $artist->displayName ?></a></span>
       <?php if (!empty($artist->albumCount)): ?>
         <span>albumów: <?php echo $artist->albumCount ?></span>
       <?php endif ?>
