@@ -7,6 +7,12 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
+## 2026.10.4 — 2026-10-09
+
+The code for migration 0022, which production's database has run under 2026.10.3 since
+2026-10-09: two artists may share a name, told apart by a qualifier, and an import can bring
+such a namesake. With this release a batch may carry `disambiguation` and `review`.
+
 ### Added
 - Two artists may share a name, told apart by a qualifier (#102). The content project meets such
   names every year it reads, 71 in 2016 alone.
