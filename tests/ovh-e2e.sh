@@ -20,7 +20,9 @@
 #     lines are JSON too
 #
 # Everything it creates is removed on the way out: the compose project with its volumes, the
-# stand-in edge, the edge network, three image tags and one directory.
+# stand-in edge, the edge network, three image tags and one directory. With STACKTEST_PREBUILT=1
+# it takes the three images as they are, built and tagged by its caller (CI, with its layer
+# cache), and removes them all the same.
 #
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
@@ -94,10 +96,18 @@ probe() {
     docker exec "$PROJECT-app-1" rm -f "/var/www/html/app/public/$name.php"
 }
 
-echo "> images from this checkout, tagged $TAG, for linux/amd64 like the release"
-docker build -q --platform linux/amd64 -f Dockerfile-php --target production -t "ghcr.io/jkulak/hhbd-app:$TAG" . >/dev/null
-docker build -q --platform linux/amd64 -f Dockerfile-nginx -t "ghcr.io/jkulak/hhbd-nginx:$TAG" . >/dev/null
-docker build -q --platform linux/amd64 -f Dockerfile-php --target importer -t "ghcr.io/jkulak/hhbd-importer:$TAG" . >/dev/null
+if [ "${STACKTEST_PREBUILT:-}" = 1 ]; then
+    # CI builds them in the steps before, with its layer cache, under the same tags.
+    echo "> images from this checkout, tagged $TAG, built before the test"
+    for image in app nginx importer; do
+        docker image inspect "ghcr.io/jkulak/hhbd-$image:$TAG" >/dev/null || { echo "x STACKTEST_PREBUILT=1, but there is no ghcr.io/jkulak/hhbd-$image:$TAG" >&2; exit 1; }
+    done
+else
+    echo "> images from this checkout, tagged $TAG, for linux/amd64 like the release"
+    docker build -q --platform linux/amd64 -f Dockerfile-php --target production -t "ghcr.io/jkulak/hhbd-app:$TAG" . >/dev/null
+    docker build -q --platform linux/amd64 -f Dockerfile-nginx -t "ghcr.io/jkulak/hhbd-nginx:$TAG" . >/dev/null
+    docker build -q --platform linux/amd64 -f Dockerfile-php --target importer -t "ghcr.io/jkulak/hhbd-importer:$TAG" . >/dev/null
+fi
 
 echo "> the edge network, 172.30.0.0/24 as on the host"
 docker network create --subnet 172.30.0.0/24 --gateway 172.30.0.1 edge >/dev/null

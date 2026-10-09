@@ -13,7 +13,15 @@ concurrency:
 
 jobs:
   smoke-tests:
+    name: smoke-tests (${{ matrix.part }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Two halves at once, each on its own runner with its own stack and database: the site's
+        # pages, and the tools that change the database. One after the other they took eight
+        # minutes.
+        part: [site, tools]
     env:
       COMPOSE_PROJECT_NAME: hhbd
 
@@ -24,6 +32,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # Each image keeps its cache under its own scope: in one shared scope, each build's
+      # export replaced the one before it, and the app's image was built from scratch on
+      # every run. Only the site half writes the cache; the tools half reads the same.
       - name: Build app image with cache (builder target)
         uses: docker/build-push-action@v5
         with:
@@ -33,8 +44,8 @@ jobs:
           tags: |
             ${{ env.COMPOSE_PROJECT_NAME }}-app:latest
           load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=smoke-app
+          cache-to: ${{ matrix.part == 'site' && 'type=gha,mode=max,scope=smoke-app' || '' }}
 
       - name: Build nginx image with cache
         uses: docker/build-push-action@v5
@@ -44,8 +55,8 @@ jobs:
           tags: |
             ${{ env.COMPOSE_PROJECT_NAME }}-nginx:latest
           load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=smoke-nginx
+          cache-to: ${{ matrix.part == 'site' && 'type=gha,mode=max,scope=smoke-nginx' || '' }}
 
       - name: Build importer image with cache
         uses: docker/build-push-action@v5
@@ -56,12 +67,12 @@ jobs:
           tags: |
             ${{ env.COMPOSE_PROJECT_NAME }}-importer:latest
           load: true
-          cache-from: type=gha,scope=importer
-          cache-to: type=gha,mode=max,scope=importer
+          cache-from: type=gha,scope=smoke-importer
+          cache-to: ${{ matrix.part == 'site' && 'type=gha,mode=max,scope=smoke-importer' || '' }}
 
       - name: Start Docker Compose services
         run: |
-          # compose.ci.yaml overrides to use 'builder' stage which includes GD for test image generation
+          # compose.ci.yaml runs the app on the builder stage, which has composer, unzip and git
           docker compose -f compose.yaml -f compose.ci.yaml up -d
           echo "Waiting for services to start..."
 
@@ -85,15 +96,8 @@ jobs:
 
       - name: Generate test images
         run: |
-          echo "Generating test cover images..."
-          docker compose exec -T app php /var/www/html/app/tools/generate-test-images.php
-          echo "🖼️ Test images generated!"
-
-      - name: Describe the covers and photos, and check the backfills
-        run: |
-          # As production's existing covers and photos get described (#60, #61), so the pages
-          # read the tables; the test checks the dry run and a second run on the way.
-          ./tests/backfill-test.sh
+          # In the importer's image, the one with GD
+          make test-images
 
       - name: Wait for PHP-FPM to be healthy
         run: |
@@ -101,52 +105,72 @@ jobs:
           timeout 60 bash -c 'until docker compose exec -T app php-fpm-healthcheck 2>/dev/null; do sleep 2; done'
           echo "PHP-FPM is ready!"
 
+      # The site's half
+
+      - name: Describe the covers and photos, and check the backfills
+        if: matrix.part == 'site'
+        run: |
+          # As production's existing covers and photos get described (#60, #61), so the pages
+          # read the tables; the test checks the dry run and a second run on the way.
+          ./tests/backfill-test.sh
+
       - name: Verify APPLICATION_ENV
+        if: matrix.part == 'site'
         run: |
           echo "=== Checking APPLICATION_ENV ==="
           docker compose exec -T app bash -c 'echo "Shell: APPLICATION_ENV=$APPLICATION_ENV"'
           docker compose exec -T app php -r 'echo "PHP: APPLICATION_ENV=" . getenv("APPLICATION_ENV") . "\n";'
 
       - name: Run smoke tests
+        if: matrix.part == 'site'
         run: |
           bash ./tests/smoke-test.sh http://localhost:8080
 
       - name: Check the images the catalogue names
+        if: matrix.part == 'site'
         run: |
           # Every cover, thumbnail, photo and logo the fixtures name is in content/ (#47).
           ./scripts/check-images.sh
 
-      - name: Check make reset-db
-        run: |
-          # On the stack the smoke test just used: resets, row counts, the smoke test again after
-          # a reset, and the cases it must refuse.
-          ./tests/reset-db-test.sh http://localhost:8080
-
-      - name: Check the migration runner
-        run: |
-          # Up, down, a failing migration, the baseline, the refusals, and the ssh path through
-          # a stand-in, all on the same stack; it ends with a reset and the smoke test again.
-          ./tests/migrate-test.sh http://localhost:8080
-
       - name: Check the schema rules
+        if: matrix.part == 'site'
         run: |
           # Every table InnoDB (#45); added never changes on update, the catalog's added has a
           # default, no zero-date defaults, and a page view leaves added and updated alone (#48).
           ./tests/schema-test.sh http://localhost:8080
 
-      - name: Check the importer
-        run: |
-          # The test batch: a dry run, an apply, the same apply again, and a batch with
-          # documents that do not hold up; it ends with a reset (#56).
-          ./tests/import-test.sh http://localhost:8080
-
       - name: Check settling what an import left
+        if: matrix.part == 'site'
         run: |
           # As the fixtures' admin, through the site's forms: a merge, keep, qualifier, cover,
           # date and type, and forms that must not count; it ends with a reset (#103).
           ./tests/review-test.sh http://localhost:8080
 
+      # The tools' half
+
+      - name: Check make reset-db
+        if: matrix.part == 'tools'
+        run: |
+          # Resets, row counts, the kept result against a build from the migrations, and the
+          # cases it must refuse.
+          ./tests/reset-db-test.sh
+
+      - name: Check the migration runner
+        if: matrix.part == 'tools'
+        run: |
+          # Up, down, a failing migration, the baseline, the refusals, and the ssh path through
+          # a stand-in, all on the same stack; it ends with a reset.
+          ./tests/migrate-test.sh
+
+      - name: Check the importer
+        if: matrix.part == 'tools'
+        run: |
+          # The test batch: a dry run, an apply, the same apply again, and a batch with
+          # documents that do not hold up; it ends with a reset (#56).
+          ./tests/import-test.sh http://localhost:8080
+
       - name: Check an admin's edits and their undo
+        if: matrix.part == 'tools'
         run: |
           # make edit's merges, deletes and set, each applied and undone, the data compared
           # before and after; it ends with a reset (#115).
