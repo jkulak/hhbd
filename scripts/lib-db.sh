@@ -73,3 +73,42 @@ container_sql() {
         docker exec -i "$1" sh -c "$MARIADB_ROOT"
     fi
 }
+
+# use_db_target <local|container|ovh>: defines db_sql, which runs the SQL on stdin in that
+# database, and sets `where` to name it in messages. The variables it reads are named after
+# migrate.sh, which had them first:
+#   local       this checkout's compose project, with local_db_container's refusals
+#   container   the container MIGRATE_CONTAINER names, on the local engine (tests, other projects)
+#   ovh         production's db container (OVH_DB_CONTAINER, hhbd-db-1) on OVH_HOST over ssh;
+#               MIGRATE_SSH replaces the ssh command and OVH_SUDO the sudo, for tests
+use_db_target() {
+    case "$1" in
+        local)
+            # Global, not local: db_sql reads it each time it runs, after this has returned.
+            db_cid=$(local_db_container) || exit 1
+            db_sql() { container_sql "$db_cid" db; }
+            where="$(docker inspect --format '{{.Name}}' "$db_cid" | sed 's|^/||') (local)"
+            ;;
+        container)
+            require_local_engine
+            [ -n "${MIGRATE_CONTAINER:-}" ] || refuse "MIGRATE_TARGET=container needs MIGRATE_CONTAINER"
+            docker inspect "$MIGRATE_CONTAINER" >/dev/null 2>&1 || refuse "no container '$MIGRATE_CONTAINER' on the local engine"
+            wait_healthy "$MIGRATE_CONTAINER" "the container $MIGRATE_CONTAINER"
+            db_sql() { container_sql "$MIGRATE_CONTAINER" db; }
+            where="$(docker inspect --format '{{.Name}}' "$MIGRATE_CONTAINER" | sed 's|^/||') (local)"
+            ;;
+        ovh)
+            [ -n "${OVH_HOST:-}" ] || refuse "OVH_HOST is not set; put it in .env"
+            db_ovh_container=${OVH_DB_CONTAINER:-hhbd-db-1}
+            # One static command over ssh, SQL on stdin: nothing from this side is quoted for the
+            # far side, and the password is read from the container's environment over there.
+            db_sql() {
+                # shellcheck disable=SC2086
+                ${MIGRATE_SSH:-ssh -o BatchMode=yes} "${OVH_SSH_USER:-ubuntu}@$OVH_HOST" \
+                    "${OVH_SUDO-sudo} docker exec -i $db_ovh_container sh -c '$MARIADB_ROOT \"\${MYSQL_DATABASE:?}\"'"
+            }
+            where="$db_ovh_container on $OVH_HOST"
+            ;;
+        *) refuse "unknown target '$1'; one of local, container, ovh" ;;
+    esac
+}

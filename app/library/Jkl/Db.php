@@ -49,6 +49,14 @@ class Jkl_Db
     return $this->_db->query($query, $bind);
   }
   
+  /*
+  * The id the last INSERT gave its row, on this connection
+  */
+  public function lastInsertId()
+  {
+    return $this->_db->lastInsertId();
+  }
+
   public function getQueryCount()
   {
     return $this->_queryCount;

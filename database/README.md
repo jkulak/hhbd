@@ -139,7 +139,8 @@ For migrations that follow from it:
   is not an edit by a person; which migration changed what is recorded in `schema_migrations`.
 - **A new table records its own history**: `added datetime NOT NULL DEFAULT current_timestamp()`,
   and an `updated` that only its writers set. `datetime`, like the catalog's own `added`: a
-  `timestamp` cannot hold a time after 2038-01-19.
+  `timestamp` cannot hold a time after 2038-01-19. A log has its own name for it, as
+  `import_runs.started` does.
 - **No column defaults to a zero date** (`'0000-00-00 …'`): strict SQL modes reject it.
 
 One thing is known lost and cannot be recovered from the database: 58 of the 120 `added`
@@ -193,6 +194,63 @@ Every id a row has:
 ```sql
 SELECT source, kind, value, added FROM external_ids
  WHERE entity_type = 'album' AND entity_id = 535 ORDER BY source, kind, value;
+```
+
+## Import runs and provenance
+
+Two tables (0007, #52) record what each import did and where every field it set came from.
+Sources differ in licence (Discogs data is CC0, a Commons photo has its own licence, covers are
+kept as tolerated use with a takedown path), so "where from" decides what may be shown and how.
+It also answers a licence question or a takedown per row and per file, and lets a later batch
+tell the fields it set from those a person edited since.
+
+**`import_runs`**: one row per batch file the importer reads, dry runs included.
+
+| Column | Holds |
+|---|---|
+| `batch`, `batch_sha256` | the file's name and its SHA-256, so the listing shows the same file run twice |
+| `mode` | `dry-run` or `apply` |
+| `started`, `finished` | when it ran; `finished` stays NULL when a crash or a refusal stopped it |
+| `created_count` … `refused_count` | the report's totals: created, updated, unchanged, skipped, refused |
+| `report` | the whole report, which the database checks is JSON |
+
+**`import_provenance`**: one row per field, per source that supplied it. A field two sources
+agree on has two rows.
+
+| Column | Holds |
+|---|---|
+| `entity_type`, `entity_id` | the row: `album`, `artist`, `label`, `song` or `image`, and its id |
+| `field` | a column name, or a part with no column of its own: `cover`, `photo`, `tracklist` |
+| `source` | where it came from, from the list below |
+| `source_ref` | what was read, inside the source: an id, `discogs:master:1234567`, or a URL |
+| `licence` | `CC0`, `CC BY-SA 4.0`, `tolerated`, …; NULL for a bare fact |
+| `fetched` | when the source was read, in UTC |
+| `run_id` | the run that last wrote the row; a foreign key, so it always names a real run |
+
+The sources are `bandcamp`, `bn` (the National Library, data.bn.org.pl), `commons` (Wikimedia
+Commons), `coverartarchive`, `deezer`, `discogs`, `glamrap`, `itunes`, `musicbrainz`, `plwiki`
+and `wikidata`. A source that also gives ids has the same name in `external_ids`; a unit test
+holds the two lists to that.
+
+Write through `Model_Provenance_Api`: `startRun()`, then `record()` per field, then
+`finishRun()` with the totals and the report. It refuses provenance for a dry run, which writes
+nothing but its own row, and for a run already finished. Recording a field from the same source
+again replaces the reference, licence and time. A page reads a row's provenance with
+`getForEntity()` and asks it `cameFrom('cover', 'discogs')`.
+
+Both tables compare bytes (`utf8mb4_bin`), like `external_ids`: what they hold are identifiers,
+not text to sort.
+
+```bash
+make import-runs         # the last 20 runs on the local database, newest first; N=50 for more
+make ovh-import-runs     # the same on production
+```
+
+Every field of a row and where it came from:
+
+```sql
+SELECT field, source, source_ref, licence, fetched, run_id FROM import_provenance
+ WHERE entity_type = 'album' AND entity_id = 535 ORDER BY field, source;
 ```
 
 ## Test fixtures

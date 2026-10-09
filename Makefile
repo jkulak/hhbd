@@ -51,6 +51,10 @@ ovh-migrate-down: ## Revert the last applied migration on production's database,
 ovh-migrate-baseline: ## Once: record the baseline on production's database, which already has its schema
 	MIGRATE_TARGET=ovh ./scripts/migrate.sh baseline
 
+.PHONY: ovh-import-runs
+ovh-import-runs: ## List the last import runs on production's database, newest first; N=50 for more
+	DB_TARGET=ovh ./scripts/import-runs.sh $(or $(N),20)
+
 # --- Secrets ------------------------------------------------------------------------------
 
 .PHONY: secrets-check
@@ -103,6 +107,10 @@ migrate-new: ## Create the next migration's up and down files: make migrate-new 
 .PHONY: migrate-baseline
 migrate-baseline: ## Record the baseline on a local database that already has the schema, such as a loaded production dump
 	./scripts/migrate.sh baseline
+
+.PHONY: import-runs
+import-runs: ## List the last import runs on the local database, newest first; N=50 for more
+	./scripts/import-runs.sh $(or $(N),20)
 
 # --- Tests --------------------------------------------------------------------------------
 
