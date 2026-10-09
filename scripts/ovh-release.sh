@@ -38,9 +38,16 @@ echo "> $SERVICE runs $previous; deploying $TAG"
 # Fails when the release does not become healthy; ci-deploy has then put $previous back.
 ci "deploy $SERVICE $TAG"
 
+# In two colours the release before kept running beside this one, so that going back was a
+# switch at the edge (CONTRACT.md §6); once it is decided, it stops. In one colour there is
+# nothing to stop. A retire that fails leaves a colour running, which costs memory, not the
+# release.
+retire() { ci "retire $SERVICE" >/dev/null || echo "! $SERVICE's colour before is still running: retire failed" >&2; }
+
 smoke=${SMOKE:-./deploy/ovh/smoke.sh}
 echo "> smoke test: $smoke"
 if "$smoke"; then
+  retire
   echo "ok $SERVICE runs $TAG"
   exit 0
 fi
@@ -51,5 +58,6 @@ if [ "$previous" = none ] || [ "$previous" = "$TAG" ]; then
 fi
 echo "x the smoke test failed on $TAG; deploying $previous again" >&2
 ci "deploy $SERVICE $previous"
+retire
 echo "x $SERVICE is back on $previous; $TAG failed its smoke test" >&2
 exit 1

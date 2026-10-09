@@ -2,8 +2,9 @@
 # The stack on this Mac as the shared OVH host would run it, behind the edge's real
 # configuration: first what can be read off the files (gcloud-ovh-migrate's CONTRACT.md), then
 # the stack itself, built from this checkout, started and asked for each of its names through
-# a local edge, and last what its own images wrote while it did. Nothing on this machine named
-# `edge` is touched.
+# a local edge, then, for a request path in two colours, the edge moved from blue to green
+# under a stream of requests, as a deploy moves it, and last what its own images wrote while it
+# did. Nothing on this machine named `edge` is touched.
 #
 # From gcloud-ovh-migrate's service template, word for word the same in every service. The
 # edge's configuration is read from that repo's checkout: OVH_PLATFORM, which deploy/ovh/ovh.mk
@@ -121,10 +122,50 @@ for n, s in services.items():
     keys = ((s.get("labels") or {}).get("backup.volumes") or "").split()
     mounted = {v.get("source") for v in s.get("volumes") or [] if v.get("type") == "volume"}
     row(f"{n}: every volume it names for the backup is one it mounts", "", " ".join(k for k in keys if k not in mounted or k not in volumes))
+# A request path in two colours (CONTRACT.md §2): <name>-blue and <name>-green, alike, each on
+# its own tag, one per colour naming the edge's upstream, an alias it has on the edge.
+coloured = {n: s for n, s in services.items() if (s.get("labels") or {}).get("deploy.colour")}
+if coloured:
+    import re
+    tags = json.load(open(sys.argv[4])).get("services", {}) if sys.argv[4:] else {}
+    colour = lambda n: coloured[n]["labels"]["deploy.colour"]
+    row("a coloured service is <name>-blue or <name>-green, as its label says", "",
+        " ".join(n for n in coloured if colour(n) not in ("blue", "green") or not n.endswith("-" + colour(n))))
+    row("every coloured service has its twin in the other colour", "",
+        " ".join(n for n in coloured if n.rsplit("-", 1)[0] + "-" + ("green" if colour(n) == "blue" else "blue") not in coloured))
+    for c in ("blue", "green"):
+        ups = [(n, coloured[n]["labels"]["deploy.upstream"]) for n in coloured
+               if colour(n) == c and coloured[n]["labels"].get("deploy.upstream")]
+        row(f"one {c} service names the edge's upstream with deploy.upstream", "1", str(len(ups)))
+        for n, up in ups:
+            aliases = ((coloured[n].get("networks") or {}).get("edge") or {}).get("aliases") or []
+            row(f"{n}: deploy.upstream {up} is <alias>:<port>, with an alias it has on the edge", "yes",
+                "yes" if re.fullmatch(r"[a-z0-9][a-z0-9-]*:[0-9]{1,5}", up) and up.split(":")[0] in aliases else "no")
+    row("no coloured service publishes a port, which both colours would claim", "",
+        " ".join(n for n in coloured if coloured[n].get("ports")))
+    row("each colour runs on its own tag alone, so deploying the other leaves it as it is", "",
+        " ".join(n for n in coloured if n in tags and any(t in json.dumps(tags[n]) for t in
+                 ("stack-test-once", "stack-test-green" if colour(n) == "blue" else "stack-test-blue"))))
 PY
+# The file once more with a tag of its own for each colour and for what runs once, so that a
+# colour reading another's tag, or IMAGE_TAG alone, shows: a deploy of the other colour would
+# recreate it while it takes the requests.
+env "${stand_ins[@]}" IMAGE_TAG=stack-test-once IMAGE_TAG_BLUE=stack-test-blue IMAGE_TAG_GREEN=stack-test-green \
+  "$DOCKER" compose -f deploy/ovh/compose.yaml --profile '*' config --format json > "$T/tags.json" 2>/dev/null
 while IFS=$'\x1f' read -r label expected actual; do check "$label" "$expected" "$actual"; done < <(
-  python3 "$T/compose-checks.py" "$T/config.json" "$SERVICE" "$own"
+  python3 "$T/compose-checks.py" "$T/config.json" "$SERVICE" "$own" "$T/tags.json"
 )
+# A colour's upstream on the edge, and its services, for the snippets and the switch below.
+colour_of() { # colour_of <blue|green> <upstream|services>
+  python3 -c '
+import json, sys
+c, what = sys.argv[2], sys.argv[3]
+picked = [(n, (s.get("labels") or {})) for n, s in json.load(open(sys.argv[1])).get("services", {}).items()
+          if (s.get("labels") or {}).get("deploy.colour") == c]
+print(" ".join(l.get("deploy.upstream", "") for n, l in picked if l.get("deploy.upstream")) if what == "upstream"
+      else " ".join(n for n, l in picked))' "$T/config.json" "$1" "$2"
+}
+blue_up=$(colour_of blue upstream) green_up=$(colour_of green upstream) blue_svcs=$(colour_of blue services)
 
 # Each scheduled job as gcloud-ovh-migrate's CONTRACT.md §7 has it: a <service>-<job> unit
 # that names its service and job for the collector, stops at a time limit, runs under hc-wrap
@@ -182,6 +223,13 @@ for f in deploy/ovh/*.caddyfile; do
     check "$snip: it proxies to $upstream, a name this stack has on the edge" yes \
       "$(grep -qx "${upstream%%:*}" <<<"$aliases" && echo yes || echo no)"
   done < <(sed -nE 's/^[[:space:]]+import proxy[[:space:]]+([^[:space:]]+).*/\1/p' "$f")
+  live=$(grep -cE "^[[:space:]]+import \.\./live/$SERVICE\.caddyfile[[:space:]]*$" "$f" || true)
+  if [ -n "$blue_up" ]; then
+    check "$snip: every site block reaches the stack in colours through its live upstream, ../live/$SERVICE.caddyfile" "$blocks" "$live"
+    check "$snip: and none past it, to one colour's alias" 0 "$(grep -cE '^[[:space:]]+import proxy[[:space:]]' "$f" || true)"
+  else
+    check "$snip: imports a live upstream only for a stack in colours" 0 "$live"
+  fi
 done
 check "the stack serves at least one name" yes "$([ ${#names[@]} -gt 0 ] && echo yes || echo no)"
 
@@ -241,6 +289,8 @@ i = s.index("{\n") + 2
 open(sys.argv[2], "w").write(s[:i] + "\tlocal_certs\n" + s[i:])
 PY
 cp -R "$PLATFORM/edge/cloudflare" "$T/edge/"
+# A stack in colours starts on blue, as a first deploy leaves it.
+if [ -n "$blue_up" ]; then mkdir -p "$T/edge/live" && printf 'import proxy %s\n' "$blue_up" > "$T/edge/live/$SERVICE.caddyfile"; fi
 for f in deploy/ovh/*.caddyfile; do
   python3 -c 'import re, sys; s = open(sys.argv[1]).read(); s = re.sub(r"\n[ \t]*tls \{[^}]*\}", "", s); s = re.sub(r"\n[ \t]*tls [^\n]*", "", s); s = re.sub(r"\n[ \t]*import cloudflare_only[^\n]*", "", s); open(sys.argv[2], "w").write(s)' \
     "$f" "$T/edge/sites/$(basename "$f")"
@@ -259,6 +309,36 @@ for name in "${names[@]}"; do
   check "$name: with the edge's security headers" yes \
     "$(grep -qi '^strict-transport-security:' <<<"$out" && echo yes || echo no)"
 done
+
+# ---- the switch, as a deploy makes it --------------------------------------------
+# Green takes the edge with one reload while requests keep coming, and blue then stops, as
+# `retire` stops it. Not one of them may fail or wait on it: that is the point of the colours.
+if [ -n "$green_up" ] && [ ${#names[@]} -gt 0 ]; then
+  rm -f "$T/stop"
+  ( while [ ! -e "$T/stop" ]; do
+      curl -sk --max-time 30 -o /dev/null -w '%{http_code} %{time_total}\n' \
+        --connect-to "${names[0]}:443:127.0.0.1:$P443" "https://${names[0]}/"
+      sleep 0.1
+    done > "$T/switch.log" ) &
+  loop=$!
+  sleep 1
+  printf 'import proxy %s\n' "$green_up" > "$T/edge/live/$SERVICE.caddyfile"
+  "$DOCKER" exec "$EDGE" caddy reload --config /etc/caddy/Caddyfile >/dev/null 2>&1
+  check "the edge takes green with one reload" 0 "$?"
+  sleep 1
+  # shellcheck disable=SC2086 # one word per service
+  compose stop $blue_svcs >/dev/null 2>&1
+  sleep 2
+  touch "$T/stop"; wait "$loop"
+  read -r sent failed slowest < <(python3 -c '
+import sys
+rows = [l.split() for l in open(sys.argv[1]) if l.strip()]
+print(len(rows), sum(1 for r in rows if r[0] == "000" or r[0] >= "500"), int(max((float(r[1]) for r in rows), default=0) * 1000))' "$T/switch.log")
+  check "not one of $sent requests failed while the edge moved to green and blue stopped" 0 "$failed"
+  check "and none waited on it: the slowest took ${slowest} ms" yes "$([ "$slowest" -lt 1000 ] && echo yes || echo no)"
+  out=$(curl -sk --max-time 30 -o /dev/null -w '%{http_code}' --connect-to "${names[0]}:443:127.0.0.1:$P443" "https://${names[0]}/")
+  check "${names[0]}: answered by green alone" yes "$([[ $out =~ ^[234][0-9][0-9]$ ]] && echo yes || echo "no ($out)")"
+fi
 
 # ---- what the stack's own images write ------------------------------------------
 # Every line from a container running an image this repo builds, from start to the requests
@@ -296,7 +376,8 @@ for svc in $own; do
   verdict=$(python3 "$T/lines.py" "$T/$svc.log")
   # A container service.env names in LOG_FORMAT_PENDING is on its way there, under an issue of
   # its own: said, not failed, until its lines pass and it can leave the list.
-  if [[ " ${LOG_FORMAT_PENDING:-} " == *" $svc "* ]]; then
+  base=$svc; case $svc in *-blue|*-green) base=${svc%-*} ;; esac
+  if [[ " ${LOG_FORMAT_PENDING:-} " == *" $svc "* || " ${LOG_FORMAT_PENDING:-} " == *" $base "* ]]; then
     if [ -n "$verdict" ]; then
       echo "skip $svc: not yet in CONTRACT.md §9's format, as LOG_FORMAT_PENDING says ($verdict)"
     elif ! grep -q . "$T/$svc.log"; then

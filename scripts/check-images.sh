@@ -8,8 +8,9 @@
 # Usage: scripts/check-images.sh
 #
 # Where it looks, DB_TARGET: local (this checkout's compose project, the default; the files
-# in its nginx container) or ovh (production's database over ssh, and the files in hhbd-nginx-1,
-# the only container that mounts the volume there).
+# in its nginx container) or ovh (production's database over ssh, and the files in a running
+# container of hhbd's that mounts the content volume: the live colour's nginx, or both while a
+# deploy overlaps them, which see the same files).
 #
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
@@ -26,7 +27,7 @@ case "$target" in
         content_sh() {
             # shellcheck disable=SC2086
             ${MIGRATE_SSH:-ssh -o BatchMode=yes} "${OVH_SSH_USER:-ubuntu}@$OVH_HOST" \
-                "${OVH_SUDO-sudo} docker exec -i ${OVH_NGINX_CONTAINER:-hhbd-nginx-1} sh -c '$1'"
+                "c=\${OVH_NGINX_CONTAINER:-\$(${OVH_SUDO-sudo} docker ps -q --filter label=com.docker.compose.project=hhbd --filter volume=hhbd_content | head -1)}; ${OVH_SUDO-sudo} docker exec -i \$c sh -c '$1'"
         }
         ;;
     *) refuse "DB_TARGET is local or ovh, not '$target'" ;;
