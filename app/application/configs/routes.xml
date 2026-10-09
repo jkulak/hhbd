@@ -307,6 +307,73 @@
           <reverse>%s-s%d/edytuj-tekst.html</reverse>
         </songEditLyrics>
 
+        <!-- The addresses before the .html ones (#26), still linked from old profiles, news and
+             other sites: an artist, album, label or song by the slug the old tools kept in
+             urlname (/n/peja, and later /wykonawca/peja), a news item by its id -->
+        <legacyArtist type="Zend_Controller_Router_Route_Regex">
+          <route>(?:n|wykonawca)/([^/]+)</route>
+          <defaults>
+            <controller>legacy</controller>
+            <action>slug</action>
+            <kind>artist</kind>
+          </defaults>
+          <map>
+            <slug>1</slug>
+          </map>
+          <reverse>n/%s</reverse>
+        </legacyArtist>
+
+        <legacyAlbum type="Zend_Controller_Router_Route_Regex">
+          <route>(?:a|album)/([^/]+)</route>
+          <defaults>
+            <controller>legacy</controller>
+            <action>slug</action>
+            <kind>album</kind>
+          </defaults>
+          <map>
+            <slug>1</slug>
+          </map>
+          <reverse>a/%s</reverse>
+        </legacyAlbum>
+
+        <legacyLabel type="Zend_Controller_Router_Route_Regex">
+          <route>(?:l|wytwornia)/([^/]+)</route>
+          <defaults>
+            <controller>legacy</controller>
+            <action>slug</action>
+            <kind>label</kind>
+          </defaults>
+          <map>
+            <slug>1</slug>
+          </map>
+          <reverse>l/%s</reverse>
+        </legacyLabel>
+
+        <legacySong type="Zend_Controller_Router_Route_Regex">
+          <route>s/([^/]+)</route>
+          <defaults>
+            <controller>legacy</controller>
+            <action>slug</action>
+            <kind>song</kind>
+          </defaults>
+          <map>
+            <slug>1</slug>
+          </map>
+          <reverse>s/%s</reverse>
+        </legacySong>
+
+        <legacyNews type="Zend_Controller_Router_Route_Regex">
+          <route>news/(\d+)</route>
+          <defaults>
+            <controller>legacy</controller>
+            <action>news</action>
+          </defaults>
+          <map>
+            <id>1</id>
+          </map>
+          <reverse>news/%d</reverse>
+        </legacyNews>
+
         <!-- api -->
          <apiSongsFlagVideo>
           <route>api/songs/flag-video</route>

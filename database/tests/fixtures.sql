@@ -796,3 +796,12 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- ============================================
 -- End of test fixtures
 -- ============================================
+
+-- The slugs the old site's addresses used, kept in urlname (#26): as production has them for
+-- these rows, so the smoke test's /n/Mes works on both; Dj Technik's in the importer's style,
+-- with a dash, which an old address writes with an underscore.
+UPDATE `artists` SET `urlname` = 'Mes' WHERE `id` = 35;
+UPDATE `artists` SET `urlname` = 'dj-technik' WHERE `id` = 6;
+UPDATE `albums` SET `urlname` = 'superextra' WHERE `id` = 535;
+UPDATE `labels` SET `urlname` = 'Alkopoligamia' WHERE `id` = 58;
+UPDATE `songs` SET `urlname` = 'pogoda' WHERE `id` = 7329;

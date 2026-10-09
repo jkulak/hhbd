@@ -379,6 +379,7 @@ run_fixture_tests() {
     test_page_multi "An album links where it can be heard" "/wdowa-superextra-a535.html" "https://www.deezer.com/album/302127" "https://music.apple.com/album/1440857781"
     test_page "An artist's Discogs data is credited (Mes)" "/mes-p35.html" "https://www.discogs.com/artist/271903"
     test_page "Another name stored mangled reads right (#27)" "/mes-p35.html" "JŹW"
+    test_redirect_301 "An old address's underscore finds a slug written with a dash (#26)" "/n/dj_technik" "/dj-technik-p6.html"
     test_page_multi "An artist's main photo carries its credit and licence (Mes)" "/mes-p35.html" "Jan Kowalski" "https://creativecommons.org/licenses/by-sa/4.0/"
     test_page_multi "An artist's other photos are in a gallery, captioned (Mes)" "/mes-p35.html" "Zdjęcia" "Anna Nowak" "(zmodyfikowane)"
     test_page "A joint album links both its artists" "/pezet-jestem-hip-hopem-a1.html" "&amp; <a href"
@@ -402,6 +403,27 @@ run_fixture_tests() {
     CURL_OPTS="$visitor_opts"
     rm -f "$jar"
     echo ""
+}
+
+# test_redirect_302 <name> <path> <location>: the path answers 302 to a location ending in the one given
+test_redirect_302() {
+    local name="$1"
+    local path="$2"
+    local expected_location="$3"
+    local url="${BASE_URL}${path}"
+    local status location
+    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 $CURL_OPTS "$url" 2>/dev/null || echo "000")
+    location=$(curl -s -o /dev/null -w "%{redirect_url}" --max-time 10 $CURL_OPTS "$url" 2>/dev/null)
+    if [[ "$status" == "302" && "$location" == *"$expected_location" ]]; then
+        echo -e "${GREEN}✓${NC} $name (redirects to $expected_location)"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - HTTP $status to '$location' (expected 302 to '$expected_location')"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
 }
 
 # test_not_found <name> <path> <text>: the path answers 404 and the body does not contain the text
@@ -476,6 +498,19 @@ run_tests() {
     # User pages
     echo "--- User Pages ---"
     test_page "Login Page" "/uzytkownik/logowanie.html" "Zaloguj"
+    echo ""
+
+    # The addresses before the .html ones, still linked from old profiles, news and other sites
+    # (#26): the rows below have the same slug here and on production
+    echo "--- Old Addresses ---"
+    test_redirect_301 "An old artist address (/n/) goes to the artist's page" "/n/Mes" "/mes-p35.html"
+    test_redirect_301 "The later form (/wykonawca/), in any case, too" "/wykonawca/mes" "/mes-p35.html"
+    test_redirect_301 "An old album address (/a/) goes to the album's page" "/a/superextra" "/wdowa-superextra-a535.html"
+    test_redirect_301 "An old label address (/l/) goes to the label's page" "/l/alkopoligamia" "/alkopoligamia-l58.html"
+    test_redirect_301 "An old song address (/s/) goes to the song's page" "/s/pogoda" "pogoda-s7329.html"
+    test_redirect_301 "An old news address (/news/) goes to the news item" "/news/1877" "-n1877.html"
+    test_redirect_302 "An old address naming no row goes to the search for its words" "/n/nie_ma_takiego-wykonawcy" "/szukaj.html?q=nie+ma+takiego+wykonawcy"
+    test_not_found "An old news address of no news item is a 404" "/news/999999999" "Cannot assemble"
     echo ""
 
     # A .php file that does not exist: nginx's own 404, where PHP-FPM said "File not found." and

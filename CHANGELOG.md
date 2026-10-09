@@ -8,6 +8,13 @@ person's decision; nothing releases on its own.
 
 ## Unreleased
 
+### Added
+- The addresses hhbd had before the `.html` ones lead to today's pages (#26), as old profiles,
+  news and other sites still link them: `/n/peja`, `/a/…`, `/l/…`, `/s/…` and the later
+  `/wykonawca/…`, `/album/…`, `/wytwornia/…` by the slug kept in `urlname`, `/news/223` by its
+  id. A slug that names one row answers 301 to its page; one that names none or several, 302 to
+  the search for its words. Of the 497 slug links in production's texts, 473 find their page.
+
 ### Changed
 - nginx and the app run in two colours, `nginx-blue`/`app-blue` and `nginx-green`/`app-green`
   (#124). A deploy starts the new release beside the one serving, and the shared edge moves to
