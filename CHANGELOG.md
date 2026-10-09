@@ -8,6 +8,11 @@ decision; nothing tags on its own.
 ## Unreleased
 
 ### Added
+- The import contract (#56): `app/docs/import.schema.json`, a JSON Schema for every document of
+  an import batch, which hhbd-content validates its batches against and the importer will
+  validate every document with; `docs/import.md` explains the fields, the references and how a
+  document finds its row. `Jkl_JsonSchema` validates the subset of JSON Schema the contract
+  uses, with no new dependency.
 - The album and artist pages show "Data provided by Discogs.", linked to the Discogs page,
   when any of their data came through Discogs's API, and an album page links where it can be
   heard on Deezer and Apple Music when its ids are known; the about page says the site is not
