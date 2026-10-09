@@ -324,6 +324,10 @@ else
     ok "and so does the CHECK, in a session that allows zero dates"
 fi
 
+echo "> Polish letters stored mangled (#27)"
+check "a name mangled twice over, and a title in ISO-8859-2 read as latin-1, come back" "JŹW|Właśnie tak się bawi..." \
+    "$(sql "SELECT CONCAT((SELECT altname FROM altnames_lookup WHERE artistid = 35), '|', (SELECT title FROM songs WHERE id = 6190))")"
+
 echo "> image files production lacks for good"
 check "an album's lost cover and an artist's lost photo are no longer named (#47)" "576: 0 1" \
     "$(sql "SELECT CONCAT((SELECT CONCAT(id, ':', cover) FROM albums WHERE id = 576), ' ', (SELECT COUNT(*) FROM artists_photos WHERE id = 120), ' ', (SELECT COUNT(*) FROM migration_archive WHERE version = '0029' AND table_name = 'artists_photos'))")"
