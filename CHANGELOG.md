@@ -8,6 +8,12 @@ person's decision; nothing releases on its own.
 
 ## Unreleased
 
+## 2026.10.6 — 2026-10-09
+
+Nothing on the site changes. The first release through the shared host's template: the
+`Deploy` workflow builds the three images and rolls the app and nginx out with the template's
+release script, and keeps them only once the smoke test a release has always had to pass does.
+
 ### Changed
 - Production's stack is laid out as the shared OVH host's service template has every service do
   it (#108). Production runs as before: the same files go to the same places on the host.
