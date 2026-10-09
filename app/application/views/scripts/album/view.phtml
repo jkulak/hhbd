@@ -1,8 +1,8 @@
 <div id="main">
-    <h1><?php echo $this->partial('artist/_link.phtml', array('artist' => $this->album->artist)) ?> - <?php echo $this->album->title ?><?php echo $this->partial('album/_markers.phtml', array('album' => $this->album)) ?></h1>
+    <h1><?php echo $this->partial('album/_artists.phtml', array('album' => $this->album)) ?> - <?php echo $this->album->title ?><?php echo $this->partial('album/_markers.phtml', array('album' => $this->album)) ?></h1>
   <?php echo $this->partial('common/_share.phtml', array('currentUrl' => $this->currentUrl, 'title' => $this->title)) ?>
 	<div id="picture">
-	  <img src="<?php echo $this->album->cover ?>" alt="Okładka albumu <?php echo $this->album->title ?>" title="<?php echo $this->album->title . ' - ' . $this->album->artist->name ?>" class="image" />
+	  <img src="<?php echo $this->album->cover ?>" alt="Okładka albumu <?php echo $this->album->title ?>" title="<?php echo $this->album->title . ' - ' . $this->album->artistNames ?>" class="image" />
     <!-- <span id="case"></span> -->
 	</div>
 

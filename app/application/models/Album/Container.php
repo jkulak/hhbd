@@ -49,6 +49,13 @@ class Model_Album_Container
     public $media = array();
     /** False for a nielegal, a release that came out without a publisher's licence */
     public $legal = true;
+    /**
+     * Every artist credited on the release, main ones first, each as array('artist' =>
+     * Model_Artist_Container, 'role' => 'main' or 'featured', 'name' => as credited)
+     */
+    public $credits = array();
+    /** The main artists as a page names them: "Białas & Lanek" */
+    public $artistNames;
     /** day, month or year: how much of releaseDate is known */
     public $releaseDatePrecision;
     /** Whether the release is only announced; null where the database does not say */
@@ -61,10 +68,24 @@ class Model_Album_Container
         $this->id = $params['alb_id'];
         $this->title = $params['title'];
 
-        if (!empty($params['art_id'])) {
-            $artistApi = Model_Artist_Api::getInstance();
-            $this->artist = $artistApi->find($params['art_id']);
+        // Every credited artist (#58); a query that brings only art_id credits that one artist.
+        $credits = !empty($params['credits']) ? $params['credits'] : array();
+        if (empty($credits) && !empty($params['art_id'])) {
+            $credits = array(array('artistid' => (int) $params['art_id'], 'role' => 'main', 'credited_as' => null));
         }
+        $artistApi = Model_Artist_Api::getInstance();
+        foreach ($credits as $credit) {
+            $artist = $artistApi->find($credit['artistid']);
+            $this->credits[] = array(
+                'artist' => $artist,
+                'role'   => $credit['role'],
+                'name'   => !empty($credit['credited_as']) ? $credit['credited_as'] : $artist->name,
+            );
+        }
+        if (!empty($this->credits)) {
+            $this->artist = $this->credits[0]['artist'];
+        }
+        $this->artistNames = self::artistNamesOf($this->credits);
 
         // No label: labelid NULL, or until #55's migration retires it, the placeholder label
         // "BRAK" (27) that stood for none.
@@ -176,6 +197,35 @@ class Model_Album_Container
             return $params['release_type'];
         }
         return (!empty($params['singiel']) || !empty($params['epfor'])) ? 'ep' : 'album';
+    }
+
+    /**
+     * The credits a page links in the album's heading: the main artists, or every credited
+     * artist when none is a main one.
+     *
+     * @return array
+     */
+    public function getMainCredits()
+    {
+        $main = array_values(array_filter($this->credits, function ($credit) {
+            return 'main' === $credit['role'];
+        }));
+        return empty($main) ? $this->credits : $main;
+    }
+
+    /**
+     * The release's main artists as a page names them, joined by " & "; every credited artist
+     * when none is a main one.
+     *
+     * @param array $credits array('name' => ..., 'role' => ...) each
+     * @return string
+     */
+    public static function artistNamesOf(array $credits)
+    {
+        $main = array_filter($credits, function ($credit) {
+            return 'main' === $credit['role'];
+        });
+        return implode(' & ', array_column(empty($main) ? $credits : $main, 'name'));
     }
 
     /**

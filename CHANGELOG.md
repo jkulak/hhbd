@@ -8,6 +8,11 @@ decision; nothing tags on its own.
 ## Unreleased
 
 ### Changed
+- An album can be credited to several artists (#58). Migration 0015 adds a role, a position and
+  a credited name to each credit. Album lists show such an album once instead of once per
+  artist, name it after all its main artists ("Pezet & Eldo"), and the album page links each
+  of them; titles, Open Graph and the page's description name them all. List queries group by
+  album, so a limit of ten shows ten albums.
 - Tracklists read a track's disc from a disc column once it exists, and from the old
   disc * 100 + position encoding until then (#59, first step); an album of several discs is
   numbered 1-01, 2-01 either way. The migration that adds the column can follow this release.
@@ -76,6 +81,10 @@ decision; nothing tags on its own.
   backoffice gets written from scratch.
 
 ### Fixed
+- The sitemaps answer again: every `sitemap-*.xml` failed with a parse error, since the
+  template's `<?xml` declaration opened PHP under `short_open_tag`. They also give absolute
+  URLs, as the protocol requires, and each entry's canonical path; album entries were mangled
+  (`/%2Fpezet-…-a1.html-a1.html`) and songs and labels unslugged (`/Intro-s1.html`).
 - Role names in `feattypes` are unique, and the unused test role is gone (#66). Migration 0013
   also gave a role to 223 of the 579 credits stored without one, where every other credit of
   the same artist has that role; the rest stay without a role rather than get a guessed one.

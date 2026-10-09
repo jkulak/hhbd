@@ -19,47 +19,33 @@ class SitemapController extends Zend_Controller_Action
 
     public function viewAction()
     {
-        $urls = array();
+        // Absolute, as the sitemap protocol requires, and each entity's own canonical path, the
+        // one its page names in rel="canonical".
+        $site = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost();
         switch ($this->params['type']) {
             case 'albums':
-                // gets album list sorted by release date
+                // One entry per album, however many artists it credits (#58).
                 $list = Model_Album_Api::getInstance()->getAlbumsSitemap();
-                foreach ($list->items as $key => $value) {
-                    $urls[] = $this->view->url(array('id' => $value->id, 'seo' => $value->getUrl()), 'album');
-                }
                 break;
-
             case 'news':
                 $list = Model_News_Api::getInstance()->getRecent(10000, false);
-                foreach ($list->items as $key => $value) {
-                    $urls[] = $this->view->url(array('id' => $value->id, 'seo' => $value->url), 'news');
-                }
                 break;
-
             case 'artists':
                 $list = Model_Artist_Api::getInstance()->getRecentlyAdded(10000);
-                foreach ($list->items as $key => $value) {
-                    $urls[] = $this->view->url(array('id' => $value->id, 'seo' => $value->url), 'artist');
-                }
                 break;
-
             case 'songs':
                 $list = Model_Song_Api::getInstance()->getRecent(10000);
-                foreach ($list->items as $key => $value) {
-                    $urls[] = $this->view->url(array('id' => $value->id, 'seo' => $value->title), 'song');
-                }
                 break;
-
             case 'labels':
                 $list = Model_Label_Api::getInstance()->getRecent(10000);
-                foreach ($list->items as $key => $value) {
-                    $urls[] = $this->view->url(array('id' => $value->id, 'seo' => $value->name), 'label');
-                }
                 break;
-
             default:
-                # code...
+                $list = new Jkl_List();
                 break;
+        }
+        $urls = array();
+        foreach ($list->items as $item) {
+            $urls[] = $site . $item->getUrl();
         }
         $this->view->urls = $urls;
     }
