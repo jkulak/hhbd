@@ -6,9 +6,9 @@
 -- Rows naming an album that does not exist go (22 on production, 17 of them album 583's). A
 -- track stored at position 0 on an album that exists becomes the last one on its disc, where a
 -- hidden or bonus track sits (6 on production). Every row of every album this touches is
--- archived first (migration_archive, 0009), as it was; the down replaces those albums' rows with the archived
--- ones. Restoring row by row would not be exact: on an album holding a tracklist twice, a
--- track decoded from 105 and one stored as 5 become the same row.
+-- archived first (migration_archive, 0009), as it was; the down replaces those albums' rows
+-- with the archived ones. Restoring row by row would not be exact: on an album holding a
+-- tracklist twice, a track decoded from 105 and one stored as 5 become the same row.
 --
 -- No unique key on (albumid, disc, track) yet: on production 180 positions on 22 albums still
 -- hold two or more songs, mostly two editions' tracklists on one album, which needs a person;
