@@ -57,6 +57,25 @@ class Jkl_Db
     return $this->_db->lastInsertId();
   }
 
+  /*
+  * Transactions, for writes that belong together (the importer writes a release with its
+  * tracks and credits as one): all of them or none.
+  */
+  public function beginTransaction()
+  {
+    $this->_db->beginTransaction();
+  }
+
+  public function commit()
+  {
+    $this->_db->commit();
+  }
+
+  public function rollBack()
+  {
+    $this->_db->rollBack();
+  }
+
   public function getQueryCount()
   {
     return $this->_queryCount;
