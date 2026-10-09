@@ -8,6 +8,8 @@ decision; nothing tags on its own.
 ## Unreleased
 
 ### Changed
+- `deploy/compose.ovh.yaml` labels what the host's nightly backup takes: the database on `db`,
+  dumped with the root password the container already has, and the `content` volume on `nginx`.
 - The release job runs in the `production` environment, which keeps the deploy key and admits
   release tags alone, instead of reading it from repository secrets any branch could read.
 
