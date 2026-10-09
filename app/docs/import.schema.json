@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/jkulak/hhbd/blob/main/app/docs/import.schema.json",
   "title": "One document of an hhbd import batch",
-  "description": "A batch is NDJSON: one document per line, labels first, then artists, releases and standalone images, so that every reference points at something already read. docs/import.md explains the fields, how documents are matched to rows, and what the importer reports. app/tools/import.php validates every document against the same rules (Model_Import_Validator) before it writes anything.",
+  "description": "A batch is NDJSON: one document per line, labels first, then artists, releases and standalone images, so that every reference points at something already read. docs/import.md explains the fields, how documents are matched to rows, and what the importer reports. The importer (app/tools/import.php) validates every document against this file before it writes anything.",
   "oneOf": [
     { "$ref": "#/$defs/label" },
     { "$ref": "#/$defs/artist" },

@@ -12,9 +12,11 @@
 #   - nginx takes the client's address from X-Real-IP sent by the edge, and from nobody else
 #   - nginx, PHP and the application log to the containers' output, and write no log files
 #   - a request made while the database is down is logged by the application
+#   - `up` leaves the import job alone, and the job, fed a batch on stdin as make ovh-import
+#     feeds it, writes covers into the content volume that nginx then serves
 #
 # Everything it creates is removed on the way out: the compose project with its volumes, the
-# stand-in edge, the edge network, two image tags and one directory.
+# stand-in edge, the edge network, three image tags and one directory.
 #
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
@@ -47,7 +49,7 @@ cleanup() {
     compose down -v --remove-orphans >/dev/null 2>&1 || true
     docker rm -f "$EDGE" >/dev/null 2>&1 || true
     docker network rm edge >/dev/null 2>&1 || true
-    docker rmi "ghcr.io/jkulak/hhbd-app:$TAG" "ghcr.io/jkulak/hhbd-nginx:$TAG" >/dev/null 2>&1 || true
+    docker rmi "ghcr.io/jkulak/hhbd-app:$TAG" "ghcr.io/jkulak/hhbd-nginx:$TAG" "ghcr.io/jkulak/hhbd-importer:$TAG" >/dev/null 2>&1 || true
     rm -rf "$T"
     echo "> removed the $PROJECT project and its volumes, the stand-in edge, the edge network, the $TAG images and $T"
 }
@@ -66,6 +68,7 @@ written_logs() { docker diff "$1" | grep -E '^[AC] (/var/log/.+|.*\.log)$' || tr
 echo "> images from this checkout, tagged $TAG, for linux/amd64 like the release"
 docker build -q --platform linux/amd64 -f Dockerfile-php --target production -t "ghcr.io/jkulak/hhbd-app:$TAG" . >/dev/null
 docker build -q --platform linux/amd64 -f Dockerfile-nginx -t "ghcr.io/jkulak/hhbd-nginx:$TAG" . >/dev/null
+docker build -q --platform linux/amd64 -f Dockerfile-php --target importer -t "ghcr.io/jkulak/hhbd-importer:$TAG" . >/dev/null
 
 echo "> the edge network, 172.30.0.0/24 as on the host"
 docker network create --subnet 172.30.0.0/24 --gateway 172.30.0.1 edge >/dev/null
@@ -152,6 +155,24 @@ case "$logged" in
     172.30.0.*) ok "X-Real-IP from anywhere but the edge is ignored ($logged)" ;;
     *)          bad "X-Real-IP from anywhere but the edge is ignored (got '$logged')" ;;
 esac
+
+echo "> the import job, as make ovh-import runs it: the batch as a tar on stdin"
+check "up started no importer: it is a job" "" "$(compose ps -a --format '{{.Service}}' | grep -x importer || true)"
+if COPYFILE_DISABLE=1 tar --no-xattrs -C tests/import/batch -cf - . \
+    | compose run --rm --no-deps -T importer --apply >"$T/import.json" 2>"$T/import.err"; then
+    ok "the importer reads the test batch"
+else
+    bad "the importer reads the test batch"
+    tail -20 "$T/import.err"
+fi
+check "into the catalogue" "6 created, 3 updated, 1 unchanged, 0 refused" \
+    "$(jq -r '.totals | "\(.created) created, \(.updated) updated, \(.unchanged) unchanged, \(.refused) refused"' "$T/import.json" 2>/dev/null)"
+cover=$(jq -r 'select(.ref == "release:testowy-album") | .cover.sha256' tests/import/batch/batch.ndjson)
+album=$(jq -r '.documents[] | select(.ref == "release:testowy-album") | .url' "$T/import.json" 2>/dev/null)
+check "the album's page, through the edge, shows the cover the importer wrote" "1" \
+    "$(via_edge "http://hhbd.pl$album" | grep -c "/content/a/600/$cover.jpg" || true)"
+check "and nginx serves it from the content volume" "200 image/jpeg" \
+    "$(via_edge -o /dev/null -w '%{http_code} %{content_type}' "http://hhbd.pl/content/a/600/$cover.jpg")"
 
 echo "> the logs"
 check "the healthcheck's own requests stay out of the access log" \
