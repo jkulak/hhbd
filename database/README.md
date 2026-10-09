@@ -173,17 +173,74 @@ An admin settles an item on the page it is about, through a form with the sessio
 (`Jkl_Csrf`). The action and the item's resolution happen in one transaction, and the row
 records the admin in `updatedby`.
 
-**Merging an artist into another** moves the duplicate's references and removes it:
-- every column in `Model_Review_Api::ARTIST_COLUMNS` is pointed at the artist kept, and so is
-  every row in `ARTIST_ENTITIES` that names the duplicate by type and id;
-- a reference the kept artist already has is dropped rather than doubled;
-- the duplicate row is deleted, and `artist_merges` sends its old URL to the kept artist's page
-  with a 301;
-- the item's `undo_data` keeps the deleted row and every row moved or dropped, so the merge can be
-  taken back by hand.
+**Merging an artist into another** is the same operation as `make edit DO="merge-artists ..."`
+and is journalled the same way, with the path `panel` (below). The item's `undo_data` names the
+operation.
 
-`tests/review-test.sh` checks that every `artistid`, `bandid` and `aid` column in the schema is
-on the list. A new table that points at an artist goes on it too.
+## Edits by an admin
+
+Production's data changes four ways, each leaving a record:
+
+| Path | What | Record |
+|---|---|---|
+| the importer | a batch from the content project | `import_runs`, `import_provenance` (#52) |
+| a migration | the schema, and data every database needs the same way | `schema_migrations`, `migration_archive` |
+| the review panel | what an import left for a person (#103) | `review_items`, and the journal below |
+| `make ovh-edit` | an admin's edit of one record, such as a duplicate to merge or a name to correct (#115) | the journal below |
+
+An edit to one record goes through `make edit` locally and `make ovh-edit` on production, not
+through a migration. A migration is a branch, a pull request and `make ovh-migrate` for one
+decision about one row; CI can only check it runs, since the test database does not hold that
+row; and it mixes the schema's history with editorial changes.
+
+A migration stays the tool when every database needs the change: a column, a rule all rows must
+follow, a clean-up of a whole kind of row.
+
+```bash
+make ovh-edit DO="merge-albums 850 841" BY=<admin> WHY="duplicate of 841, #114"               # a dry run
+make ovh-edit DO="merge-albums 850 841" BY=<admin> WHY="duplicate of 841, #114" MODE=apply
+make ovh-edit DO="undo 12" BY=<admin> WHY="merged the wrong one" MODE=apply
+```
+
+**The operations:**
+- `merge-albums <from> <into>` and `merge-artists <from> <into>`;
+- `delete-album <id>`, `delete-artist <id>` and `delete-label <id>`;
+- `set <albums|artists|labels|songs> <id> <column>`, with the value in `VALUE` or NULL without
+  it;
+- `undo <operation>`.
+
+**How a call is checked and run:**
+- `BY` is the display name of an hhbd user with `usr_is_admin = 'yes'`, and `WHY` says why.
+  Without both, the call is refused before it reads anything.
+- A call is a dry run unless `MODE=apply`: the same operation in a transaction rolled back,
+  printing each row it would change.
+- The arguments reach the tool NUL-separated on stdin (`scripts/edit.sh`), so `WHY` and `VALUE`
+  pass through ssh untouched.
+
+**What each operation reaches** (`Model_Edit_Api`):
+- A merge points every column that names the row (`ARTIST_COLUMNS`, `ALBUM_COLUMNS`, an album's
+  `epfor`) at the row kept, and so every row of `ENTITY_TABLES` that names it by type and id.
+  - A row the kept one already has is dropped rather than doubled.
+  - The merged row goes, and `artist_merges` or `album_merges` answers its old URL with a 301.
+- A delete removes those rows instead, but an album's EPs and a label's albums stay, without a
+  parent or a label.
+- `set` records the admin in `updatedby`.
+
+**The journal:**
+- `edit_operations` has one row per call: what, its arguments, the admin, the time, why, the
+  path (`cli` or `panel`).
+- `edit_journal` has one row per row inserted, changed or deleted, with the row before and
+  after as JSON.
+
+**Undo:**
+- An undo reads an operation's journal backwards and puts every row back.
+- It refuses a row that changed since, and refuses the whole undo with it.
+- An operation is undone once, and an undo is not undone.
+- `tests/edit-test.sh` compares a dump taken before each operation with one taken after its undo.
+
+`tests/review-test.sh` and `tests/edit-test.sh` check the column lists against every
+`artistid`, `bandid`, `aid`, `albumid` and `labelid` column in the schema. A new table that
+points at an album, an artist or a label goes on its list.
 
 ## Audit columns
 

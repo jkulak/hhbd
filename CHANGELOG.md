@@ -8,6 +8,24 @@ person's decision; nothing releases on its own.
 
 ## Unreleased
 
+### Added
+- An admin edits the catalogue from the command line, with a journal of every change and a way
+  back (#115).
+  - `make edit` locally and `make ovh-edit` on production.
+  - The operations: merge two albums or two artists; delete an album, an artist or a label; set
+    one field.
+  - Every call needs `BY`, an hhbd admin, and `WHY`.
+  - A call is a dry run unless `MODE=apply`.
+- The journal and the way back.
+  - Migration 0030 adds `edit_operations` and `edit_journal`: one row per call, and one per row
+    changed, with the row before and after.
+  - `DO="undo <operation>"` puts back every row an operation deleted, moved or changed.
+  - It also adds `album_merges`, so a merged album's page answers 301 with the album kept, as a
+    merged artist's already did.
+  - The review panel's namesake merge is the same operation and is journalled the same way.
+  - `tests/edit-test.sh` runs every operation and its undo, and compares the data before and
+    after.
+
 ### Fixed
 - The catalogue no longer names the 89 image files production has lacked since its content was
   restored from a 2014 snapshot (#47): 87 album covers, one artist photo and one label logo.
