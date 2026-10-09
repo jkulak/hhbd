@@ -1,0 +1,7 @@
+<?php
+// The credit a source's terms ask for next to what we took from it (#62); nothing otherwise.
+$discogs = Model_ExternalId_Api::pageUrl($this->externalIds, 'discogs', $this->discogsKinds);
+?>
+<?php if ($this->provenance->requiresDiscogsCredit()): ?>
+  <p class="credits"><?php if (null !== $discogs): ?><a href="<?php echo $discogs ?>">Data provided by Discogs.</a><?php else: ?>Data provided by Discogs.<?php endif ?></p>
+<?php endif ?>

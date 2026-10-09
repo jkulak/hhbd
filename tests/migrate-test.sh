@@ -45,8 +45,8 @@ counts() { # exact count(*) of every table but the migrations' own, one "table<T
 }
 has_column() { sql "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = '$1' AND column_name = '$2'"; }
 app_tables() { sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' AND table_name <> 'schema_migrations'"; }
-load_fixtures() {
-    docker compose exec -T db sh -c 'MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?}" exec mariadb -uroot --default-character-set=utf8mb4 "${MYSQL_DATABASE:?}"' <database/tests/fixtures.sql
+load_fixtures() { # load_fixtures [file]: the baseline fixtures, or the given file
+    docker compose exec -T db sh -c 'MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?}" exec mariadb -uroot --default-character-set=utf8mb4 "${MYSQL_DATABASE:?}"' <"${1:-database/tests/fixtures.sql}"
 }
 migrate() { ./scripts/migrate.sh "$@" >"$T/out" 2>&1; }
 last() { tail -1 "$T/out"; }
@@ -103,6 +103,7 @@ migrate up 0001
 check "up 0001 brings the baseline schema back" "$baseline_tables tables" "$(app_tables) tables"
 load_fixtures
 migrate up
+load_fixtures database/tests/fixtures-latest.sql
 check "up applies the rest, and nothing is pending" "0 pending" "$(summary | grep -oE '[0-9]+ pending')"
 check "the data is what reset-db loaded" "$first" "$(counts)"
 

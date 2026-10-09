@@ -94,6 +94,8 @@
     <p class="<?php if (!empty($this->artist->description)): ?>js-hidden <?php endif ?>auto"><?php echo $this->artist->autoDescription ?></p>
   </div>
 
+  <?php echo $this->partial('common/_credits.phtml', array('provenance' => $this->provenance, 'externalIds' => $this->externalIds, 'discogsKinds' => array('artist'))) ?>
+
   <div class="pane" id="comments">
      <div class="header"><h2>Wasze komentarze <span class="hidden">na temat <?php echo $this->artist->name ?></span></h2></div>
      <?php echo $this->partial('comments/_form.phtml', array('comObjectId' => $this->artist->id, 'comObjectType' => Model_Comment_Container::TYPE_ARTIST)) ?>

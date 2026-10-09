@@ -331,6 +331,13 @@ again replaces the reference, licence and time. A page reads a row's provenance 
 Both tables compare bytes (`utf8mb4_bin`), like `external_ids`: what they hold are identifiers,
 not text to sort.
 
+**Credits follow provenance** (#62). Discogs's API terms ask for "Data provided by Discogs."
+with a link next to anything taken through the API; its monthly dump is CC0 and asks for
+nothing. So the importer records a field from the dump with `licence = 'CC0'`, and any other
+`discogs` row counts as taken through the API: the album and artist pages then show the line,
+linked to the row's Discogs page from `external_ids`. The about page carries the notice that
+the site is not affiliated with Discogs.
+
 ```bash
 make import-runs         # the last 20 runs on the local database, newest first; N=50 for more
 make ovh-import-runs     # the same on production
@@ -346,7 +353,9 @@ SELECT field, source, source_ref, licence, fetched, run_id FROM import_provenanc
 ## Test fixtures
 
 `database/tests/fixtures.sql` holds deterministic data with the IDs the smoke test expects,
-written for the baseline schema.
+written for the baseline schema. Tables that later migrations add get their rows from
+`database/tests/fixtures-latest.sql`, which `make reset-db` loads after every migration has
+run: an import run with provenance, and external ids.
 
 ### Records
 

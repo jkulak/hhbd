@@ -53,7 +53,7 @@ test_page() {
         local content
         content=$(curl -s --max-time 10 $CURL_OPTS "$url" 2>/dev/null)
 
-        if echo "$content" | grep -qi "$expected"; then
+        if echo "$content" | grep -qi -- "$expected"; then
             echo -e "${GREEN}✓${NC} $name"
             ((PASSED++))
             return 0
@@ -96,6 +96,34 @@ test_page_200() {
 }
 
 # Wait for service to be ready
+# test_page_absent <name> <path> <text>: the page answers 200 and does not contain the text
+test_page_absent() {
+    local name="$1"
+    local path="$2"
+    local unexpected="$3"
+    local url="${BASE_URL}${path}"
+    local status content
+    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 $CURL_OPTS "$url" 2>/dev/null || echo "000")
+    if [[ "$status" != "200" ]]; then
+        local error="$name - HTTP $status (expected 200)"
+        echo -e "${RED}✗${NC} $error"
+        ERRORS+=("$error")
+        ((FAILED++))
+        return 1
+    fi
+    content=$(curl -s --max-time 10 $CURL_OPTS "$url" 2>/dev/null)
+    if echo "$content" | grep -qi -- "$unexpected"; then
+        local error="$name - Content present: '$unexpected'"
+        echo -e "${RED}✗${NC} $error"
+        ERRORS+=("$error")
+        ((FAILED++))
+        return 1
+    fi
+    echo -e "${GREEN}✓${NC} $name"
+    ((PASSED++))
+    return 0
+}
+
 wait_for_service() {
     local max_attempts=5
     local attempt=1
@@ -347,6 +375,11 @@ run_tests() {
     test_page "An album without a label renders" "/zabson-lesna-sciezka-a47.html" "Wydawnictwo:"
     test_page "An album without a label is in its artist's list" "/zabson-p50.html" "Leśna Ścieżka"
     test_page_multi "A two-disc tracklist is numbered by disc" "/eldo-trzecia-czesc-tryptyku-a3.html" "1-01" "2-01"
+    test_page_multi "Discogs data is credited and linked (Superextra)" "/wdowa-superextra-a535.html" "Data provided by Discogs." "https://www.discogs.com/release/1234567"
+    test_page_absent "Discogs's CC0 data is not credited (Jestem Hip Hopem)" "/pezet-jestem-hip-hopem-a1.html" "Data provided by Discogs"
+    test_page_multi "An album links where it can be heard" "/wdowa-superextra-a535.html" "https://www.deezer.com/album/302127" "https://music.apple.com/album/1440857781"
+    test_page "An artist's Discogs data is credited (Mes)" "/mes-p35.html" "https://www.discogs.com/artist/271903"
+    test_page "The about page says the site is not affiliated with Discogs" "/o-nas.html" "not affiliated with, sponsored or endorsed by Discogs"
     test_page "A joint album links both its artists" "/pezet-jestem-hip-hopem-a1.html" "&amp; <a href"
     test_page "A joint album is listed on each artist's page, named after both" "/eldo-p2.html" "Pezet & Eldo - Jestem Hip Hopem"
     test_page "The album sitemap gives each album's canonical URL" "/sitemap-albums.xml" "/pezet-jestem-hip-hopem-a1.html</loc>"

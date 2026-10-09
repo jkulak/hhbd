@@ -93,8 +93,11 @@ echo "> the database alone, migrated from scratch and seeded with the test fixtu
 compose up -d --wait --wait-timeout 180 db
 migrate() { MIGRATE_TARGET=container MIGRATE_CONTAINER="$PROJECT-db-1" ./scripts/migrate.sh "$@" >/dev/null; }
 migrate up 0001
-docker exec -i "$PROJECT-db-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -uroot --default-character-set=utf8mb4 "$MYSQL_DATABASE"' <database/tests/fixtures.sql
+seed() { docker exec -i "$PROJECT-db-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -uroot --default-character-set=utf8mb4 "$MYSQL_DATABASE"' <"$1"; }
+seed database/tests/fixtures.sql
 migrate up
+# The rows for the tables the migrations add, as make reset-db loads them.
+seed database/tests/fixtures-latest.sql
 
 echo "> the whole stack"
 if compose up -d --wait --wait-timeout 180; then

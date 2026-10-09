@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # Drop the local hhbd database and build it again the way production's is: the schema from the
-# migrations, the test fixtures the smoke test runs on loaded onto the baseline, and every
-# later migration run over that data. Run before and after a piece of work, so the database
+# migrations, the test fixtures the smoke test runs on loaded onto the baseline, every later
+# migration run over that data, and then the fixtures for the tables those migrations created. Run before and after a piece of work, so the database
 # never carries what the last one left in it.
 #
 # It acts on one thing only: the running db container of this checkout's compose project, on
@@ -20,6 +20,9 @@ cd "$(git rev-parse --show-toplevel)"
 REFUSE_AS=reset-db
 
 FIXTURES=database/tests/fixtures.sql
+# Rows for tables the migrations add (external ids, provenance, ...), which the baseline-era
+# fixtures cannot hold.
+LATEST_FIXTURES=database/tests/fixtures-latest.sql
 started=$(date +%s)
 
 cid=$(local_db_container) || exit 1
@@ -27,19 +30,22 @@ project=$(docker compose config 2>/dev/null | sed -n 's/^name: //p' | head -1)
 database=$(docker exec "$cid" sh -c 'printf %s "${MYSQL_DATABASE:?}"')
 migrate() { MIGRATE_TARGET=container MIGRATE_CONTAINER=$cid ./scripts/migrate.sh "$@" | sed 's/^/  /'; }
 
-echo "> 1/4 dropping and creating $database in $project"
+echo "> 1/5 dropping and creating $database in $project"
 # The hhbd user's grants are on hhbd.*, not on the database object, so they survive the drop.
 # shellcheck disable=SC2016
 printf 'DROP DATABASE IF EXISTS `%s`; CREATE DATABASE `%s`\n' "$database" "$database" | container_sql "$cid"
 
-echo "> 2/4 the baseline schema, from the migrations"
+echo "> 2/5 the baseline schema, from the migrations"
 migrate up 0001
 
-echo "> 3/4 loading $FIXTURES"
+echo "> 3/5 loading $FIXTURES"
 container_sql "$cid" db <"$FIXTURES"
 
-echo "> 4/4 the migrations after the baseline, over that data"
+echo "> 4/5 the migrations after the baseline, over that data"
 migrate up
+
+echo "> 5/5 loading $LATEST_FIXTURES"
+container_sql "$cid" db <"$LATEST_FIXTURES"
 
 tables=$(printf 'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = "BASE TABLE" AND table_name <> "schema_migrations"\n' | container_sql "$cid" db)
 rows=0

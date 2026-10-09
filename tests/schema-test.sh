@@ -117,10 +117,10 @@ sql "INSERT INTO external_ids (entity_type, entity_id, source, kind, value) VALU
 check "values differing only in case are two ids, whatever the tables' collation" "2" "$(sql "SELECT COUNT(*) FROM external_ids WHERE source = 'wikidata'")"
 check "and a lookup finds only the one written that way" "36" "$(sql "SELECT entity_id FROM external_ids WHERE source = 'wikidata' AND kind = 'item' AND value = 'Q9346013'")"
 check "the table keeps ids in utf8mb4, compared byte for byte" "utf8mb4_bin" "$(sql "SELECT table_collation FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'external_ids'")"
-check "an id gets the time it was added" "1" "$(sql "SELECT added IS NOT NULL FROM external_ids WHERE value = '1234567'")"
+check "an id gets the time it was added" "1" "$(sql "SELECT added IS NOT NULL FROM external_ids WHERE source = 'discogs' AND kind = 'master' AND value = '1234567'")"
 
 echo "> import runs and provenance"
-check "make import-runs says when there are none" "none yet" "$(./scripts/import-runs.sh | tail -1 | sed 's/^ *//')"
+check "make import-runs lists the run the fixtures hold" "fixtures.ndjson" "$(./scripts/import-runs.sh | tail -1 | awk '{ print $6 }')"
 sql "INSERT INTO import_runs (batch, batch_sha256, mode) VALUES ('schema-test.ndjson', REPEAT('a', 64), 'apply')"
 run=$(sql "SELECT MAX(id) FROM import_runs")
 sql "INSERT INTO import_provenance (entity_type, entity_id, field, source, source_ref, licence, fetched, run_id) VALUES ('album', 535, 'title', 'discogs', '1234567', 'CC0', '2026-10-09 12:00:00', $run), ('album', 535, 'cover', 'coverartarchive', 'https://coverartarchive.org/release/x/front', NULL, '2026-10-09 12:00:00', $run)"
