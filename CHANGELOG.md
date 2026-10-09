@@ -9,6 +9,18 @@ person's decision; nothing releases on its own.
 ## Unreleased
 
 ### Changed
+- nginx and the app run in two colours, `nginx-blue`/`app-blue` and `nginx-green`/`app-green`
+  (#124). A deploy starts the new release beside the one serving, and the shared edge moves to
+  it once its home page renders, so no request waits on a release. Until now nginx and the app
+  were recreated in place, and every request that arrived meanwhile waited about seven seconds
+  while nginx waited for the new app.
+  - Each colour has a network of its own, on which only its app answers to `app`, so nginx's
+    `fastcgi_pass app:9000` is unchanged.
+  - The database and the importer run once.
+  - The backfills run in a one-off `app` under the `jobs` profile, on the live tag.
+  - `make ovh-e2e` runs both colours and drives blue.
+  - `scripts/check-images.sh` reads production's files from whichever container mounts the
+    content volume.
 - The importer's image is Debian's own PHP 7.4 with GD from packages, where the official image
   compiled GD on every build that missed the layer cache: the same PHP 7.4.33, JPEG, PNG and
   WebP, 349 MB instead of 747 MB, and nothing to compile. The builder stage compiles no GD

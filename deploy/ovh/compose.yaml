@@ -5,67 +5,125 @@
 # it to /srv/hhbd/compose.yaml; the host's ci-deploy rolls it with IMAGE_TAG set and the
 # values of hhbd.enc.env in the environment, and waits for every container to be healthy.
 #
-# Nothing is published: the shared edge reaches nginx over the `edge` network as hhbd-web,
-# and the database is reached over ssh with `docker exec`. No adminer: if one is ever needed,
-# it runs ad hoc on 127.0.0.1 and is removed after.
+# Nothing is published: the shared edge reaches the live colour's nginx over the `edge`
+# network, and the database is reached over ssh with `docker exec`. No adminer: if one is ever
+# needed, it runs ad hoc on 127.0.0.1 and is removed after.
+#
+# nginx and the app, the request's path, run in two colours (CONTRACT.md §2): a deploy starts
+# the idle one on the new tag beside the live one and moves the edge to it once it is healthy,
+# so no request waits on a release. Each colour has a network of its own on which only its app
+# answers to `app`, so nginx's `fastcgi_pass app:9000` finds its own colour's. The database and
+# the importer run once.
 #
 name: hhbd
 
+# All that both colours of nginx share; what differs, the tag, the labels and the networks, is
+# in each.
+x-nginx: &nginx
+  restart: unless-stopped
+  volumes:
+    - content:/var/www/html/content:ro
+  healthcheck:
+    # The home page, through nginx, PHP and the database. A colour that starts but cannot
+    # render a page is not healthy, and the edge never moves to it. By IPv4 with the Host header
+    # set, since nginx listens on IPv4 only and "localhost" may resolve to ::1 first.
+    test: ["CMD", "wget", "-q", "-O", "/dev/null", "--header", "Host: localhost", "http://127.0.0.1/"]
+    interval: 10s
+    timeout: 5s
+    retries: 3
+    start_period: 20s
+  deploy:
+    resources:
+      limits:
+        memory: 64M
+
+# All that every app container shares: both colours, and the one-off one below.
+x-app: &app
+  restart: unless-stopped
+  depends_on:
+    db:
+      condition: service_healthy
+  environment:
+    APPLICATION_ENV: production
+    DB_HOST: db
+    DB_NAME: hhbd
+    DB_USER: hhbd
+    DB_PASSWORD: ${DB_PASSWORD:?}
+    SHOW_ADS: "true"
+  healthcheck:
+    # PHP-FPM answers its status page over FastCGI.
+    test: ["CMD", "php-fpm-healthcheck"]
+    interval: 10s
+    timeout: 5s
+    retries: 3
+    start_period: 10s
+  deploy:
+    resources:
+      limits:
+        memory: 256M
+
 services:
-  nginx:
-    image: ghcr.io/jkulak/hhbd-nginx:${IMAGE_TAG:?}
-    restart: unless-stopped
+  nginx-blue:
+    <<: *nginx
+    # Each colour on its own tag, so deploying one leaves the other as it is.
+    image: ghcr.io/jkulak/hhbd-nginx:${IMAGE_TAG_BLUE:-${IMAGE_TAG:?}}
     depends_on:
-      app:
+      app-blue:
         condition: service_healthy
-    volumes:
-      - content:/var/www/html/content:ro
-    # What the host's nightly backup takes from this container (its CONTRACT.md §8).
     labels:
+      deploy.colour: blue
+      # Where the edge sends hhbd while blue is live.
+      deploy.upstream: hhbd-blue-web:80
+      # What the host's nightly backup takes (its CONTRACT.md §8); both colours name it, and it
+      # is taken once.
       backup.volumes: content
     networks:
-      default: {}
+      blue: {}
       edge:
-        aliases: [hhbd-web]
-    healthcheck:
-      # The home page, through nginx, PHP and the database. A release that starts but cannot
-      # render a page is not healthy, and ci-deploy takes it back to the tag before. By IPv4
-      # with the Host header set, since nginx listens on IPv4 only and "localhost" may
-      # resolve to ::1 first.
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "--header", "Host: localhost", "http://127.0.0.1/"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
-    deploy:
-      resources:
-        limits:
-          memory: 64M
+        aliases: [hhbd-blue-web]
 
-  app:
-    image: ghcr.io/jkulak/hhbd-app:${IMAGE_TAG:?}
-    restart: unless-stopped
+  app-blue:
+    <<: *app
+    image: ghcr.io/jkulak/hhbd-app:${IMAGE_TAG_BLUE:-${IMAGE_TAG:?}}
+    labels:
+      deploy.colour: blue
+    networks:
+      default: {}
+      blue:
+        aliases: [app]
+
+  nginx-green:
+    <<: *nginx
+    image: ghcr.io/jkulak/hhbd-nginx:${IMAGE_TAG_GREEN:-${IMAGE_TAG:?}}
     depends_on:
-      db:
+      app-green:
         condition: service_healthy
-    environment:
-      APPLICATION_ENV: production
-      DB_HOST: db
-      DB_NAME: hhbd
-      DB_USER: hhbd
-      DB_PASSWORD: ${DB_PASSWORD:?}
-      SHOW_ADS: "true"
-    healthcheck:
-      # PHP-FPM answers its status page over FastCGI.
-      test: ["CMD", "php-fpm-healthcheck"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    deploy:
-      resources:
-        limits:
-          memory: 256M
+    labels:
+      deploy.colour: green
+      deploy.upstream: hhbd-green-web:80
+      backup.volumes: content
+    networks:
+      green: {}
+      edge:
+        aliases: [hhbd-green-web]
+
+  app-green:
+    <<: *app
+    image: ghcr.io/jkulak/hhbd-app:${IMAGE_TAG_GREEN:-${IMAGE_TAG:?}}
+    labels:
+      deploy.colour: green
+    networks:
+      default: {}
+      green:
+        aliases: [app]
+
+  # The app's own tools, run once against production by `make ovh-covers-backfill` and the like:
+  # the live tag, under a profile, so `up` never starts it.
+  app:
+    <<: *app
+    image: ghcr.io/jkulak/hhbd-app:${IMAGE_TAG:?}
+    profiles: [jobs]
+    restart: "no"
 
   # The import job (#56), run by `make ovh-import` with a batch streamed in over ssh. It runs
   # and exits, so it carries a profile and `up` never starts it (CONTRACT.md §6); ci-deploy
@@ -133,6 +191,9 @@ volumes:
   content:
 
 networks:
+  # Each colour's own, where nginx finds its app.
+  blue: {}
+  green: {}
   edge:
     external: true
     name: edge
