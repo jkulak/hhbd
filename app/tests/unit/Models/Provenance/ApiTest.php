@@ -28,6 +28,7 @@ class Model_Provenance_FakeDb
 {
     public $runs = array();
     public $provenance = array();
+    public $users = array();
     public $statements = array();
     private $lastInsertId = 0;
 
@@ -72,6 +73,9 @@ class Model_Provenance_FakeDb
     public function fetchAll($query, array $bind = array())
     {
         $this->statements[] = array($query, $bind);
+        if (false !== strpos($query, 'FROM users')) {
+            return isset($this->users[$bind[0]]) ? array($this->users[$bind[0]]) : array();
+        }
         if (false !== strpos($query, 'FROM import_runs')) {
             return isset($this->runs[$bind[0]]) ? array($this->runs[$bind[0]]) : array();
         }
@@ -100,6 +104,50 @@ class Model_Provenance_ApiTest extends TestCase
     {
         $this->db = new Model_Provenance_FakeDb();
         $this->api = new Model_Provenance_Api($this->db);
+    }
+
+    protected function tearDown(): void
+    {
+        putenv('IMPORT_USER_ID');
+    }
+
+    public function testTheImportIsUser1100WhenNothingElseIsConfigured(): void
+    {
+        $this->db->users[1100] = array('login' => 'import');
+
+        $this->assertSame(1100, $this->api->getImportUserId());
+    }
+
+    public function testTheImportUserCanBeConfigured(): void
+    {
+        $this->db->users[2000] = array('login' => 'import');
+        putenv('IMPORT_USER_ID=2000');
+
+        $this->assertSame(2000, $this->api->getImportUserId());
+    }
+
+    public function testTheImportRefusesToRunWithoutItsUsersRow(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('users has no import row with ID 1100; migration 0008 adds it');
+        $this->api->getImportUserId();
+    }
+
+    public function testTheImportRefusesAConfiguredIdThatIsSomebodyElse(): void
+    {
+        $this->db->users[3] = array('login' => 'editor');
+        putenv('IMPORT_USER_ID=3');
+
+        $this->expectException(RuntimeException::class);
+        $this->api->getImportUserId();
+    }
+
+    public function testTheImportRefusesAConfiguredIdThatIsNotAnId(): void
+    {
+        putenv('IMPORT_USER_ID=import');
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->api->getImportUserId();
     }
 
     public function testARunOpensWithItsBatchAndMode(): void
