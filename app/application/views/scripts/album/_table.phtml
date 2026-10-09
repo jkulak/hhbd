@@ -6,7 +6,7 @@
   <tbody>
   <?php foreach ($this->albums->items as $album): ?>
     <tr>
-      <td><a href="<?php echo $album->getUrl(); ?>"><img  src="<?php echo $album->thumbnail ?>" alt="<?php echo $album->artistNames . ' - ' . $album->title ?>" /></a></td>
+      <td><a href="<?php echo $album->getUrl(); ?>"><img  src="<?php echo $album->thumbnail ?>"<?php if ($album->thumbnailWidth): ?> width="<?php echo $album->thumbnailWidth ?>" height="<?php echo $album->thumbnailHeight ?>"<?php endif ?> alt="<?php echo $album->artistNames . ' - ' . $album->title ?>" /></a></td>
       <td class="albumtitle"><?php echo $this->partial('album/_link.phtml', array('album' => $album, 'showArtist' => true)) ?><?php echo $this->partial('album/_markers.phtml', array('album' => $album)) ?></td>
       <td>
         <?php if (!empty($album->label)): ?>

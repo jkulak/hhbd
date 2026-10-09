@@ -238,6 +238,31 @@ The older columns stay: `singiel` and `epfor` (the album an EP or single precede
 page still links as "Singiel do:"). 0014 typed every album they flag as a `single` when it has
 one to three tracks and an `ep` otherwise: 12 singles and 60 EPs on production.
 
+## Album covers
+
+`album_covers` (0019, #60) describes each cover file: the album, the variant (`orig`, `600`,
+`300` or `75` px), its `path` under `content/`, width, height, SHA-256 and MIME type, its
+`source` and `sourceurl`, its `licence`, and whether it is the `main` cover. A path rather than
+a bare name, so the covers already on the volume stay where they are (`a/<name>` and
+`a/th/<name>-th.jpg`) while new variants go under `a/<variant>/`. One album, variant and hash
+appear once.
+
+The album page shows the 600 px cover, else the original, else the 300 px one; lists show the
+75 px thumbnail, else the next larger. `<img>` tags carry the file's width and height. An album
+without rows keeps the paths `albums.cover` has always given, so the pages look the same before
+the table is filled.
+
+The database cannot read files, so `app/tools/covers.php` fills the table from them:
+
+```bash
+make covers-backfill        # the local content/, against the local database
+make ovh-covers-backfill    # production, in a one-off app container with the volume read-only
+```
+
+It records each existing cover as `300`, `600` or `orig` by its size and its thumbnail as
+`75`, source `legacy`, and adds nothing on a second run. `make check-images` also checks every
+row's file is there with the recorded hash.
+
 ## Release dates
 
 `albums.year` is a whole date, or NULL when nothing is known (0018, #54).
