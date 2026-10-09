@@ -28,4 +28,41 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      # The three images under the tag the test runs, built here with the layer cache rather
+      # than by the test itself, which builds them without one when run on a laptop.
+      - name: Build the app image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile-php
+          target: production
+          platforms: linux/amd64
+          tags: ghcr.io/jkulak/hhbd-app:stacktest
+          load: true
+          cache-from: type=gha,scope=stacktest-app
+          cache-to: type=gha,mode=max,scope=stacktest-app
+      - name: Build the nginx image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile-nginx
+          platforms: linux/amd64
+          tags: ghcr.io/jkulak/hhbd-nginx:stacktest
+          load: true
+          cache-from: type=gha,scope=stacktest-nginx
+          cache-to: type=gha,mode=max,scope=stacktest-nginx
+      - name: Build the importer image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile-php
+          target: importer
+          platforms: linux/amd64
+          tags: ghcr.io/jkulak/hhbd-importer:stacktest
+          load: true
+          cache-from: type=gha,scope=stacktest-importer
+          cache-to: type=gha,mode=max,scope=stacktest-importer
       - run: ./tests/ovh-e2e.sh
+        env:
+          STACKTEST_PREBUILT: "1"
