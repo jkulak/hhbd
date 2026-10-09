@@ -63,8 +63,9 @@ ok()  { echo "ok   $1"; pass=$((pass + 1)); }
 bad() { echo "x    $1"; fail=$((fail + 1)); }
 check() { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1 (expected '$2', got '$3')"; fi; }
 via_edge() { curl -s --connect-to "hhbd.pl:80:127.0.0.1:$PORT" "$@"; }
-nginx_log() { docker logs "$PROJECT-nginx-1" 2>&1; }
-app_log() { docker logs "$PROJECT-app-1" 2>&1; }
+# Both colours run, as while a deploy overlaps them; the stand-in edge sends to blue.
+nginx_log() { docker logs "$PROJECT-nginx-blue-1" 2>&1; }
+app_log() { docker logs "$PROJECT-app-blue-1" 2>&1; }
 # Files a running container added or changed that look like logs; `docker diff` lists every
 # change against the image, so build-time files such as apt's logs do not count.
 written_logs() { docker diff "$1" | grep -E '^[AC] (/var/log/.+|.*\.log)$' || true; }
@@ -89,9 +90,9 @@ for line in sys.stdin:
 probe() {
     local name=$1 php=$2
     shift 2
-    printf '%s' "$php" | docker exec -i "$PROJECT-app-1" sh -c "cat > /var/www/html/app/public/$name.php"
+    printf '%s' "$php" | docker exec -i "$PROJECT-app-blue-1" sh -c "cat > /var/www/html/app/public/$name.php"
     via_edge "$@" "http://hhbd.pl/$name.php"
-    docker exec "$PROJECT-app-1" rm -f "/var/www/html/app/public/$name.php"
+    docker exec "$PROJECT-app-blue-1" rm -f "/var/www/html/app/public/$name.php"
 }
 
 echo "> images from this checkout, tagged $TAG, for linux/amd64 like the release"
@@ -114,7 +115,7 @@ cat >"$T/Caddyfile" <<'CADDY'
 	}
 }
 http://hhbd.pl, http://www.hhbd.pl {
-	reverse_proxy hhbd-web:80 {
+	reverse_proxy hhbd-blue-web:80 {
 		header_up X-Real-IP {client_ip}
 		header_up X-Request-Id {http.request.uuid}
 	}
@@ -177,9 +178,9 @@ if [ -n "$seen" ] && [ "$seen" != 198.51.100.10 ]; then
 else
     bad "an X-Real-IP sent by the client through the edge is replaced (got '$seen')"
 fi
-printf '%s' "$addr" | docker exec -i "$PROJECT-app-1" sh -c 'cat > /var/www/html/app/public/addr.php'
-seen=$(docker run --rm --network edge busybox:1.37.0 wget -q -O - --header 'Host: hhbd.pl' --header 'X-Real-IP: 198.51.100.9' http://hhbd-web/addr.php)
-docker exec "$PROJECT-app-1" rm -f /var/www/html/app/public/addr.php
+printf '%s' "$addr" | docker exec -i "$PROJECT-app-blue-1" sh -c 'cat > /var/www/html/app/public/addr.php'
+seen=$(docker run --rm --network edge busybox:1.37.0 wget -q -O - --header 'Host: hhbd.pl' --header 'X-Real-IP: 198.51.100.9' http://hhbd-blue-web/addr.php)
+docker exec "$PROJECT-app-blue-1" rm -f /var/www/html/app/public/addr.php
 case "$seen" in
     172.30.0.*) ok "X-Real-IP from anywhere but the edge is ignored ($seen)" ;;
     *)          bad "X-Real-IP from anywhere but the edge is ignored (got '$seen')" ;;
@@ -223,8 +224,8 @@ check "and the application logs it once, at error, with its path and the databas
     "$(app_log | jq -c 'select(.level == "error" and .path == "/albumy.html" and .status == 500 and (.error | test("2002")))' 2>/dev/null | grep -c . || true)"
 check "every line the app container wrote is one JSON object with time, level and msg" "" "$(app_log | not_contract)"
 
-check "the app container wrote no log files" "" "$(written_logs "$PROJECT-app-1")"
-check "the nginx container wrote no log files" "" "$(written_logs "$PROJECT-nginx-1")"
+check "the app container wrote no log files" "" "$(written_logs "$PROJECT-app-blue-1")"
+check "the nginx container wrote no log files" "" "$(written_logs "$PROJECT-nginx-blue-1")"
 
 echo ""
 echo "$pass passed, $fail failed"

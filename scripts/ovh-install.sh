@@ -46,6 +46,19 @@ remote "sudo chmod 600 /srv/$SERVICE/$SERVICE.enc.env"
 # Each one there now is kept beside it as .prev first, which the edge's *.caddyfile never reads.
 snippets=()
 for f in deploy/ovh/*.caddyfile; do snippets+=("$(basename "$f")"); done
+
+# A service in two colours is reached through its live upstream (CONTRACT.md §3), a file the
+# edge must have before it reads a snippet that imports it. From the first deploy in colours on,
+# ci-deploy keeps it. Until then it points where the edge sends the service now, which the
+# snippet about to be replaced says, or at blue for a service the edge has never served.
+if grep -qs "import \.\./live/$SERVICE\.caddyfile" deploy/ovh/*.caddyfile; then
+  blue=$(sed -nE 's/^[[:space:]]*deploy\.upstream:[[:space:]]*"?([a-z0-9-]+-blue-[a-z0-9-]*:[0-9]+)"?[[:space:]]*$/\1/p' deploy/ovh/compose.yaml | head -1)
+  [ -n "$blue" ] || { echo "x a snippet imports ../live/$SERVICE.caddyfile, but compose.yaml names no blue deploy.upstream" >&2; exit 1; }
+  remote "live=/srv/edge/live/$SERVICE.caddyfile; [ ! -e \$live ] || exit 0
+    now=\$(cd /srv/edge/sites 2>/dev/null && sed -nE 's/^[[:space:]]*import proxy ([^[:space:]]+).*/\\1/p' ${snippets[*]} 2>/dev/null | head -1)
+    sudo mkdir -p /srv/edge/live && printf 'import proxy %s\\n' \"\${now:-$blue}\" | sudo tee \$live >/dev/null"
+fi
+
 remote "cd /srv/edge/sites && for s in ${snippets[*]}; do if [ -e \"\$s\" ]; then sudo cp -p \"\$s\" \"\$s.prev\"; else sudo rm -f \"\$s.prev\"; fi; done"
 push deploy/ovh/*.caddyfile "$USER_@$HOST:/srv/edge/sites/"
 [ ${#timers[@]} -eq 0 ] || push deploy/ovh/systemd/ "$USER_@$HOST:/etc/systemd/system/"
