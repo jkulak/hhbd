@@ -8,6 +8,10 @@ decision; nothing tags on its own.
 ## Unreleased
 
 ### Changed
+- Release dates are shown to the precision they are known, read from a precision column once
+  it exists and from the zero parts of the date until then (#54, first step). Nothing on the
+  pages changes yet: this release reads both shapes, so the migration that stores dates with a
+  precision can follow it.
 - `deploy/compose.ovh.yaml` labels what the host's nightly backup takes: the database on `db`,
   dumped with the root password the container already has, and the `content` volume on `nginx`.
 - The release job runs in the `production` environment, which keeps the deploy key and admits
