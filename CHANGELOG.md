@@ -7,6 +7,12 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
+## 2026.10.5 — 2026-10-09
+
+The code for migration 0023, which production's database has run since 2026-10-09: an admin
+settles on hhbd.pl what an import left for a person, and the importer opens those items. With
+this release a batch may carry a release's `review`, and a larger cover replaces a stand-in.
+
 ### Added
 - An admin settles on hhbd.pl what an import left for a person (#103).
   - Migration 0023 adds `review_items` and `artist_merges`.
