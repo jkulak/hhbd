@@ -89,11 +89,11 @@ jobs:
           docker compose exec -T app php /var/www/html/app/tools/generate-test-images.php
           echo "🖼️ Test images generated!"
 
-      - name: Describe the covers in album_covers
+      - name: Describe the covers and photos, and check the backfills
         run: |
-          # As production's existing covers get described (#60), so the pages read the table.
-          make covers-backfill
-          make photos-backfill
+          # As production's existing covers and photos get described (#60, #61), so the pages
+          # read the tables; the test checks the dry run and a second run on the way.
+          ./tests/backfill-test.sh
 
       - name: Wait for PHP-FPM to be healthy
         run: |
