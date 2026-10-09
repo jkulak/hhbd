@@ -805,3 +805,11 @@ UPDATE `artists` SET `urlname` = 'dj-technik' WHERE `id` = 6;
 UPDATE `albums` SET `urlname` = 'superextra' WHERE `id` = 535;
 UPDATE `labels` SET `urlname` = 'Alkopoligamia' WHERE `id` = 58;
 UPDATE `songs` SET `urlname` = 'pogoda' WHERE `id` = 7329;
+
+-- Who added a row and when, which a logged-in admin sees on its page: a person from the old
+-- users table, the import (1100, from migration 0008) and nobody known (0).
+INSERT INTO `users` (`ID`, `login`, `name`, `urlname`, `added`, `status`) VALUES
+(7, 'redakcja', 'Redakcja Testowa', 'redakcja', '2005-01-01 00:00:00', 0);
+UPDATE `albums` SET `added` = '2009-05-12 14:03:00', `addedby` = 7 WHERE `id` = 535;
+UPDATE `songs` SET `added` = '2009-05-12 14:05:00', `addedby` = 7 WHERE `id` = 7329;
+UPDATE `labels` SET `added` = '2008-11-02 09:30:00', `addedby` = 0 WHERE `id` = 58;

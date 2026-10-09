@@ -22,6 +22,9 @@
         <?php if (!empty($this->label->addres)): ?>
           <li>Adres pocztowy: <?php echo $this->label->addres ?></li>
         <?php endif ?>
+        <?php if ('' !== ($added = $this->AddedFor('label', $this->label->id))): ?>
+          <li>Dodano: <?php echo $added ?></li>
+        <?php endif ?>
       </ul>
     </div> <!-- brief -->
     </section>

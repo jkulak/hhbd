@@ -9,6 +9,9 @@ person's decision; nothing releases on its own.
 ## Unreleased
 
 ### Added
+- A logged-in admin sees who added an album, artist, song or label and when, as one more line
+  of the page's details: "Dodano: 12 maja 2009, 14:03 (Kuba)", the import and an unknown author
+  by those names. Nobody else sees it.
 - The addresses hhbd had before the `.html` ones lead to today's pages (#26), as old profiles,
   news and other sites still link them: `/n/peja`, `/a/…`, `/l/…`, `/s/…` and the later
   `/wykonawca/…`, `/album/…`, `/wytwornia/…` by the slug kept in `urlname`, `/news/223` by its

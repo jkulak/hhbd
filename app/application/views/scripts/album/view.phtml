@@ -41,7 +41,9 @@
 
     <ul id="details">
       <?php echo $this->partial('album/_listen.phtml', array('externalIds' => $this->externalIds)) ?>
-      <!-- <li>Dodany: <?php echo $this->album->added ?></li> -->
+      <?php if ('' !== ($added = $this->AddedFor('album', $this->album->id))): ?>
+        <li><span>Dodano:</span> <?php echo $added ?></li>
+      <?php endif ?>
       <?php if (!empty($this->album->epFor)): ?>
         <li><span>Singiel do:</span> <?php echo $this->partial('album/_link.phtml', array('album' => $this->album->epFor)) ?> </li>
       <?php endif ?>
