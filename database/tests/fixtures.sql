@@ -666,6 +666,24 @@ INSERT INTO `collection` (`ID`, `albumid`, `userid`, `added`) VALUES
 INSERT INTO `ratings` (`ID`, `albumid`, `userid`, `rate`, `added`) VALUES
 (1001, 535, 1, 5, '2010-05-02 10:00:00');
 
+-- ============================================
+-- 20. BANDS whose type disagrees with their members, which migration 0012 corrects (#65)
+-- 60 has members but no type, 61 has a member but is typed as a rapper: both become 'b'.
+-- 62 is 'b' without members and stays so, for review. 63's only member does not exist, so to
+-- the pages it has none, and it keeps its type.
+-- ============================================
+INSERT INTO `artists` (`id`, `name`, `realname`, `type`, `trivia`, `website`, `status`, `viewed`, `profile`) VALUES
+(60, 'Skład Testowy', NULL, 'x', '', '', 999, 90, 'Skład z członkami, zapisany bez typu.'),
+(61, 'Duet Testowy', NULL, 'm', '', '', 999, 80, 'Duet zapisany jako raper.'),
+(62, 'Zespół Bez Składu', NULL, 'b', '', '', 999, 70, 'Zespół bez wpisanych członków.'),
+(63, 'Wykonawca Testowy', NULL, 'x', '', '', 999, 60, 'Jedyny członek nie istnieje.');
+
+INSERT INTO `band_lookup` (`artistid`, `bandid`, `status`) VALUES
+(2, 60, 999),
+(35, 60, 999),
+(1, 61, 999),
+(99999, 63, 999);
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================
