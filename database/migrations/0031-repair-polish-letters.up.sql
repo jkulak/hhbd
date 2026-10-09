@@ -126,3 +126,6 @@ UPDATE `artists` SET `profile` = REPLACE(`profile`, CONVERT(X'c5b9c3b36465c582' 
 
 -- songs.title: by hand
 UPDATE `songs` SET `title` = REPLACE(`title`, CONVERT(X'2623383231363b' USING utf8mb4) COLLATE utf8mb4_bin, CONVERT(X'e28098' USING utf8mb4) COLLATE utf8mb4_bin) WHERE (`id` = 159);
+
+-- songs.title: by hand
+UPDATE `songs` SET `title` = REPLACE(`title`, CONVERT(X'6f646d75c3afc2bfc2bdc3afc2bfc2bd' USING utf8mb4) COLLATE utf8mb4_bin, CONVERT(X'6f646d75c582c499' USING utf8mb4) COLLATE utf8mb4_bin) WHERE (`id` = 6820);
