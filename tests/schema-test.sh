@@ -9,6 +9,7 @@
 #   - no column defaults to a zero date
 #   - a page view bumps `viewed` and leaves `added` and `updated` alone, so the catalog's
 #     `updated` keeps meaning "last edited"
+#   - an external id belongs to one row, and is compared byte for byte (#51)
 #   - going down to the baseline brings the old schema back, and up removes it again
 #
 # It changes rows to prove these and ends with make reset-db, so the database ends as a reset
@@ -50,7 +51,7 @@ make -s reset-db >"$T/out" 2>&1 || { bad "make reset-db succeeds"; cat "$T/out";
 ok "make reset-db succeeds ($(tail -1 "$T/out" | sed 's/^ok //'))"
 
 echo "> the schema"
-check "every table is InnoDB, the migrations' own too" "InnoDB 46" "$(engines)"
+check "every table is InnoDB, the migrations' own too" "InnoDB 47" "$(engines)"
 check "no added (or ule_action_timestamp) changes on update" "NULL" "$(col "$TIMES_WITH_ON_UPDATE")"
 check "the catalog's added defaults to the current time" "6" "$(count "table_name IN ($CATALOG) AND column_name = 'added' AND column_default = 'current_timestamp()'")"
 check "no column defaults to a zero date" "NULL" "$(col "column_default LIKE '%0000-00-00%'")"
@@ -89,16 +90,30 @@ view song songs 7329
 view label labels 58
 view news news 1877
 
+echo "> external ids"
+sql "INSERT INTO external_ids (entity_type, entity_id, source, kind, value) VALUES ('album', 535, 'discogs', 'master', '1234567')"
+if sql "INSERT INTO external_ids (entity_type, entity_id, source, kind, value) VALUES ('album', 536, 'discogs', 'master', '1234567')" >"$T/out" 2>&1; then
+    bad "an id already on one row cannot go on another"
+else
+    ok "an id already on one row cannot go on another"
+fi
+sql "INSERT INTO external_ids (entity_type, entity_id, source, kind, value) VALUES ('artist', 35, 'wikidata', 'item', 'q9346013'), ('artist', 36, 'wikidata', 'item', 'Q9346013')"
+check "values differing only in case are two ids, whatever the tables' collation" "2" "$(sql "SELECT COUNT(*) FROM external_ids WHERE source = 'wikidata'")"
+check "and a lookup finds only the one written that way" "36" "$(sql "SELECT entity_id FROM external_ids WHERE source = 'wikidata' AND kind = 'item' AND value = 'Q9346013'")"
+check "the table keeps ids in utf8mb4, compared byte for byte" "utf8mb4_bin" "$(sql "SELECT table_collation FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'external_ids'")"
+check "an id gets the time it was added" "1" "$(sql "SELECT added IS NOT NULL FROM external_ids WHERE value = '1234567'")"
+
 echo "> down to the baseline brings the old schema back, and up removes it"
 rows_before=$(sql "SELECT COUNT(*) FROM songs")
 ./scripts/migrate.sh down "$after_baseline" >"$T/out" 2>&1 || { bad "down $after_baseline succeeds"; cat "$T/out"; }
 check "after down: 44 tables on MyISAM again, hhb_comments and the migrations' own on InnoDB" "InnoDB 2, MyISAM 44" "$(engines)"
 check "after down: no row lost in the conversions" "$rows_before" "$(sql "SELECT COUNT(*) FROM songs")"
+check "after down: no external_ids table" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'external_ids'")"
 check "after down: added changes on update again, in 11 tables plus the lyrics log" "12" "$(count "$TIMES_WITH_ON_UPDATE")"
 check "after down: the catalog's added has no default" "0" "$(count "table_name IN ($CATALOG) AND column_name = 'added' AND column_default = 'current_timestamp()'")"
 check "after down: album_prices.added defaults to the zero date again" "album_prices.added" "$(col "column_default LIKE '%0000-00-00%'")"
 ./scripts/migrate.sh up >"$T/out" 2>&1 || { bad "up succeeds"; cat "$T/out"; }
-check "after up again: every table InnoDB" "InnoDB 46" "$(engines)"
+check "after up again: every table InnoDB" "InnoDB 47" "$(engines)"
 check "after up again: no row lost" "$rows_before" "$(sql "SELECT COUNT(*) FROM songs")"
 check "after up again: no added changes on update" "0" "$(count "$TIMES_WITH_ON_UPDATE")"
 check "after up again: no zero-date default" "NULL" "$(col "column_default LIKE '%0000-00-00%'")"
