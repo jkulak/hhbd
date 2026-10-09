@@ -15,6 +15,21 @@ class Model_Album_Api extends Jkl_Model_Api
     private static $_instance;
 
     /**
+     * What a list needs of an album: its own row, under the aliases the container reads. The
+     * credits come from album_artist_lookup separately (_withCredits), so a list reads albums
+     * alone, with no join to artists to group back into one row per album: grouping a join
+     * takes a temporary table, and SELECT * across albums, artists and labels carried their
+     * TEXT columns into it, which sent it to disk (#69).
+     */
+    private const LIST_COLUMNS = 't3.*, t3.id AS alb_id, t4.id AS lab_id, t3.added AS alb_added, t3.addedby AS alb_addedby, t3.viewed AS alb_viewed';
+
+    /** The same for the lists that never named an album's label, so no label is looked up for each */
+    private const BARE_COLUMNS = 't3.*, t3.id AS alb_id';
+
+    /** An album a list shows has an artist, as the join to artists made sure before */
+    private const HAS_ARTIST = 'EXISTS (SELECT 1 FROM album_artist_lookup c JOIN artists a ON a.id = c.artistid WHERE c.albumid = t3.id)';
+
+    /**
      * Singleton instance
      *
      * @return Model_Album_Api
@@ -38,6 +53,22 @@ class Model_Album_Api extends Jkl_Model_Api
             $albums->add(new Model_Album_Container($params));
         }
         return $albums;
+    }
+
+    /**
+     * The list query for exactly these albums, in this order (#69).
+     *
+     * @param array $ids
+     */
+    private function _byIds(array $ids)
+    {
+        $ids = array_map('intval', $ids);
+        $query = 'SELECT ' . self::LIST_COLUMNS . ' FROM albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid';
+        if (empty($ids)) {
+            return $query . ' WHERE 0';
+        }
+        $list = implode(', ', $ids);
+        return $query . ' WHERE t3.id IN (' . $list . ') ORDER BY FIELD(t3.id, ' . $list . ')';
     }
 
     /**
@@ -203,10 +234,8 @@ class Model_Album_Api extends Jkl_Model_Api
         $limit = intval($limit);
         $page = intval($page - 1);
         $page = ($page < 1) ? 0 : $page;
-        $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id as lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
-          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
-          'WHERE (t3.title LIKE "%' . $like . '%" AND t1.id=t2.artistid AND t2.albumid=t3.id) ' .
-          'GROUP BY t3.id ' .
+        $query = 'SELECT ' . self::LIST_COLUMNS . ' FROM albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          'WHERE t3.title LIKE "%' . $like . '%" AND ' . self::HAS_ARTIST . ' ' .
           'ORDER BY t3.viewed DESC' .
           (($limit != null) ? ' LIMIT ' . $limit : '') .
           ' OFFSET ' . ($page * $limit);
@@ -232,10 +261,8 @@ class Model_Album_Api extends Jkl_Model_Api
     public function getPopular($count = 20)
     {
         $count = intval($count);
-        $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id as lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
-          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
-          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id) ' .
-          'GROUP BY t3.id ' .
+        $query = 'SELECT ' . self::LIST_COLUMNS . ' FROM albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          'WHERE ' . self::HAS_ARTIST . ' ' .
           'ORDER BY t3.viewed DESC ' .
           'LIMIT ' . $count;
         return $this->getList($query);
@@ -244,10 +271,9 @@ class Model_Album_Api extends Jkl_Model_Api
     public function getBest($count = 10)
     {
         $count = intval($count);
-        $query = 'SELECT *, t1.id AS alb_id, t2.rating AS rating, t3.artistid AS art_id, t4.id AS lab_id ' .
-          'FROM albums t1 LEFT JOIN labels t4 ON t4.id=t1.labelid, ratings_avg t2, album_artist_lookup t3 ' .
-          'WHERE (t1.id=t2.albumid AND t3.albumid=t1.id) ' .
-          'GROUP BY t1.id ' .
+        $query = 'SELECT ' . self::LIST_COLUMNS . ', t2.rating AS rating ' .
+          'FROM albums AS t3 JOIN ratings_avg AS t2 ON t2.albumid = t3.id LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          'WHERE ' . self::HAS_ARTIST . ' ' .
           'ORDER BY t2.rating DESC ' .
           'LIMIT ' . $count;
         return $this->getList($query);
@@ -260,10 +286,8 @@ class Model_Album_Api extends Jkl_Model_Api
     {
         $page = intval($page - 1);
         $page = ($page < 1) ? 0 : $page;
-        $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id as lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
-          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
-          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t3.announced=0) ' .
-          'GROUP BY t3.id ' .
+        $query = 'SELECT ' . self::LIST_COLUMNS . ' FROM albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          'WHERE t3.announced=0 AND ' . self::HAS_ARTIST . ' ' .
           'ORDER BY t3.year DESC ' .
           'LIMIT ' . $count . ' ' .
           'OFFSET ' . ($page * $count);
@@ -274,10 +298,8 @@ class Model_Album_Api extends Jkl_Model_Api
     {
         $page = intval($page - 1);
         $page = ($page < 1) ? 0 : $page;
-        $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id AS lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
-          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
-          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t3.announced=1 AND t3.year>=CURDATE()) ' .
-          'GROUP BY t3.id ' .
+        $query = 'SELECT ' . self::LIST_COLUMNS . ' FROM albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          'WHERE t3.announced=1 AND t3.year>=CURDATE() AND ' . self::HAS_ARTIST . ' ' .
           'ORDER BY t3.year ASC ' .
           'LIMIT ' . $count . ' ' .
           'OFFSET ' . ($page * $count);
@@ -302,14 +324,18 @@ class Model_Album_Api extends Jkl_Model_Api
                 $excludeCondition .= ' AND t3.id<>' . intval($value) . ' ';
             }
         }
-        $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id as lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
-          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
-          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t1.id="' . $id . '"' .
-          $excludeCondition .
-          ') ' .
-          'ORDER BY t3.' . $order . ' DESC ' .
-          (($count) ? 'LIMIT ' . $count : '');
-        return self::getList($query);
+        // The ids first: sorting the join of credits and albums takes a temporary table, which
+        // stays in memory with ids alone, then the rows by id (#69). One credit per album and
+        // artist (0011), so the join gives each album once.
+        $ids = array_column($this->_db->fetchAll(
+            'SELECT t3.id FROM album_artist_lookup AS t2 JOIN albums AS t3 ON t3.id=t2.albumid ' .
+            'WHERE (t2.artistid=' . $id .
+            $excludeCondition .
+            ') ' .
+            'ORDER BY t3.' . $order . ' DESC ' .
+            (($count) ? 'LIMIT ' . $count : '')
+        ), 'id');
+        return self::getList($this->_byIds($ids));
     }
 
     public function getArtistsAlbumsCount($id)
@@ -340,12 +366,10 @@ class Model_Album_Api extends Jkl_Model_Api
                 $excludeCondition .= ' AND t3.id<>' . intval($value) . ' ';
             }
         }
-        $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id as lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
-          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
-          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t4.id="' . $id . '"' .
+        $query = 'SELECT ' . self::LIST_COLUMNS . ' FROM albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          'WHERE (t3.labelid=' . $id . ' AND t4.id IS NOT NULL AND ' . self::HAS_ARTIST .
           $excludeCondition .
           ') ' .
-          'GROUP BY t3.id ' .
           'ORDER BY t3.viewed DESC ' .
           'LIMIT ' . $count;
         return $this->getList($query);
@@ -378,17 +402,10 @@ class Model_Album_Api extends Jkl_Model_Api
             return false;
         }
 
-        $condition = array();
+        $albumIds = array_map('intval', array_column($albumIds, 'alb_id'));
 
-        foreach ($albumIds as $key => $value) {
-            $condition[] = 't3.albumid=' . $value['alb_id'];
-        }
-
-        $query = 'SELECT *, t1.id AS alb_id, t2.id AS art_id
-              FROM albums t1, artists t2, album_artist_lookup t3
-              WHERE (t2.id=t3.artistid AND t1.id=t3.albumid AND (
-              ' . implode(' OR ', $condition) . ')
-              ) GROUP BY t1.id' .
+        $query = 'SELECT ' . self::BARE_COLUMNS . ' FROM albums AS t3
+              WHERE t3.id IN (' . implode(', ', $albumIds) . ') AND ' . self::HAS_ARTIST .
                   (($limit != null) ? ' LIMIT ' . $limit : '');
 
         return $this->getList($query);
@@ -406,17 +423,10 @@ class Model_Album_Api extends Jkl_Model_Api
             return false;
         }
 
-        $condition = array();
+        $albumIds = array_map('intval', array_column($albumIds, 'alb_id'));
 
-        foreach ($albumIds as $key => $value) {
-            $condition[] = 't3.albumid=' . $value['alb_id'];
-        }
-
-        $query = 'SELECT *, t1.id AS alb_id, t2.id AS art_id
-              FROM albums t1, artists t2, album_artist_lookup t3
-              WHERE (t2.id=t3.artistid AND t1.id=t3.albumid AND (
-              ' . implode(' OR ', $condition) . ')
-              ) GROUP BY t1.id' .
+        $query = 'SELECT ' . self::BARE_COLUMNS . ' FROM albums AS t3
+              WHERE t3.id IN (' . implode(', ', $albumIds) . ') AND ' . self::HAS_ARTIST .
                   (($limit != null) ? ' LIMIT ' . $limit : '');
 
         return $this->getList($query);
@@ -434,17 +444,10 @@ class Model_Album_Api extends Jkl_Model_Api
             return false;
         }
 
-        $condition = array();
+        $albumIds = array_map('intval', array_column($albumIds, 'alb_id'));
 
-        foreach ($albumIds as $key => $value) {
-            $condition[] = 't3.albumid=' . $value['alb_id'];
-        }
-
-        $query = 'SELECT *, t1.id AS alb_id, t2.id AS art_id
-              FROM albums t1, artists t2, album_artist_lookup t3
-              WHERE (t2.id=t3.artistid AND t1.id=t3.albumid AND (
-              ' . implode(' OR ', $condition) . ')
-              ) GROUP BY t1.id' .
+        $query = 'SELECT ' . self::BARE_COLUMNS . ' FROM albums AS t3
+              WHERE t3.id IN (' . implode(', ', $albumIds) . ') AND ' . self::HAS_ARTIST .
                   (($limit != null) ? ' LIMIT ' . $limit : '');
 
         return $this->getList($query);
@@ -455,10 +458,9 @@ class Model_Album_Api extends Jkl_Model_Api
     {
         $id = intval($id);
         $limit = intval($limit);
-        $query = "SELECT *, t1.id as alb_id, t3.id as art_id  
-              FROM albums t1, album_lookup t2, artists t3, album_artist_lookup t4 
-              WHERE (t1.id=t2.albumid AND t2.songid='$id' AND t4.albumid=t1.id AND t4.artistid=t3.id)
-              GROUP BY t1.id" .
+        // A song on an album twice is one album; IN gives each once, without grouping.
+        $query = 'SELECT ' . self::BARE_COLUMNS . ' FROM albums AS t3
+              WHERE t3.id IN (SELECT albumid FROM album_lookup WHERE songid=' . $id . ') AND ' . self::HAS_ARTIST .
                   (($limit != null) ? ' LIMIT ' . $limit : '');
         return $this->getList($query);
     }
@@ -467,11 +469,9 @@ class Model_Album_Api extends Jkl_Model_Api
     {
         $id = intval($id);
 
-        $query = "SELECT *, t1.id AS alb_id, t3.id AS art_id
-    FROM albums t1, `album_artist_lookup` t2, `artists` t3
-    WHERE (t3.`id`=t2.`artistid` AND t1.`id`=t2.`albumid` AND t1.`labelid`=$id)
-    GROUP BY t1.`id`
-    ORDER BY t1.`year` DESC" .
+        $query = 'SELECT ' . self::BARE_COLUMNS . ' FROM albums AS t3
+    WHERE t3.labelid=' . $id . ' AND ' . self::HAS_ARTIST . '
+    ORDER BY t3.year DESC' .
         (($limit != null) ? ' LIMIT ' . $limit : '');
         return $this->getList($query);
     }
@@ -505,10 +505,8 @@ class Model_Album_Api extends Jkl_Model_Api
     public function getAlbumsSitemap($limit = 10000)
     {
         $limit = intval($limit);
-        $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id as lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
-          'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
-          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id) ' .
-          'GROUP BY t3.id ' .
+        $query = 'SELECT ' . self::LIST_COLUMNS . ' FROM albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          'WHERE ' . self::HAS_ARTIST . ' ' .
           'ORDER BY t3.added DESC ' .
           'LIMIT ' . $limit;
         return $this->getList($query);
