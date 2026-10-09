@@ -21,6 +21,12 @@ decision; nothing tags on its own.
   the volume; `make check-images` also verifies each row's file and hash.
 
 ### Changed
+- The catalogue is stored in `utf8mb4` with the Polish collation, and the application connects
+  in `utf8mb4` (#71). Names with emoji or other four-byte characters store, and an import
+  matching by name tells "Żabson" from "Zabson" while ignoring case; lists sort in Polish order.
+  Migration 0021 converts the 44 tables still in `utf8mb3`, in a second on a copy of
+  production, where all 2 256 artist names stayed distinct and the down restored every table's
+  definition and checksum.
 - Release dates are stored whole with their precision instead of zero parts, and an album says
   whether it is announced (#54). Migration 0018 rewrote 154 dates, gave the two 0000-00-00 no
   date, marked 8 guessed announcements never filled in, removed the four 2017 placeholders
