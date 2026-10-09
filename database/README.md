@@ -214,6 +214,16 @@ Rules the link tables follow, and the migration that set each one:
   a role to a role-less credit only where all the artist's other credits share one (223 on
   production); the other 356 stay at 0, because any role for them would be a guess.
 
+## Album credits
+
+An album can be credited to several artists (0015, #58). Each `album_artist_lookup` row has a
+`role` (`main` or `featured`), a `position` in the credit line and, when the release names the
+artist differently, `credited_as`. The pages list an album once, name it after its main
+artists in order ("Pezet & Eldo"), link each of them in the album's heading, and list it on
+every credited artist's page. The album's URL and its "other albums" box follow the first main
+artist. Credits without positions, as before 0015, are ordered by artist id, the order the
+pages always took the first artist in.
+
 ## Release types
 
 `albums.release_type` says what a release is (0014, #53): `album`, `ep`, `mixtape`,
