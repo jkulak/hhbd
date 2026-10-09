@@ -75,6 +75,13 @@ Rules the runner (`scripts/migrate.sh`) enforces:
   `make migrate-new`.
 - Files run as root inside the db container with `--default-character-set=utf8mb4`; a migration
   that writes Polish text needs no `SET NAMES` of its own.
+- **A migration that deletes or changes rows archives them first**, in `migration_archive`
+  (0009): one row per row, with the migration's version, the table, what the up did to it
+  (`deleted`, `inserted`, `changed`) and the row as JSON. The down puts them back from there
+  and deletes its own archive rows, so it restores exactly what the up removed. The rows stay in
+  the database, not in the migration file: the same file runs on the fixtures and on
+  production, whose rows differ, and the repository is public while some rows (ratings,
+  collections) record what people did. 0010 is a worked example.
 
 And one rule `make test-schema` holds: **every table is InnoDB**, since 0005 (#45). A new table
 says `ENGINE=InnoDB`; MyISAM has no crash recovery, locks a whole table per write, and gives the
@@ -169,6 +176,14 @@ And what it changed that a person had added: the same with `updatedby = 1100 AND
 
 One thing is known lost and cannot be recovered from the database: 58 of the 120 `added`
 values in `artists_photos`, overwritten in one mass update while `added` still had `ON UPDATE`.
+
+## Catalog links
+
+Rules the link tables follow, and the migration that set each one:
+
+- **An artist's cities are in `artist_city_lookup`**, one row per artist and city, which the
+  artist page reads (0010, #64). The archived backoffice wrote a second table,
+  `city_artist_lookup`, that no page read; 0010 moved its pairs over and dropped it.
 
 ## External ids
 
