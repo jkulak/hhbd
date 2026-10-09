@@ -8,6 +8,13 @@ person's decision; nothing releases on its own.
 
 ## Unreleased
 
+## 2026.10.7 — 2026-10-09
+
+The command line for an admin's edits, with its journal and undo (#115), whose tables migration
+0030 put on production on 2026-10-09; the first edit through it removes the second copy of
+"Trzy" (#114). Migration 0029, already on production, no longer names the image files lost with
+the 2014 snapshot (#47).
+
 ### Added
 - An admin edits the catalogue from the command line, with a journal of every change and a way
   back (#115).
