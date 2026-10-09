@@ -10,6 +10,8 @@
 #   - a page view bumps `viewed` and leaves `added` and `updated` alone, so the catalog's
 #     `updated` keeps meaning "last edited"
 #   - an external id belongs to one row, and is compared byte for byte (#51)
+#   - provenance belongs to a run that exists, a run's report is JSON, and make import-runs
+#     lists the runs (#52)
 #   - going down to the baseline brings the old schema back, and up removes it again
 #
 # It changes rows to prove these and ends with make reset-db, so the database ends as a reset
@@ -37,6 +39,7 @@ col() { # col <where on information_schema.columns>: matching columns, as table.
     sql "SELECT GROUP_CONCAT(CONCAT(table_name, '.', column_name) ORDER BY table_name SEPARATOR ' ') FROM information_schema.columns WHERE table_schema = DATABASE() AND $1"
 }
 count() { sql "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND $1"; }
+tables() { sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'"; }
 engines() { # how many tables on each engine, as "engine count" pairs
     sql "SELECT GROUP_CONCAT(e ORDER BY e SEPARATOR ', ') FROM (SELECT CONCAT(engine, ' ', COUNT(*)) e FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' GROUP BY engine) x"
 }
@@ -51,7 +54,7 @@ make -s reset-db >"$T/out" 2>&1 || { bad "make reset-db succeeds"; cat "$T/out";
 ok "make reset-db succeeds ($(tail -1 "$T/out" | sed 's/^ok //'))"
 
 echo "> the schema"
-check "every table is InnoDB, the migrations' own too" "InnoDB 47" "$(engines)"
+check "every table is InnoDB, the migrations' own too" "InnoDB $(tables)" "$(engines)"
 check "no added (or ule_action_timestamp) changes on update" "NULL" "$(col "$TIMES_WITH_ON_UPDATE")"
 check "the catalog's added defaults to the current time" "6" "$(count "table_name IN ($CATALOG) AND column_name = 'added' AND column_default = 'current_timestamp()'")"
 check "no column defaults to a zero date" "NULL" "$(col "column_default LIKE '%0000-00-00%'")"
@@ -103,17 +106,38 @@ check "and a lookup finds only the one written that way" "36" "$(sql "SELECT ent
 check "the table keeps ids in utf8mb4, compared byte for byte" "utf8mb4_bin" "$(sql "SELECT table_collation FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'external_ids'")"
 check "an id gets the time it was added" "1" "$(sql "SELECT added IS NOT NULL FROM external_ids WHERE value = '1234567'")"
 
+echo "> import runs and provenance"
+check "make import-runs says when there are none" "none yet" "$(./scripts/import-runs.sh | tail -1 | sed 's/^ *//')"
+sql "INSERT INTO import_runs (batch, batch_sha256, mode) VALUES ('schema-test.ndjson', REPEAT('a', 64), 'apply')"
+run=$(sql "SELECT MAX(id) FROM import_runs")
+sql "INSERT INTO import_provenance (entity_type, entity_id, field, source, source_ref, licence, fetched, run_id) VALUES ('album', 535, 'title', 'discogs', '1234567', 'CC0', '2026-10-09 12:00:00', $run), ('album', 535, 'cover', 'coverartarchive', 'https://coverartarchive.org/release/x/front', NULL, '2026-10-09 12:00:00', $run)"
+if sql "INSERT INTO import_provenance (entity_type, entity_id, field, source, source_ref, fetched, run_id) VALUES ('album', 535, 'year', 'discogs', '1', '2026-10-09 12:00:00', $((run + 1000)))" >"$T/out" 2>&1; then
+    bad "provenance cannot point at a run that does not exist"
+else
+    ok "provenance cannot point at a run that does not exist"
+fi
+if sql "UPDATE import_runs SET report = '{not json' WHERE id = $run" >"$T/out" 2>&1; then
+    bad "a run's report has to be JSON"
+else
+    ok "a run's report has to be JSON"
+fi
+sql "UPDATE import_runs SET finished = started + INTERVAL 83 SECOND, created_count = 2, unchanged_count = 5, report = '{\"totals\": {\"created\": 2}}' WHERE id = $run"
+check "make import-runs lists the run with its time, totals and provenance rows" \
+    "$run 00:01:23 apply schema-test.ndjson aaaaaaaaaaaa 2 0 5 0 0 2" \
+    "$(./scripts/import-runs.sh 1 | tail -1 | awk '{ $2 = ""; $3 = ""; print }' | tr -s ' ' | sed 's/^ //')"
+check "both tables compare bytes, like external_ids" "import_provenance utf8mb4_bin import_runs utf8mb4_bin" "$(sql "SELECT GROUP_CONCAT(CONCAT(table_name, ' ', table_collation) ORDER BY table_name SEPARATOR ' ') FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('import_runs', 'import_provenance')")"
+
 echo "> down to the baseline brings the old schema back, and up removes it"
 rows_before=$(sql "SELECT COUNT(*) FROM songs")
 ./scripts/migrate.sh down "$after_baseline" >"$T/out" 2>&1 || { bad "down $after_baseline succeeds"; cat "$T/out"; }
 check "after down: 44 tables on MyISAM again, hhb_comments and the migrations' own on InnoDB" "InnoDB 2, MyISAM 44" "$(engines)"
 check "after down: no row lost in the conversions" "$rows_before" "$(sql "SELECT COUNT(*) FROM songs")"
-check "after down: no external_ids table" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'external_ids'")"
+check "after down: none of the import's tables" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('external_ids', 'import_runs', 'import_provenance')")"
 check "after down: added changes on update again, in 11 tables plus the lyrics log" "12" "$(count "$TIMES_WITH_ON_UPDATE")"
 check "after down: the catalog's added has no default" "0" "$(count "table_name IN ($CATALOG) AND column_name = 'added' AND column_default = 'current_timestamp()'")"
 check "after down: album_prices.added defaults to the zero date again" "album_prices.added" "$(col "column_default LIKE '%0000-00-00%'")"
 ./scripts/migrate.sh up >"$T/out" 2>&1 || { bad "up succeeds"; cat "$T/out"; }
-check "after up again: every table InnoDB" "InnoDB 47" "$(engines)"
+check "after up again: every table InnoDB" "InnoDB $(tables)" "$(engines)"
 check "after up again: no row lost" "$rows_before" "$(sql "SELECT COUNT(*) FROM songs")"
 check "after up again: no added changes on update" "0" "$(count "$TIMES_WITH_ON_UPDATE")"
 check "after up again: no zero-date default" "NULL" "$(col "column_default LIKE '%0000-00-00%'")"

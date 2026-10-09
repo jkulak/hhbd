@@ -8,6 +8,13 @@ decision; nothing tags on its own.
 ## Unreleased
 
 ### Added
+- `import_runs` and `import_provenance` (migration 0007, with a down): one row per import batch
+  with its mode, totals and JSON report, and one row per imported field and source with the
+  reference, licence and fetch time, so a licence question or a takedown is answered per row
+  and a later batch knows which fields it set (#52). `Model_Provenance_Api` writes them,
+  refusing provenance for a dry run or a finished run, and a page asks a row's provenance
+  `cameFrom('cover', 'discogs')`. `make import-runs` and `make ovh-import-runs` list the last
+  runs.
 - `external_ids` (migration 0006, with a down): the ids a catalog row has in Discogs,
   MusicBrainz, Wikidata, Deezer, iTunes, the Polish Wikipedia, its barcode and ISRC, so an
   import finds the rows it created before instead of adding them twice (#51). An id belongs to
