@@ -14,6 +14,8 @@ person's decision; nothing releases on its own.
   `/wykonawca/…`, `/album/…`, `/wytwornia/…` by the slug kept in `urlname`, `/news/223` by its
   id. A slug that names one row answers 301 to its page; one that names none or several, 302 to
   the search for its words. Of the 497 slug links in production's texts, 473 find their page.
+  The texts keep their old links (#24): the redirects lead them, and other sites' links to the
+  old addresses, where they belong.
 
 ### Changed
 - nginx and the app run in two colours, `nginx-blue`/`app-blue` and `nginx-green`/`app-green`
