@@ -73,6 +73,12 @@ person's decision; nothing releases on its own.
   app's image where the host has none.
 
 ### Fixed
+- A news item shows its image again (#133). The page built the address from a path the
+  configuration never had, so it was the bare file name, which loaded nothing; it is
+  `/content/news/` now, the file name encoded, as old names hold spaces, Polish letters and a
+  literal `%`. Migration 0032: 18 news items named a file that is in no copy, among them the
+  mangled `trÃ“`, and no longer name one; 5 kept their file's name only up to a `%` and get it
+  whole. `make ovh-check-images` checks news images too.
 - A song on no album and by no artist answers 404, where its page failed with 500: three old
   songs on production (#37). A label with no release yet gets a description without a newest
   one.
