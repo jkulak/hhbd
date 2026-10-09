@@ -132,22 +132,54 @@ class Model_Song_Api extends Jkl_Model_Api
     public function getTracklist($id)
     {
         $id = intval($id);
-        $query = 'SELECT t1.id as song_id, t2.track ' .
+        // t2.*: album_lookup's disc column when it has one (#59), and the code reads both shapes.
+        $query = 'SELECT t1.id as song_id, t2.* ' .
             'FROM songs AS t1, album_lookup AS t2 ' .
-            'WHERE (t1.id=t2.songid AND t2.albumid=' . $id . ') ' .
-            'ORDER BY t2.track';
-        $result = $this->_db->fetchAll($query);
+            'WHERE (t1.id=t2.songid AND t2.albumid=' . $id . ')';
+        $positions = array();
+        foreach ($this->_db->fetchAll($query) as $row) {
+            list($disc, $track) = self::trackPosition($row);
+            $positions[] = array('disc' => $disc, 'track' => $track, 'song_id' => $row['song_id']);
+        }
+        usort($positions, function ($a, $b) {
+            return array($a['disc'], $a['track']) <=> array($b['disc'], $b['track']);
+        });
+        $multiDisc = count(array_unique(array_column($positions, 'disc'))) > 1;
+
         $tracklist = new Jkl_List();
-        foreach ($result as $params) {
-            $song = $this->find($params['song_id'], false);
-            if (strlen($params['track']) > 2) {
-                $song->track = substr($params['track'], 0, 1) . '-' . substr($params['track'], 1, 2);
-            } else {
-                $song->track = $params['track'];
-            }
+        foreach ($positions as $position) {
+            $song = $this->find($position['song_id'], false);
+            $song->track = self::trackLabel($position['disc'], $position['track'], $multiDisc);
             $tracklist->add($song);
         }
         return $tracklist;
+    }
+
+    /**
+     * The disc and the position on it of an album_lookup row: from the disc column once it
+     * exists, and until then from track, which held disc * 100 + position for an album of
+     * several discs (track 203 is the third track of the second disc).
+     *
+     * @return int[] array(disc, track)
+     */
+    public static function trackPosition(array $row)
+    {
+        $track = (int) $row['track'];
+        if (isset($row['disc'])) {
+            return array((int) $row['disc'], $track);
+        }
+        return $track >= 100 ? array(intdiv($track, 100), $track % 100) : array(1, $track);
+    }
+
+    /**
+     * A track's number as the tracklist shows it: "7" on a single disc, "2-07" on an album of
+     * several.
+     *
+     * @return string
+     */
+    public static function trackLabel($disc, $track, $multiDisc)
+    {
+        return $multiDisc ? sprintf('%d-%02d', $disc, $track) : (string) $track;
     }
 
     public function getAlbumDuration($id)

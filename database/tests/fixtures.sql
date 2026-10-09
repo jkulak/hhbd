@@ -713,6 +713,20 @@ UPDATE `albums` SET `epfor` = 2 WHERE `id` = 46;
 UPDATE `albums` SET `legal` = 'n' WHERE `id` = 47;
 UPDATE `albums` SET `media_cd` = 1, `media_lp` = 1 WHERE `id` = 535;
 
+-- ============================================
+-- 23. AN ALBUM WITHOUT A LABEL (#55)
+-- Leśna Ścieżka (47), a nielegal, came out on no label, which labelid NULL says. Lists used to
+-- join labels without LEFT, so it vanished from the artist's page.
+-- ============================================
+UPDATE `albums` SET `labelid` = NULL WHERE `id` = 47;
+
+-- ============================================
+-- 24. A TWO-DISC ALBUM in the old encoding, track = disc * 100 + position (#59)
+-- Trzecia Część Tryptyku (3) has one track on each disc; the page numbers them 1-01 and 2-01.
+-- ============================================
+UPDATE `album_lookup` SET `track` = 101 WHERE `albumid` = 3 AND `songid` = 11;
+UPDATE `album_lookup` SET `track` = 201 WHERE `albumid` = 3 AND `songid` = 12;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================

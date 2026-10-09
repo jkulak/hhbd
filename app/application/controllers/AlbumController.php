@@ -103,20 +103,22 @@ class AlbumController extends Zend_Controller_Action
 
         $this->view->title = $album->artist->name . ' - ' . $album->title . ' (' . $album->year . ')';
         $this->view->headTitle()->set($this->view->title, 'PREPEND');
-        $this->view->headMeta()->setName('keywords', $album->artist->name . ',' . $album->title . ',teksty,premiera,download,tracklista,' . $album->label->name);
+        // An album without a label (#55) leaves the label out of every sentence below.
+        $byLabel = !empty($album->label) ? ' przez wytwórnię ' . $album->label->name : '';
+        $this->view->headMeta()->setName('keywords', $album->artist->name . ',' . $album->title . ',teksty,premiera,download,tracklista' . (!empty($album->label) ? ',' . $album->label->name : ''));
 
         $releaseDate = '';
         if (!empty($album->releaseDateNormalized)) {
             if ($album->isAnnounced()) {
-                $releaseInfo = ', premiera albumu zaplanowana jest na ' . $album->releaseDateNormalized . ', przez wytwórnię ' . $album->label->name;
+                $releaseInfo = ', premiera albumu zaplanowana jest na ' . $album->releaseDateNormalized . ($byLabel ? ',' . $byLabel : '');
             } else {
-                $releaseInfo = ', album został wydany ' . $album->releaseDateNormalized . ', przez wytwórnię ' . $album->label->name;
+                $releaseInfo = ', album został wydany ' . $album->releaseDateNormalized . ($byLabel ? ',' . $byLabel : '');
             }
         } else {
             if ($album->isAnnounced()) {
-                $releaseInfo = ', premiera albumu zaplanowana przez wytwórnię ' . $album->label->name;
+                $releaseInfo = ', premiera albumu zaplanowana' . $byLabel;
             } else {
-                $releaseInfo = ', album został wydany przez wytwórnię ' . $album->label->name;
+                $releaseInfo = ', album został wydany' . $byLabel;
             }
         }
 
@@ -136,6 +138,7 @@ class AlbumController extends Zend_Controller_Action
     private function _generateDescription($album)
     {
         $description = null;
+        $byLabel = !empty($album->label) ? ' przez wytwórnię ' . $album->label->name : '';
         $music = array();
         $scratch = array();
         $feat = array();
@@ -162,14 +165,14 @@ class AlbumController extends Zend_Controller_Action
         }
 
         if ($album->isAnnounced()) {
-            $description = 'Długo oczekiwany album ' . $album->title . ', został zapowiedziany przez wytwórnię ' . $album->label->name .
+            $description = 'Długo oczekiwany album ' . $album->title . ', został zapowiedziany' . $byLabel .
             '. Premiera planowana jest na ' . $album->releaseDateNormalized . ', czyli już niedługo! ' .
             (!empty($album->tracklist->items) ? 'Album ma zawierać ' . sizeof($album->tracklist->items) . ' utworów. ' .
             'Płyta będzie otwarta utworem ' . $album->tracklist->items[0]->title . ', a zamknięta utworem ' . $album->tracklist->items[sizeof($album->tracklist->items) - 1]->title . '. ' : '') .
             'Czekamy z niecierpliwością. ' .
             '';
         } else {
-            $description = 'Album "' . $album->title . '", został wydany przez wytwórnię ' . $album->label->name .
+            $description = 'Album "' . $album->title . '", został wydany' . $byLabel .
             ', premiera odbyła się ' . $album->releaseDateNormalized . '. ' .
             (!empty($album->tracklist->items) ? 'Album zawiera ' . sizeof($album->tracklist->items) . ' utworów' . (($album->duration != "--") ? ' i trwa ' . $album->duration : ''). '. ' .
             'Płyta rozpoczyna się utworem "' . $album->tracklist->items[0]->title . '", a kończy utworem "' . $album->tracklist->items[sizeof($album->tracklist->items) - 1]->title . '". ' : '');

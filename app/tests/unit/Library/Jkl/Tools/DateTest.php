@@ -75,6 +75,41 @@ class Jkl_Tools_DateTest extends TestCase
         ];
     }
 
+    /**
+     * @dataProvider precisionProvider
+     */
+    public function testADateIsShownToThePrecisionItIsKnown(string $date, string $precision, string $expected): void
+    {
+        $this->assertSame($expected, Jkl_Tools_Date::getNormalDate($date, $precision));
+    }
+
+    public function precisionProvider(): array
+    {
+        return [
+            'a day' => ['2016-11-18', 'day', '18 listopada 2016'],
+            'a month, stored as its first day' => ['2016-11-01', 'month', 'któregoś listopada 2016'],
+            'a year, stored as its first day' => ['2016-01-01', 'year', '2016'],
+            'a year written the old way' => ['2016-00-00', 'year', '2016'],
+        ];
+    }
+
+    /**
+     * @dataProvider zeroPartsProvider
+     */
+    public function testWithoutAPrecisionTheZeroPartsSayIt(string $date, string $precision): void
+    {
+        $this->assertSame($precision, Jkl_Tools_Date::precisionOf($date));
+    }
+
+    public function zeroPartsProvider(): array
+    {
+        return [
+            'a whole date' => ['2016-11-18', 'day'],
+            'no day' => ['2016-11-00', 'month'],
+            'no month' => ['2016-00-00', 'year'],
+        ];
+    }
+
     public function testMonthsArrayContainsAllMonths(): void
     {
         $this->assertCount(12, Jkl_Tools_Date::$months);
