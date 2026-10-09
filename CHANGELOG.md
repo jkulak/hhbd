@@ -8,6 +8,16 @@ person's decision; nothing releases on its own.
 
 ## Unreleased
 
+## 2026.10.9 — 2026-10-10
+
+PHP 8.4 from Debian 13's own packages (#37): on a copy of production the same pages answer about
+four times faster, and the web's image is less than half its size. The addresses from before the
+`.html` ones lead to today's pages (#26), news items show their images again (#133), and a
+logged-in admin sees who added a row and when. nginx answers a missing `.php` itself (#34) and
+serves no dotfile (#139). Migrations 0031 and 0032 are on production already, and the compose
+file with the two colours (#124) is installed: no `make ovh-install`. The release's smoke test
+passed on a copy of production with this code.
+
 ### Added
 - A logged-in admin sees who added an album, artist, song or label and when, as one more line
   of the page's details: "Dodano: 12 maja 2009, 14:03 (Kuba)", the import and an unknown author
