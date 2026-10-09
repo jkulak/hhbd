@@ -3,6 +3,10 @@
 // Composer autoloader
 require_once dirname(__FILE__) . '/../vendor/autoload.php';
 
+// PHP's errors, uncaught exceptions and fatal errors as JSON lines (#101), from the first line
+// of the request on.
+Jkl_Log::installHandlers('php');
+
 // Define application name
 defined('APPLICATION_NAME')
     || define('APPLICATION_NAME', $_SERVER['SERVER_NAME']);

@@ -19,6 +19,9 @@ class ErrorController extends Zend_Controller_Action
         
                 // 404 error -- controller or action not found
                 $this->getResponse()->setHttpResponseCode(404);
+                // A page that does not exist is the visitor's mistake or a crawler's, not the
+                // site's: an info line at most (#101).
+                $this->log(Zend_Log::INFO, 'No such page', $errors->exception, 404);
                 $this->view->title = 'Błąd 404: Nieeee, nie mamy takiej strony (jeszcze)!';
                 $this->view->message = 'Ale nie przejmuj się tym, to nie Twoja wina :) Sprawdź czy wpisałeś dobry adres, a najlepiej chodź na <a href="/">stronę główną</a> lub wpisz czego szukasz w naszej wyszukiwarce!';
                 break;
@@ -37,8 +40,7 @@ class ErrorController extends Zend_Controller_Action
                     break;
                   }
                   
-                  // Log only when it's something different from 404
-                  $this->getLog()->emerg($this->getRequest()->getRequestUri() . '|' . $errors->exception->getCode() . '|' . $errors->exception->getMessage());
+                  $this->log(Zend_Log::ERR, 'Request failed', $errors->exception, 500);
 
                 break;
             default:
@@ -54,6 +56,23 @@ class ErrorController extends Zend_Controller_Action
         }
         
         $this->view->request = $errors->request;
+    }
+
+    /**
+     * One line for the failed request (#101): its path and status, and the exception as
+     * `error` and `stack`; the formatter adds the time, the level and the edge's request id.
+     */
+    private function log($priority, $msg, $exception, $status)
+    {
+        $log = $this->getLog();
+        if (!$log) {
+            return;
+        }
+        $fields = array('path' => (string) $this->getRequest()->getRequestUri(), 'status' => $status);
+        if ($exception instanceof Throwable) {
+            $fields['exception'] = $exception;
+        }
+        $log->log($msg, $priority, $fields);
     }
 
     public function getLog()

@@ -10,10 +10,14 @@
 #     which compose.yaml and compose.ci.yaml share
 #   - the smoke test passes through the edge
 #   - nginx takes the client's address from X-Real-IP sent by the edge, and from nobody else
-#   - nginx, PHP and the application log to the containers' output, and write no log files
-#   - a request made while the database is down is logged by the application
+#   - nginx writes no access log and nothing at all on a healthy run; the app container writes
+#     only JSON lines in the shared host's format (#101; CONTRACT.md §9 in gcloud-ovh-migrate),
+#     a PHP error among them, as one line with `error`, `stack` and the edge's `request_id`
+#   - a request made while the database is down is logged by the application, at error
+#   - nothing is written to a log file in a container
 #   - `up` leaves the import job alone, and the job, fed a batch on stdin as make ovh-import
-#     feeds it, writes covers into the content volume that nginx then serves
+#     feeds it, writes covers into the content volume that nginx then serves, and its progress
+#     lines are JSON too
 #
 # Everything it creates is removed on the way out: the compose project with its volumes, the
 # stand-in edge, the edge network, three image tags and one directory.
@@ -64,6 +68,31 @@ app_log() { docker logs "$PROJECT-app-1" 2>&1; }
 # Files a running container added or changed that look like logs; `docker diff` lists every
 # change against the image, so build-time files such as apt's logs do not count.
 written_logs() { docker diff "$1" | grep -E '^[AC] (/var/log/.+|.*\.log)$' || true; }
+# The lines of a log that are not one JSON object with time (UTC, to the millisecond), a level
+# of the four and a msg, as the shared stack test reads them.
+not_contract() {
+    python3 -c '
+import json, re, sys
+TIME = re.compile(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3,9}(Z|\+00:00)")
+for line in sys.stdin:
+    line = line.strip()
+    if not line:
+        continue
+    try:
+        o = json.loads(line)
+    except ValueError:
+        o = None
+    if not (isinstance(o, dict) and TIME.fullmatch(str(o.get("time", ""))) and o.get("level") in ("debug", "info", "warn", "error") and isinstance(o.get("msg"), str) and o["msg"]):
+        print(line[:120])'
+}
+# Runs a PHP file in the app, as a request through the edge: probe <name> <php> [curl options]
+probe() {
+    local name=$1 php=$2
+    shift 2
+    printf '%s' "$php" | docker exec -i "$PROJECT-app-1" sh -c "cat > /var/www/html/app/public/$name.php"
+    via_edge "$@" "http://hhbd.pl/$name.php"
+    docker exec "$PROJECT-app-1" rm -f "/var/www/html/app/public/$name.php"
+}
 
 echo "> images from this checkout, tagged $TAG, for linux/amd64 like the release"
 docker build -q --platform linux/amd64 -f Dockerfile-php --target production -t "ghcr.io/jkulak/hhbd-app:$TAG" . >/dev/null
@@ -74,7 +103,8 @@ echo "> the edge network, 172.30.0.0/24 as on the host"
 docker network create --subnet 172.30.0.0/24 --gateway 172.30.0.1 edge >/dev/null
 
 echo "> a stand-in edge at 172.30.0.2, up before any service as on the host"
-# Like the edge's `proxy` snippet: X-Real-IP is set from the client address the edge resolved.
+# Like the edge's `proxy` snippet: X-Real-IP is set from the client address the edge resolved,
+# and every request gets an id of its own as X-Request-Id, replacing any a client sent.
 # Addresses from private ranges are believed in X-Forwarded-For, standing in for Cloudflare's.
 cat >"$T/Caddyfile" <<'CADDY'
 {
@@ -86,6 +116,7 @@ cat >"$T/Caddyfile" <<'CADDY'
 http://hhbd.pl, http://www.hhbd.pl {
 	reverse_proxy hhbd-web:80 {
 		header_up X-Real-IP {client_ip}
+		header_up X-Request-Id {http.request.uuid}
 	}
 }
 CADDY
@@ -137,25 +168,21 @@ else
     tail -30 "$T/smoke"
 fi
 
-echo "> the client's address"
-via_edge -o /dev/null -H 'X-Forwarded-For: 203.0.113.7' http://hhbd.pl/o-nas.html
-check "a client behind the edge is logged with its own address" \
-    "203.0.113.7" "$(nginx_log | grep 'GET /o-nas.html' | tail -1 | cut -d' ' -f1)"
-
-via_edge -o /dev/null -H 'X-Real-IP: 198.51.100.10' http://hhbd.pl/kontakt.html
-logged=$(nginx_log | grep 'GET /kontakt.html' | tail -1 | cut -d' ' -f1)
-if [ -n "$logged" ] && [ "$logged" != 198.51.100.10 ]; then
-    ok "an X-Real-IP sent by the client through the edge is replaced ($logged)"
+echo "> the client's address, as the application sees it"
+addr='<?php echo $_SERVER["REMOTE_ADDR"];'
+check "a client behind the edge is seen with its own address" "203.0.113.7" "$(probe addr "$addr" -H 'X-Forwarded-For: 203.0.113.7')"
+seen=$(probe addr "$addr" -H 'X-Real-IP: 198.51.100.10')
+if [ -n "$seen" ] && [ "$seen" != 198.51.100.10 ]; then
+    ok "an X-Real-IP sent by the client through the edge is replaced ($seen)"
 else
-    bad "an X-Real-IP sent by the client through the edge is replaced (got '$logged')"
+    bad "an X-Real-IP sent by the client through the edge is replaced (got '$seen')"
 fi
-
-docker run --rm --network edge busybox:1.37.0 \
-    wget -q -O /dev/null --header 'Host: hhbd.pl' --header 'X-Real-IP: 198.51.100.9' http://hhbd-web/wykonawcy.html
-logged=$(nginx_log | grep 'GET /wykonawcy.html' | tail -1 | cut -d' ' -f1)
-case "$logged" in
-    172.30.0.*) ok "X-Real-IP from anywhere but the edge is ignored ($logged)" ;;
-    *)          bad "X-Real-IP from anywhere but the edge is ignored (got '$logged')" ;;
+printf '%s' "$addr" | docker exec -i "$PROJECT-app-1" sh -c 'cat > /var/www/html/app/public/addr.php'
+seen=$(docker run --rm --network edge busybox:1.37.0 wget -q -O - --header 'Host: hhbd.pl' --header 'X-Real-IP: 198.51.100.9' http://hhbd-web/addr.php)
+docker exec "$PROJECT-app-1" rm -f /var/www/html/app/public/addr.php
+case "$seen" in
+    172.30.0.*) ok "X-Real-IP from anywhere but the edge is ignored ($seen)" ;;
+    *)          bad "X-Real-IP from anywhere but the edge is ignored (got '$seen')" ;;
 esac
 
 echo "> the import job, as make ovh-import runs it: the batch as a tar on stdin"
@@ -175,24 +202,26 @@ check "the album's page, through the edge, shows the cover the importer wrote" "
     "$(via_edge "http://hhbd.pl$album" | grep -c "/content/a/600/$cover.jpg" || true)"
 check "and nginx serves it from the content volume" "200 image/jpeg" \
     "$(via_edge -o /dev/null -w '%{http_code} %{content_type}' "http://hhbd.pl/content/a/600/$cover.jpg")"
+check "its progress lines are JSON in the host's format, one per document and one for the run" "12 " \
+    "$(grep -c '"logger":"importer"' "$T/import.err") $(grep '^{' "$T/import.err" | not_contract)"
 
 echo "> the logs"
-check "the healthcheck's own requests stay out of the access log" \
-    "0" "$(nginx_log | grep -c '^127\.0\.0\.1 ' || true)"
+check "nginx wrote no access-log line for the requests above, and nothing else on a healthy run" "0" \
+    "$(nginx_log | grep -c . || true)"
 
-docker exec "$PROJECT-app-1" sh -c 'printf "%s" "<?php error_log(\"stacktest-php-error-log\"); echo 1;" > /var/www/html/app/public/stacktest.php'
-via_edge -o /dev/null http://hhbd.pl/stacktest.php
-docker exec "$PROJECT-app-1" rm -f /var/www/html/app/public/stacktest.php
+probe stacktest '<?php trigger_error("stacktest-php-error", E_USER_WARNING); echo 1;' -o /dev/null
 sleep 1
-check "PHP's error_log reaches the app container's output" \
-    "1" "$(app_log | grep -c 'stacktest-php-error-log' || true)"
+line=$(app_log | grep '"msg":"stacktest-php-error"' || true)
+check "a PHP error reaches the app's output as one JSON line with error, stack and the edge's request id" "1 warn yes yes yes" \
+    "$(grep -c . <<<"$line") $(jq -r '[.level, (if (.error // "") != "" then "yes" else "no" end), (if (.stack // "") != "" then "yes" else "no" end), (if (.request_id // "") != "" then "yes" else "no" end)] | join(" ")' <<<"$line" 2>/dev/null)"
 
 docker stop "$PROJECT-db-1" >/dev/null
 status=$(via_edge -o /dev/null -w '%{http_code}' http://hhbd.pl/albumy.html)
 sleep 1
 check "a request while the database is down gets a 500" "500" "$status"
-check "and the application's log of it reaches the app container's output" \
-    "1" "$(app_log | grep 'EMERG' | grep -c '/albumy.html|2002|' || true)"
+check "and the application logs it once, at error, with its path and the database's 2002" "1" \
+    "$(app_log | jq -c 'select(.level == "error" and .path == "/albumy.html" and .status == 500 and (.error | test("2002")))' 2>/dev/null | grep -c . || true)"
+check "every line the app container wrote is one JSON object with time, level and msg" "" "$(app_log | not_contract)"
 
 check "the app container wrote no log files" "" "$(written_logs "$PROJECT-app-1")"
 check "the nginx container wrote no log files" "" "$(written_logs "$PROJECT-nginx-1")"

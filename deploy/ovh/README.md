@@ -39,8 +39,26 @@ moved, so a change to them is made there. The rest of `deploy/ovh/` is this serv
 
 Logs go to the containers' stdout and stderr, where the host's collector picks them up under
 `service_name="hhbd"`; `make ovh-logs` reads them back through Grafana
-(`SINCE=1h LEVEL=error COMPONENT=nginx GREP=text`). nginx takes the client's address from
-`X-Real-IP`, trusted from the edge's fixed address 172.30.0.2 only.
+(`SINCE=1h LEVEL=error COMPONENT=app GREP=text`).
+
+What each container writes, in CONTRACT.md §9's format (#101):
+- **app**: one JSON object per line, written by `Jkl_Log`:
+  - `time` in UTC, `level`, `msg`;
+  - `logger` (`app`, `php`, `importer`, `tool`);
+  - the edge's `request_id`;
+  - for an error, `error` and `stack`.
+  
+  Zend_Log writes through `Jkl_Log_Formatter_Json`. PHP's errors, uncaught exceptions and fatal
+  errors come through handlers that `auto_prepend_file` installs in every script; `log_errors`
+  is off. A page that does not exist is an `info` line, and a failed request an `error` line.
+- **nginx**: no access log, since the edge logs every request. Errors at `warn` and above stay
+  on stderr in nginx's own format, and a start says nothing.
+- **PHP-FPM**: logs at `warning`, so a start says nothing either.
+- **The importer**: its progress, the run's summary and every refusal are lines in the same
+  format on stderr. Its report on stdout is unchanged.
+
+nginx takes the client's address from `X-Real-IP`, trusted from the edge's fixed address
+172.30.0.2 only.
 
 There is no adminer and no backoffice. The database is reached over ssh:
 
