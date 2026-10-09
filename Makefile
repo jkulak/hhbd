@@ -51,6 +51,11 @@ ovh-migrate-down: ## Revert the last applied migration on production's database,
 ovh-migrate-baseline: ## Once: record the baseline on production's database, which already has its schema
 	MIGRATE_TARGET=ovh ./scripts/migrate.sh baseline
 
+.PHONY: ovh-covers-backfill
+ovh-covers-backfill: ## Describe production's covers in album_covers, in a one-off app container with the content volume read-only
+	ssh -o BatchMode=yes "$${OVH_SSH_USER:-ubuntu}@$${OVH_HOST:?OVH_HOST is not set}" \
+	  'cd /srv/hhbd && sudo SOPS_AGE_KEY_FILE=/etc/sops/age.key /usr/local/bin/sops exec-env hhbd.enc.env "docker compose run --rm --no-deps -T -v content:/var/www/html/content:ro app php /var/www/html/app/tools/covers.php backfill"'
+
 .PHONY: ovh-check-images
 ovh-check-images: ## List the covers, photos and logos production's catalogue names but its content volume lacks
 	DB_TARGET=ovh ./scripts/check-images.sh
@@ -111,6 +116,10 @@ migrate-new: ## Create the next migration's up and down files: make migrate-new 
 .PHONY: migrate-baseline
 migrate-baseline: ## Record the baseline on a local database that already has the schema, such as a loaded production dump
 	./scripts/migrate.sh baseline
+
+.PHONY: covers-backfill
+covers-backfill: ## Describe the local covers on content/ in album_covers (size, hash, type); running it again adds nothing
+	docker compose exec -T app php /var/www/html/app/tools/covers.php backfill
 
 .PHONY: check-images
 check-images: ## List the covers, photos and logos the local catalogue names but content/ lacks

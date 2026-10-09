@@ -30,6 +30,7 @@
 #   - an album without a label has labelid NULL; the placeholder label 27 is gone (#55)
 #   - a release date is whole, with its precision, and the database refuses zero parts; an
 #     unconfirmed announcement is announced, and the 2017 placeholders are gone (#54)
+#   - a cover file is described once per album, variant and hash (#60)
 #   - going down to the baseline brings the old schema back, and up removes it again
 #
 # It changes rows to prove these and ends with make reset-db, so the database ends as a reset
@@ -164,7 +165,7 @@ fi
 
 echo "> unique link tables"
 UNIQUE_TABLES="album_artist_lookup altnames_lookup artist_city_lookup artist_lookup band_lookup city_label_lookup collection feature_lookup music_lookup ratings remix_lookup scratch_lookup wishlist"
-uniques() { sql "SELECT GROUP_CONCAT(DISTINCT table_name ORDER BY table_name SEPARATOR ' ') FROM information_schema.statistics WHERE table_schema = DATABASE() AND non_unique = 0 AND index_name LIKE 'u\\_%' AND table_name <> 'feattypes'"; }
+uniques() { sql "SELECT GROUP_CONCAT(DISTINCT table_name ORDER BY table_name SEPARATOR ' ') FROM information_schema.statistics WHERE table_schema = DATABASE() AND non_unique = 0 AND index_name LIKE 'u\\_%' AND table_name NOT IN ('feattypes', 'album_covers')"; }
 dupes() { # the duplicated rows of the fixtures, as table:count
     sql "SELECT CONCAT_WS(' ',
         CONCAT('album_artist:', (SELECT GROUP_CONCAT(status ORDER BY status) FROM album_artist_lookup WHERE albumid = 535 AND artistid = 8)),
@@ -232,12 +233,20 @@ else
     ok "the database refuses a date with zero parts"
 fi
 
+echo "> album covers"
+sql "INSERT INTO album_covers (albumid, variant, path, width, height, sha256, mime, source) VALUES (535, '300', 'a/x.jpg', 300, 300, REPEAT('b', 64), 'image/jpeg', 'legacy')"
+if sql "INSERT INTO album_covers (albumid, variant, path, width, height, sha256, mime, source) VALUES (535, '300', 'a/y.jpg', 300, 300, REPEAT('b', 64), 'image/jpeg', 'legacy')" >"$T/out" 2>&1; then
+    bad "the same file cannot describe one album's variant twice"
+else
+    ok "the same file cannot describe one album's variant twice"
+fi
+
 echo "> down to the baseline brings the old schema back, and up removes it"
 rows_before=$(sql "SELECT COUNT(*) FROM songs")
 ./scripts/migrate.sh down "$after_baseline" >"$T/out" 2>&1 || { bad "down $after_baseline succeeds"; cat "$T/out"; }
 check "after down: 44 tables on MyISAM again, hhb_comments and the migrations' own on InnoDB" "InnoDB 2, MyISAM 44" "$(engines)"
 check "after down: no row lost in the conversions" "$rows_before" "$(sql "SELECT COUNT(*) FROM songs")"
-check "after down: none of the import's tables" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('external_ids', 'import_runs', 'import_provenance')")"
+check "after down: none of the import's tables" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('external_ids', 'import_runs', 'import_provenance', 'album_covers')")"
 check "after down: no import user" "0" "$(sql "SELECT COUNT(*) FROM users WHERE ID = 1100")"
 check "after down: the old city table again, duplicate and orphan included" "1:1:999 1:99999:999 2:35:0 2:35:999 3:46:0" "$(pairs city_artist_lookup)"
 check "after down: the table the pages read as the fixtures had it" "1:1:999" "$(pairs artist_city_lookup)"
