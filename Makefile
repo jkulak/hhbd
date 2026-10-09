@@ -51,15 +51,21 @@ ovh-migrate-down: ## Revert the last applied migration on production's database,
 ovh-migrate-baseline: ## Once: record the baseline on production's database, which already has its schema
 	MIGRATE_TARGET=ovh ./scripts/migrate.sh baseline
 
+# A one-off app container on the host with the content volume mounted read-only, for the
+# backfills. `docker compose run -v` names a volume as Docker does, without the project prefix
+# the compose file's `content` gets, and makes a new, empty volume of a name it does not know:
+# hence hhbd_content by its full name, checked to exist first. DRY_RUN=1 reports and writes
+# nothing.
+OVH_CONTENT_RUN = ssh -o BatchMode=yes "$${OVH_SSH_USER:-ubuntu}@$${OVH_HOST:?OVH_HOST is not set}" \
+	'cd /srv/hhbd && sudo docker volume inspect hhbd_content >/dev/null && sudo SOPS_AGE_KEY_FILE=/etc/sops/age.key /usr/local/bin/sops exec-env hhbd.enc.env "docker compose run --rm --no-deps -T -v hhbd_content:/var/www/html/content:ro app php /var/www/html/app/tools/$(1) backfill $(if $(DRY_RUN),--dry-run)"'
+
 .PHONY: ovh-covers-backfill
-ovh-covers-backfill: ## Describe production's covers in album_covers, in a one-off app container with the content volume read-only
-	ssh -o BatchMode=yes "$${OVH_SSH_USER:-ubuntu}@$${OVH_HOST:?OVH_HOST is not set}" \
-	  'cd /srv/hhbd && sudo SOPS_AGE_KEY_FILE=/etc/sops/age.key /usr/local/bin/sops exec-env hhbd.enc.env "docker compose run --rm --no-deps -T -v content:/var/www/html/content:ro app php /var/www/html/app/tools/covers.php backfill"'
+ovh-covers-backfill: ## Describe production's covers in album_covers, in a one-off app container with the content volume read-only; DRY_RUN=1 to only report
+	$(call OVH_CONTENT_RUN,covers.php)
 
 .PHONY: ovh-photos-backfill
-ovh-photos-backfill: ## Record the size, type and hash of production's artist photos, in a one-off app container with the content volume read-only
-	ssh -o BatchMode=yes "$${OVH_SSH_USER:-ubuntu}@$${OVH_HOST:?OVH_HOST is not set}" \
-	  'cd /srv/hhbd && sudo SOPS_AGE_KEY_FILE=/etc/sops/age.key /usr/local/bin/sops exec-env hhbd.enc.env "docker compose run --rm --no-deps -T -v content:/var/www/html/content:ro app php /var/www/html/app/tools/photos.php backfill"'
+ovh-photos-backfill: ## Record the size, type and hash of production's artist photos, in a one-off app container with the content volume read-only; DRY_RUN=1 to only report
+	$(call OVH_CONTENT_RUN,photos.php)
 
 .PHONY: ovh-check-images
 ovh-check-images: ## List the covers, photos and logos production's catalogue names but its content volume lacks
@@ -127,12 +133,12 @@ migrate-baseline: ## Record the baseline on a local database that already has th
 	./scripts/migrate.sh baseline
 
 .PHONY: covers-backfill
-covers-backfill: ## Describe the local covers on content/ in album_covers (size, hash, type); running it again adds nothing
-	docker compose exec -T app php /var/www/html/app/tools/covers.php backfill
+covers-backfill: ## Describe the local covers on content/ in album_covers (size, hash, type); running it again adds nothing; DRY_RUN=1 to only report
+	docker compose exec -T app php /var/www/html/app/tools/covers.php backfill $(if $(DRY_RUN),--dry-run)
 
 .PHONY: photos-backfill
-photos-backfill: ## Record the size, type and hash of the local artist photos on content/; running it again changes nothing
-	docker compose exec -T app php /var/www/html/app/tools/photos.php backfill
+photos-backfill: ## Record the size, type and hash of the local artist photos on content/; running it again changes nothing; DRY_RUN=1 to only report
+	docker compose exec -T app php /var/www/html/app/tools/photos.php backfill $(if $(DRY_RUN),--dry-run)
 
 .PHONY: check-images
 check-images: ## List the covers, photos and logos the local catalogue names but content/ lacks

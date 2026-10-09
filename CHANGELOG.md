@@ -7,6 +7,15 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
+### Fixed
+- `make ovh-covers-backfill` and `make ovh-photos-backfill` mount production's content volume.
+  They named it `content`, as the compose file does, but `docker compose run -v` takes Docker's
+  name, `hhbd_content`, and made a new, empty volume instead, so the backfill found no files.
+  They now name `hhbd_content` and check it exists before the run.
+- A backfill's dry run reports what the run would do. It counted every file as new, rows
+  already there and duplicate photos included; it now writes in a transaction it rolls back.
+  `DRY_RUN=1` asks for one from `make`, and `tests/backfill-test.sh` checks both backfills in CI.
+
 ## 2026.10.3 — 2026-10-09
 
 The code for migrations 0016 to 0021, which production's database has run under 2026.10.2

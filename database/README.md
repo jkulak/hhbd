@@ -272,10 +272,12 @@ The database cannot read files, so `app/tools/covers.php` fills the table from t
 ```bash
 make covers-backfill        # the local content/, against the local database
 make ovh-covers-backfill    # production, in a one-off app container with the volume read-only
+make ovh-covers-backfill DRY_RUN=1   # what it would add, nothing written
 ```
 
 It records each existing cover as `300`, `600` or `orig` by its size and its thumbnail as
-`75`, source `legacy`, and adds nothing on a second run. `make check-images` also checks every
+`75`, source `legacy`, and adds nothing on a second run. A dry run writes the rows in a
+transaction it rolls back, so its report is the run's, rows already there included. `make check-images` also checks every
 row's file is there with the recorded hash.
 
 ## Artist photos
@@ -286,7 +288,8 @@ the others in a gallery below, each with the caption its licence asks for: "Fot.
 when `modified` says the file was cropped or resized (0020, #61). `Model_Image_Api::addArtistPhoto()`
 keeps exactly one main photo per artist. Width, height, SHA-256 and MIME type come from the
 files: `make photos-backfill` and `make ovh-photos-backfill` fill them for the photos already on
-the volume, and `make check-images` verifies each recorded hash.
+the volume (`DRY_RUN=1` to only report), and `make check-images` verifies each recorded hash.
+`tests/backfill-test.sh` checks both backfills, their dry runs and a second run, in CI.
 
 ## Release dates
 
