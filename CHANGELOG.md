@@ -7,6 +7,11 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
+## 2026.10.2 — 2026-10-09
+
+What 2026.10.1 was to bring, which its own smoke test kept off production (see Fixed), and since
+then the import contract, Discogs credits on the pages, and placeholders for missing images.
+
 ### Added
 - The import contract (#56): `app/docs/import.schema.json`, a JSON Schema for every document of
   an import batch, which hhbd-content validates its batches against and the importer will
@@ -22,6 +27,12 @@ decision; nothing tags on its own.
   tables they add, which the baseline fixtures cannot fill.
 
 ### Fixed
+- A release's smoke test checks only what holds on production's data (#96). The checks added
+  for the fixtures' own cases (an album on no label, a two-disc album, Discogs provenance and
+  the rest) looked for rows production does not have, so 2026.10.1 failed its smoke test and the
+  host went back to 2026.10.0. `tests/smoke-test.sh` keeps those checks in a section of their
+  own, which `deploy/ovh-release.sh` skips with `SMOKE_TARGET=production`; the release flow's
+  test checks it does.
 - A cover, thumbnail, photo or logo the catalogue names but the content volume lacks shows a
   placeholder instead of a broken image: nginx answers it with a 404 whose body is a
   placeholder shipped in the image (#47). `make check-images` and `make ovh-check-images`
@@ -33,6 +44,9 @@ decision; nothing tags on its own.
 The catalog made ready for the import from hhbd-content: external ids, provenance, release
 types, several artists per album, and the clean-ups the data needed. It also reads the old and
 the new shape of dates, labels and discs, so the migrations that change those can follow it.
+
+Never served: its smoke test failed on production and the host went back to 2026.10.0. Everything
+here ships in 2026.10.2.
 
 ### Added
 - Albums have a release type (album, EP, mixtape, compilation, beat tape, single, other) and a

@@ -40,7 +40,8 @@ smoke() {
         # The edge's certificate for hhbd.pl is not publicly trusted before the DNS moves.
         opts="--connect-to hhbd.pl:443:${OVH_HOST:?OVH_HOST is not set}:443 --insecure"
     fi
-    SMOKE_CURL_OPTS="$opts" ${SMOKE:-./tests/smoke-test.sh} "$URL"
+    # Production's data, not the test fixtures: the checks that only the fixtures can pass stay out.
+    SMOKE_TARGET=production SMOKE_CURL_OPTS="$opts" ${SMOKE:-./tests/smoke-test.sh} "$URL"
 }
 
 previous=$(ci "status $SERVICE")
