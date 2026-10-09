@@ -37,6 +37,23 @@ release script, and keeps them only once the smoke test a release has always had
     left `.env.example`.
   - `make ovh-smoke` runs the release's smoke test against `https://hhbd.pl`. The way around
     Cloudflare it took before the DNS moved is closed at the edge.
+- No column holds a zero date any more, and MariaDB runs with `NO_ZERO_IN_DATE,NO_ZERO_DATE`
+  (#88).
+  - Migrations 0024 to 0027 clear what production held on 2026-10-09: artists' start and end
+    dates (787 and 795), band members' join and departure dates (585 each), users' added,
+    updated and last-login times (24, 1 844 and 369), and 108 news expiry times.
+  - What was not known becomes NULL. The 28 partial dates (1998-00-00, 1998-03-00) become whole
+    dates with a precision, as release dates did.
+  - Each migration archives what it changed, and its down restores it.
+  - A CHECK on each column refuses a zero part.
+  - The three compose files run the server with the two flags.
+  - The fixtures and the migrations, which have to read and write the old zero dates, do so in
+    a session of their own.
+
+### Fixed
+- Registering an account works again. `hhb_users.usr_updated` and `usr_last_login` were
+  NOT NULL without a default, and a registration writes neither, so the server's
+  `STRICT_TRANS_TABLES` refused it. Migration 0026 makes them nullable.
 
 ## 2026.10.5 — 2026-10-09
 
