@@ -70,6 +70,10 @@ ovh-check-images: ## List the covers, photos and logos production's catalogue na
 ovh-import: ## Read an import batch into production's catalogue: make ovh-import BATCH=<dir> MODE=apply (a dry run without MODE)
 	@./deploy/ovh/import.sh "$${BATCH:?BATCH is the batch directory}" $(or $(MODE),dry-run)
 
+.PHONY: ovh-edit
+ovh-edit: ## Edit production's catalogue, journalled: make ovh-edit DO="merge-albums 850 841" BY=<admin> WHY="..." (a dry run without MODE=apply); DO="undo <operation>" takes one back
+	@./scripts/edit.sh ovh
+
 .PHONY: ovh-import-runs
 ovh-import-runs: ## List the last import runs on production's database, newest first; N=50 for more
 	DB_TARGET=ovh ./scripts/import-runs.sh $(or $(N),20)
@@ -127,6 +131,10 @@ check-images: ## List the covers, photos and logos the local catalogue names but
 .PHONY: import
 import: ## Read an import batch into the local catalogue and content/: make import BATCH=<dir> MODE=apply (a dry run without MODE)
 	@COPYFILE_DISABLE=1 tar --no-xattrs -C "$${BATCH:?BATCH is the batch directory}" -cf - . | docker compose run --rm -T importer --$(or $(MODE),dry-run)
+
+.PHONY: edit
+edit: ## Edit the local catalogue, journalled: make edit DO="merge-albums 850 841" BY=<admin> WHY="..." (a dry run without MODE=apply); DO="undo <operation>" takes one back
+	@./scripts/edit.sh local
 
 .PHONY: import-runs
 import-runs: ## List the last import runs on the local database, newest first; N=50 for more
