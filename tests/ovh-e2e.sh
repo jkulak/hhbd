@@ -11,6 +11,8 @@
 #   - the importer's image writes the fixtures' images into the content volume, and the smoke
 #     test passes through the edge
 #   - nginx takes the client's address from X-Real-IP sent by the edge, and from nobody else
+#   - a request Cloudflare took over HTTPS is HTTPS to the application, so its canonical tags
+#     and sitemaps say https:// (#147)
 #   - a .php file that does not exist is nginx's own 404, without PHP-FPM or a log line (#34)
 #   - nginx writes no access log and nothing at all on a healthy run; the app container writes
 #     only JSON lines in the shared host's format (#101; CONTRACT.md §9 in gcloud-ovh-migrate),
@@ -194,6 +196,13 @@ else
     bad "the smoke test passes through the edge"
     tail -30 "$T/smoke"
 fi
+
+echo "> the scheme, as the application sees it (#147)"
+# Cloudflare sends X-Forwarded-Proto: https, which the edge passes on from Cloudflare's address
+# as this one does from a private one; a plain request gets the edge's own http.
+scheme='<?php echo empty($_SERVER["HTTPS"]) ? "http" : "https";'
+check "a request Cloudflare took over HTTPS is HTTPS to the application" "https" "$(probe scheme "$scheme" -H 'X-Forwarded-Proto: https')"
+check "one the edge took over plain HTTP is not" "http" "$(probe scheme "$scheme")"
 
 echo "> the client's address, as the application sees it"
 addr='<?php echo $_SERVER["REMOTE_ADDR"];'

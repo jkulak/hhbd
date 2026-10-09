@@ -17,6 +17,9 @@ class NewsController extends Zend_Controller_Action
     public function viewAction()
     {
         $newsId = $this->params['id'];
+        if (!Model_News_Api::getInstance()->exists($newsId)) {
+            throw new Zend_Controller_Action_Exception('No news item ' . (int) $newsId, 404);
+        }
         $news = Model_News_Api::getInstance()->find($newsId, true);
 
         $canonicalSlug = Jkl_Tools_Url::createUrl($news->title . '-n' . $news->id) . '.html';
@@ -28,7 +31,7 @@ class NewsController extends Zend_Controller_Action
         $this->view->comments = Model_Comment_Api::getInstance()->getComments($newsId, Model_Comment_Container::TYPE_NEWS);
 
         $this->view->headTitle()->headTitle($news->title, 'PREPEND');
-        $this->view->headMeta()->setName('description', $news->content);
+        $this->view->headMeta()->setName('description', Jkl_Tools_String::metaDescription($news->content));
         $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . '/' . $canonicalSlug;
     }
 }

@@ -35,6 +35,9 @@ class SongController extends Zend_Controller_Action
     {
         // content
         $params = $this->getRequest()->getParams();
+        if (!Model_Song_Api::getInstance()->exists($params['id'])) {
+            throw new Zend_Controller_Action_Exception('No song ' . (int) $params['id'], 404);
+        }
         $song = Model_Song_Api::getInstance()->find($params['id'], true);
         // A song on no album and by no artist has nothing to show it with: a few old rows on
         // production, which answered 500 (#37).
@@ -67,9 +70,11 @@ class SongController extends Zend_Controller_Action
         $this->view->headTitle()->set($this->view->song->albumArtist->name . ' - ' . $this->view->song->title . ' (' . $this->view->song->featured->items[0]->title . ')');
         $this->view->headMeta()->setName('keywords', $this->view->song->albumArtist->name . ',' . $this->view->song->title . ',tekst,teledysk,sample');
         if (!empty($song->lyrics)) {
-            $this->view->headMeta()->setName('description', 'Tekst i teledysk utworu ' . $this->view->song->albumArtist->name . ' - ' . $this->view->song->title . '. ' . Jkl_Tools_String::trim_str(str_replace(array(" <br />\r", "<br />\r ", "<br />\r"), ', ', $song->lyrics), 160, false));
+            // The lyrics' lines, one after another with a comma between
+            $lines = preg_replace('/\s*<br\s*\/?>\s*/i', ', ', $song->lyrics);
+            $this->view->headMeta()->setName('description', Jkl_Tools_String::metaDescription('Tekst i teledysk utworu ' . $this->view->song->albumArtist->name . ' - ' . $this->view->song->title . '. ' . $lines));
         } else {
-            $this->view->headMeta()->setName('description', 'Teledysk i informacje o utworze ' . $this->view->song->albumArtist->name . ' - ' . $this->view->song->title . '. Na razie nie mamy tekstu, ale jeżeli go posiadasz, możesz dodać.');
+            $this->view->headMeta()->setName('description', Jkl_Tools_String::metaDescription('Teledysk i informacje o utworze ' . $this->view->song->albumArtist->name . ' - ' . $this->view->song->title . '. Na razie nie mamy tekstu, ale jeżeli go posiadasz, możesz dodać.'));
 
             Model_Song_Api::getInstance()->getArtists($params['id']);
         }

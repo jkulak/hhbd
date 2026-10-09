@@ -110,4 +110,42 @@ class Jkl_Tools_StringTest extends TestCase
             ],
         ];
     }
+
+    public function testAMetaDescriptionKeepsNoTagsAndNoEntities(): void
+    {
+        $this->assertSame(
+            'Wydał 5 świetnie przyjętych płyt - z zespołem Flexxip ("Fach..." T1/Teraz/Pomaton 2003 r.)',
+            Jkl_Tools_String::metaDescription('<p>Wydał 5 świetnie przyjętych płyt - z zespołem <a href="/x">Flexxip</a> (&quot;Fach...&quot; T1/Teraz/Pomaton 2003 r.)</p>')
+        );
+    }
+
+    public function testAMetaDescriptionPutsASpaceWhereALineOrAParagraphEnded(): void
+    {
+        $this->assertSame(
+            'Jestem natchniona, nie zrozumiesz tego... Za oknem jakieś... Ale świecą gwiazdy',
+            Jkl_Tools_String::metaDescription("Jestem natchniona, nie zrozumiesz tego...<br />\r\nZa oknem jakieś...<br>Ale świecą&nbsp;gwiazdy</p><p>")
+        );
+    }
+
+    public function testAMetaDescriptionLeavesAShortTextAsItIs(): void
+    {
+        $this->assertSame('Najświeższe aktualności', Jkl_Tools_String::metaDescription('  Najświeższe   aktualności '));
+    }
+
+    public function testALongMetaDescriptionIsCutAfterAWordWithinItsLength(): void
+    {
+        $text = str_repeat('źdźbło ', 40);
+        $description = Jkl_Tools_String::metaDescription($text);
+
+        $this->assertLessThanOrEqual(160, mb_strlen($description, 'UTF-8'));
+        $this->assertStringEndsWith('źdźbło...', $description);
+        $this->assertSame(1, preg_match('//u', $description), 'still valid UTF-8');
+    }
+
+    public function testALongMetaDescriptionWithoutSpacesIsCutInCharactersNotBytes(): void
+    {
+        $description = Jkl_Tools_String::metaDescription(str_repeat('ż', 200), 20);
+
+        $this->assertSame(str_repeat('ż', 17) . '...', $description);
+    }
 }

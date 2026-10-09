@@ -1,2 +1,13 @@
+# Open to search engines since #147; until then this file said Disallow: / to all of them. The
+# lines below keep out only what is no page for people: the AJAX of the comments and the video
+# flag, the view counter, logging out and the admin's pages. $ ends a path, so a song or an
+# artist whose page starts with "stat" or "comments" stays in.
 User-agent: *
-Disallow: /
+Disallow: /comments$
+Disallow: /stat$
+Disallow: /api/
+Disallow: /admin/
+Disallow: /admin-interface/
+Disallow: /user/logout
+
+Sitemap: https://hhbd.pl/sitemap-index.xml

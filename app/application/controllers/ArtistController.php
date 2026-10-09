@@ -44,6 +44,9 @@ class ArtistController extends Zend_Controller_Action
             $this->_helper->redirector->gotoUrl(Model_Artist_Api::getInstance()->find($into)->getUrl(), array('code' => 301));
         }
         $artist = Model_Artist_Api::getInstance()->find($this->params['id'], true);
+        if (null === $artist) {
+            throw new Zend_Controller_Action_Exception('No artist ' . (int) $this->params['id'], 404);
+        }
 
         // Build canonical URL and redirect if current URL doesn't match
         // The qualifier is in the slug too, so two artists of one name never share one (#102).
@@ -112,11 +115,7 @@ class ArtistController extends Zend_Controller_Action
 
         $this->view->headTitle()->headTitle($artist->qualifiedName, 'PREPEND');
         // $this->view->headMeta()->setName('description', $artist->name . ' - teksty, dyskografia, biografia '. implode(', ', $albumList));
-        if (!empty($artist->description)) {
-            $this->view->headMeta()->setName('description', Jkl_Tools_String::trim_str($artist->description, 160));
-        } else {
-            $this->view->headMeta()->setName('description', Jkl_Tools_String::trim_str($artist->autoDescription, 160));
-        }
+        $this->view->headMeta()->setName('description', Jkl_Tools_String::metaDescription(empty($artist->description) ? $artist->autoDescription : $artist->description));
 
         $this->view->headMeta()->setName('keywords', $artist->qualifiedName . ',' . implode(',', $albumListTmp) . ',teksty,dyskografia,biografia');
     }

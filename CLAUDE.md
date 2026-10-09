@@ -176,6 +176,8 @@ Parse logic extracts ID from URL suffix before `.html`.
 
 The addresses before these (`/n/peja`, `/a/...`, `/l/...`, `/s/...`, `/wykonawca/...`, `/news/223`) redirect to today's pages through `LegacyController`, by the slug kept in each table's `urlname` (#26). They stay for good, and the old links in the database's texts are left as they are (#24): other sites link the old addresses too.
 
+Search engines are welcome since #147 (`app/public/robots.txt` kept them all out before). They get `/sitemap-index.xml` and a sitemap per kind of page, each address the canonical one; a missing row is a 404 at its own address; search results and the account pages are `noindex`; a meta description goes through `Jkl_Tools_String::metaDescription`, so no HTML reaches it. `tests/smoke-test.sh` checks all of it, on production too.
+
 ### Configuration
 
 **application.ini sections:**

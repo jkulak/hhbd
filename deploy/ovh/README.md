@@ -59,7 +59,9 @@ What each container writes, in CONTRACT.md §9's format (#101):
   format on stderr. Its report on stdout is unchanged.
 
 nginx takes the client's address from `X-Real-IP`, trusted from the edge's fixed address
-172.30.0.2 only.
+172.30.0.2 only. It passes `X-Forwarded-Proto: https`, which Cloudflare sends and the edge
+keeps, on to PHP as `HTTPS=on`, so the application writes `https://` into its canonical tags
+and sitemaps (#147).
 
 There is no adminer and no backoffice. The database is reached over ssh:
 
