@@ -67,9 +67,16 @@ services:
   db:
     image: mariadb:10.11.8
     restart: unless-stopped
-    # Read-optimized for a 23 MB database (writes ~100/week), as tuned on main in 887938f
+    # Read-optimized for a 33 MB all-InnoDB database (writes ~100/week), tuned in 887938f and #67:
+    # - the InnoDB buffer pool holds all data and indexes about three times over (152 disk reads
+    #   in 142 million requests on production);
+    # - the MyISAM key cache is down to 8 MB from its 128 MB default, since no table is MyISAM
+    #   since #45;
+    # - the Aria page cache, which holds on-disk temporary tables (86% of them, because the
+    #   queries carry TEXT columns), is down to 32 MB from 128 MB: ample for a small site.
+    # Keep compose.yaml and compose.ci.yaml on the same flags, so tests see what production sees.
     command: >
-      --innodb-buffer-pool-size=96M --innodb-buffer-pool-dump-at-shutdown=1 --innodb-buffer-pool-load-at-startup=1 --max-connections=20 --innodb-log-file-size=16M --innodb-flush-log-at-trx-commit=2 --innodb-read-io-threads=4 --innodb-write-io-threads=1 --table-open-cache=400 --innodb-stats-on-metadata=0 --transaction-isolation=READ-COMMITTED --skip-name-resolve
+      --innodb-buffer-pool-size=96M --innodb-buffer-pool-dump-at-shutdown=1 --innodb-buffer-pool-load-at-startup=1 --max-connections=20 --innodb-log-file-size=16M --innodb-flush-log-at-trx-commit=2 --innodb-read-io-threads=4 --innodb-write-io-threads=1 --table-open-cache=400 --innodb-stats-on-metadata=0 --transaction-isolation=READ-COMMITTED --skip-name-resolve --key-buffer-size=8M --aria-pagecache-buffer-size=32M
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?}
       MYSQL_DATABASE: hhbd
