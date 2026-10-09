@@ -120,6 +120,19 @@ Production's database is migrated from the Mac, over ssh into `hhbd-db-1` on the
 `make ovh-migrate` before the release that needs the change; `make ovh-migrate-down` asks for a
 typed confirmation. [deploy/README.md](../deploy/README.md) has the order.
 
+## Character set and collation
+
+The catalogue is `utf8mb4` with `utf8mb4_polish_ci` (0021, #71): any character fits, "Żabson"
+and "Zabson" are two names while "żabson" is "Żabson", and `ORDER BY name` follows the Polish
+alphabet. Tables that hold identifiers compare bytes instead (`utf8mb4_bin`: `external_ids`,
+`import_runs`, `import_provenance`, `migration_archive`, `album_covers`), and the runner's
+`schema_migrations` keeps its own. A new table says which of the two it is. The application
+connects with `utf8mb4` too; MariaDB's `utf8` is the three-byte `utf8mb3`.
+
+0021's down restores every column exactly, but refuses once the catalogue holds what the old
+`utf8mb3_general_ci` cannot: a four-byte character, or two names kept apart only by a Polish
+letter.
+
 ## Audit columns
 
 What the columns that record a row's history mean, and how they are kept (#48). The names

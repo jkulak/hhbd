@@ -11,14 +11,16 @@ abstract class Jkl_Model_Api
     {
         $dbRes = Zend_Registry::get('Config_Resources');
 
-        $pdoParams = array( 'MYSQL_ATTR_INIT_COMMAND' => 'SET NAMES utf8' );
+        // utf8mb4, so names with characters outside the Basic Multilingual Plane survive the
+        // trip both ways (#71); utf8 is MariaDB's three-byte utf8mb3.
+        $pdoParams = array( 'MYSQL_ATTR_INIT_COMMAND' => 'SET NAMES utf8mb4' );
         $params = array(
           'host'      => $dbRes['db']['params']['host'],
           'dbname'    => $dbRes['db']['params']['dbname'],
           'username'  => $dbRes['db']['params']['username'],
           'password'  => $dbRes['db']['params']['password'],
           'port'      => (isset($dbRes['db']['params']['port']) ? $dbRes['db']['params']['port'] : ''),
-          'charset'   => 'utf8',
+          'charset'   => 'utf8mb4',
           'driver_options' => $pdoParams);
         try {
             //Jkl_Db::factory zwraca inny obiekt, dlatego nie diala przeciazenie
