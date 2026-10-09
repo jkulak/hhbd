@@ -21,8 +21,8 @@ person's decision; nothing releases on its own.
   old addresses, where they belong.
 
 ### Changed
-- PHP 8.4, from Debian 13's own packages, in every image: the web's, the importer's, CI's builder
-  and the dev container (#37). PHP 7.4 had been out of support since 2022 and its image's
+- PHP 8.4, from Debian 13's own packages, in every image: the web's, the importer's and CI's
+  builder (#37). PHP 7.4 had been out of support since 2022 and its image's
   Debian 11 was fetched from archive.debian.org with no security update ever again; Debian 13
   and PHP 8.4 are both supported to 2028, and a rebuild takes Debian's security updates. Nothing
   is compiled. On a copy of production, the same 942 pages answer about four times faster:
@@ -63,6 +63,14 @@ person's decision; nothing releases on its own.
   rows in one query rather than one per table; each image keeps its layer cache under its own
   scope, where the shared one meant the app's image was built from scratch on every run; and
   the production stack test gets its images built with the layer cache.
+
+### Removed
+- The VS Code dev container (#136): nobody uses it. What it did moves to the local stack, as the
+  host has no PHP: the development override runs the app on the `builder` stage, so
+  `docker compose exec app composer install` fills `app/vendor`; `make test-unit` runs the unit
+  tests in the importer's image, GD's included, with no stack up; `make cs` and `make cs-fix`
+  run php-cs-fixer; `make hooks` installs the git hooks, and the pre-commit hook runs PHP in the
+  app's image where the host has none.
 
 ### Fixed
 - A song on no album and by no artist answers 404, where its page failed with 500: three old

@@ -2,6 +2,10 @@
 # compose reads by itself.
 services:
   app:
+    # The builder stage: FPM with composer, unzip and git, so `docker compose exec app composer
+    # install` fills app/vendor with the dev dependencies, as CI's app has it (compose.ci.yaml)
+    build:
+      target: builder
     environment:
       APPLICATION_ENV: development
     volumes:
