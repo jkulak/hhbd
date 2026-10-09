@@ -51,6 +51,70 @@ class AdminController extends Zend_Controller_Action
         $this->view->recentActivity = $this->_getRecentActivity($db);
     }
 
+    /** Every open item an import left to settle, by reason, newest first (#103) */
+    public function reviewAction()
+    {
+        $this->view->headTitle()->set('Do przejrzenia - Panel Admina - Hhbd.pl');
+        $this->getResponse()->setHeader('Cache-Control', 'private, no-store', true);
+        $api = Model_Review_Api::getInstance();
+        $reason = $this->getRequest()->getParam('powod');
+        $reason = isset(Model_Review_Api::REASONS[$reason]) ? $reason : null;
+        $this->view->counts = $api->openCounts();
+        $this->view->reason = $reason;
+        $this->view->items = $api->listOpen($reason);
+        $this->view->entities = $this->_entitiesOf($this->view->items);
+        $this->view->reviewMessages = $this->_helper->flashMessenger->getMessages();
+    }
+
+    /**
+     * Settles one item with the action the panel's form posted, then goes back to the page the
+     * form was on. Only a POST that carries the session's token counts.
+     */
+    public function settleAction()
+    {
+        $request = $this->getRequest();
+        $back = $request->getPost('back');
+        // A path on this site only, so the form cannot send the admin anywhere else.
+        if (!is_string($back) || 1 !== preg_match('#^/(?!/)#', $back)) {
+            $back = $this->view->url(array(), 'adminReview');
+        }
+        if (!$request->isPost() || !Jkl_Csrf::isValid($request->getPost('token'))) {
+            $this->getResponse()->setHttpResponseCode(403);
+            $this->_helper->viewRenderer->setNoRender(true);
+            $this->getResponse()->setBody('Formularz wygasł albo nie pochodzi z hhbd.pl. Wróć na stronę i spróbuj jeszcze raz.');
+            return;
+        }
+        try {
+            Model_Review_Api::getInstance()->settle(
+                (int) $request->getPost('id'),
+                (string) $request->getPost('do'),
+                (string) $request->getPost('value'),
+                (string) $request->getPost('note'),
+                (int) Zend_Auth::getInstance()->getIdentity()->usr_id
+            );
+            $this->_helper->flashMessenger->addMessage('Rozstrzygnięte.');
+        } catch (RuntimeException $e) {
+            $this->_helper->flashMessenger->addMessage('Nie udało się: ' . $e->getMessage());
+        }
+        $this->_redirect($back);
+    }
+
+    /** Each item's row as the list names and links it: entity type => id => (name, url) */
+    private function _entitiesOf(array $items)
+    {
+        $apis = array('album' => 'Model_Album_Api', 'artist' => 'Model_Artist_Api', 'label' => 'Model_Label_Api');
+        $entities = array();
+        foreach ($items as $item) {
+            if (isset($entities[$item->entityType][$item->entityId]) || !isset($apis[$item->entityType])) {
+                continue;
+            }
+            $entity = call_user_func(array($apis[$item->entityType], 'getInstance'))->find($item->entityId);
+            $name = 'artist' === $item->entityType ? $entity->qualifiedName : ('album' === $item->entityType ? $entity->artistNames . ' - ' . $entity->title : $entity->name);
+            $entities[$item->entityType][$item->entityId] = array('name' => $name, 'url' => $entity->getUrl());
+        }
+        return $entities;
+    }
+
     private function _getSummaryStats($db)
     {
         $stats = array();

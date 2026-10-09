@@ -64,6 +64,7 @@ class Model_Import_Importer extends Jkl_Model_Api
     private $provenance;
     private $featTypes;
     private $images;
+    private $reviews;
 
     /**
      * @param string $contentDir where content/ is: covers under a/, photos under p/, logos under l/
@@ -77,6 +78,7 @@ class Model_Import_Importer extends Jkl_Model_Api
         $this->provenance = Model_Provenance_Api::getInstance();
         $this->featTypes = Model_FeatType_Api::getInstance();
         $this->images = Model_Image_Api::getInstance();
+        $this->reviews = Model_Review_Api::getInstance();
     }
 
     /**
@@ -441,15 +443,10 @@ class Model_Import_Importer extends Jkl_Model_Api
             $this->fill('artists', $id, $name, 'facts', $facts);
         }
         $this->addIds('artist', $id, $doc);
-        // What the batch could not settle on its own goes to a person; until hhbd keeps review
-        // items (#103), the report says it.
+        // A namesake the batch could not settle goes to a person, on the artist's page (#103).
         if (!empty($doc['review'])) {
-            $this->warnings[] = sprintf(
-                'artist %d is for a person to review: %s%s',
-                $id,
-                $doc['review']['reason'],
-                empty($doc['review']['suggestions']) ? '' : ' (hhbd artist ' . implode(', ', $doc['review']['suggestions']) . ')'
-            );
+            $suggestions = isset($doc['review']['suggestions']) ? $doc['review']['suggestions'] : array();
+            $this->review('artist', $id, 'namesake', array('text' => $doc['review']['reason'], 'suggestions' => $suggestions));
         }
 
         foreach (isset($doc['aliases']) ? $doc['aliases'] : array() as $alias) {
@@ -599,7 +596,27 @@ class Model_Import_Importer extends Jkl_Model_Api
         if (!empty($doc['cover'])) {
             $this->addCover($id, $doc['cover']);
         }
+        // What the sources disagreed on, for a person to settle on the album's page (#103).
+        foreach (isset($doc['review']) ? $doc['review'] : array() as $doubt) {
+            $this->review('album', $id, $doubt['reason'], array_filter(array(
+                'text'   => $this->value($doubt, 'note'),
+                'values' => $this->value($doubt, 'values'),
+            )));
+        }
         return array('album', $id, $created);
+    }
+
+    /** Opens an item for a person to settle (#103), and says so in the report */
+    private function review($entity, $id, $reason, array $detail)
+    {
+        $this->reviews->add($entity, $id, $reason, $detail, $this->runId);
+        $this->warnings[] = sprintf(
+            '%s %d is for a person to review: %s%s',
+            $entity,
+            $id,
+            isset($detail['text']) ? $detail['text'] : Model_Review_Api::REASONS[$reason]['label'],
+            empty($detail['suggestions']) ? '' : ' (hhbd ' . $entity . ' ' . implode(', ', $detail['suggestions']) . ')'
+        );
     }
 
     private function addTracklist($albumId, array $tracks)
@@ -682,11 +699,36 @@ class Model_Import_Importer extends Jkl_Model_Api
      */
     private function addCover($albumId, array $cover)
     {
-        $has = $this->_db->fetchAll('SELECT COUNT(*) AS n FROM album_covers WHERE albumid = ?', array($albumId));
-        if ((int) $has[0]['n'] > 0) {
+        // An album with a cover keeps it, unless every one it shows is a stand-in (#60) and
+        // this one is larger: then this one takes its place, and the doubt is settled (#103).
+        $has = $this->_db->fetchAll(
+            "SELECT MAX(GREATEST(width, height)) AS size, MIN(needs_upgrade) AS standin FROM album_covers WHERE albumid = ? AND main = 'y'",
+            array($albumId)
+        );
+        $replaces = null !== $has[0]['size'];
+        if ($replaces && 1 !== (int) $has[0]['standin']) {
             return;
         }
         $image = $this->image($cover);
+        if ($replaces) {
+            // Larger as the pages would show it: a 500 px original makes a 300 cover, as the
+            // stand-in it would replace may have; the same original makes the same.
+            $longer = max($image->getWidth(), $image->getHeight());
+            $shown = 0;
+            foreach (Model_Import_Image::coverVariantsFor($image->getWidth(), $image->getHeight()) as $variant) {
+                $shown = max($shown, min($longer, Model_Import_Image::COVER_VARIANTS[$variant]));
+            }
+            if ($shown <= (int) $has[0]['size']) {
+                return;
+            }
+            $this->_db->query("UPDATE album_covers SET main = 'n' WHERE albumid = ? AND main = 'y'", array($albumId));
+            foreach ($this->reviews->openFor('album', $albumId) as $item) {
+                if ('cover_placeholder' === $item->reason) {
+                    $this->reviews->close($item->id, 'replaced', 'A larger cover came with an import.', $this->userId);
+                }
+            }
+            $this->warnings[] = sprintf('album %d: its stand-in cover is replaced by a larger one', $albumId);
+        }
         foreach (Model_Import_Image::coverVariantsFor($image->getWidth(), $image->getHeight()) as $variant) {
             $path = 'a/' . $variant . '/' . $image->getSha256() . '.jpg';
             $written = $this->stage($image, $path, Model_Import_Image::COVER_VARIANTS[$variant]);
@@ -699,6 +741,11 @@ class Model_Import_Importer extends Jkl_Model_Api
             );
         }
         $this->touched['cover'] = true;
+        if (!empty($cover['needs_upgrade'])) {
+            $this->review('album', $albumId, 'cover_placeholder', array(
+                'text' => sprintf('%s, %d × %d px', $this->value($cover, 'source', 'import'), $image->getWidth(), $image->getHeight()),
+            ));
+        }
     }
 
     // --- Images for rows hhbd has ----------------------------------------------------------

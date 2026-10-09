@@ -140,6 +140,12 @@ jobs:
           # documents that do not hold up; it ends with a reset (#56).
           ./tests/import-test.sh http://localhost:8080
 
+      - name: Check settling what an import left
+        run: |
+          # As the fixtures' admin, through the site's forms: a merge, keep, qualifier, cover,
+          # date and type, and forms that must not count; it ends with a reset (#103).
+          ./tests/review-test.sh http://localhost:8080
+
       - name: Show logs on failure
         if: failure()
         run: |

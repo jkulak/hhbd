@@ -71,7 +71,7 @@ logo=$(sha logo-label.png)
 echo "> a dry run"
 check "the dry run reads every document" "0" "$(import "$BATCH" dry-run dry)"
 check "and reports what an apply would do" "7 created, 3 updated, 1 unchanged, 0 refused" "$(totals dry)"
-check "with a warning for each value hhbd keeps, and the namesake to review" "4" "$(jq '[.documents[].warnings[]] | length' "$T/dry.json")"
+check "with a warning for each value hhbd keeps, and the namesake and the stand-in cover to review" "5" "$(jq '[.documents[].warnings[]] | length' "$T/dry.json")"
 check "and leaves no row behind" "$rows_start" "$(rows)"
 check "and no file" "" "$(content | comm -13 "$T/content-start" -)"
 check "but its run, closed" "dry-run 7 1" "$(sql "SELECT CONCAT_WS(' ', mode, created_count, finished IS NOT NULL) FROM import_runs ORDER BY id DESC LIMIT 1")"
@@ -111,6 +111,8 @@ check "its page is under the qualified name" "1" \
     "$(curl -s "$URL$(jq -r '.documents[] | select(.ref == "artist:mes-imiennik") | .url' "$T/apply.json")" | grep -c '<h1>Mes (testowy imiennik)</h1>' || true)"
 check "and the report asks a person to look at it" "1" \
     "$(jq '[.documents[] | select(.ref == "artist:mes-imiennik") | .warnings[] | select(test("for a person to review: same name as hhbd artist 35"))] | length' "$T/apply.json")"
+check "the namesake and the single's stand-in cover wait for a person, on their pages" "artist:namesake album:cover_placeholder" \
+    "$(sql "SELECT GROUP_CONCAT(CONCAT(entity_type, ':', reason) ORDER BY id SEPARATOR ' ') FROM review_items WHERE run_id = (SELECT MAX(id) FROM import_runs) AND resolved IS NULL")"
 check "where each changed group came from, and only those" "core cover tracklist" \
     "$(sql "SELECT GROUP_CONCAT(field ORDER BY field SEPARATOR ' ') FROM import_provenance WHERE entity_type = 'album' AND entity_id = $album")"
 check "Eldo's core is not credited to the batch" "facts" \
@@ -124,6 +126,19 @@ check "the second apply reads every document" "0" "$(import "$BATCH" apply again
 check "and changes nothing" "0 created, 0 updated, 11 unchanged, 0 refused" "$(totals again)"
 check "not a row" "$rows_applied" "$(rows)"
 check "not a file" "" "$(content | comm -3 "$T/content-applied" -)"
+check "nor a second review item" "2" "$(sql "SELECT COUNT(*) FROM review_items WHERE run_id IS NOT NULL AND run_id > 1")"
+
+echo "> a larger cover for the single, whose cover is a stand-in"
+single_id=$(jq -r '.documents[] | select(.ref == "release:testowy-singiel") | .hhbd_id' "$T/apply.json")
+mkdir -p "$T/upgrade/files"
+cp "$BATCH/files/cover-album.jpg" "$T/upgrade/files/"
+jq -c --argjson id "$single_id" 'select(.ref == "release:testowy-album") | {kind: "image", target: {entity: "album", ref: "hhbd:album:\($id)"}, role: "cover", file: .cover}' "$BATCH/batch.ndjson" >"$T/upgrade/batch.ndjson"
+check "the import reads it" "0" "$(import "$T/upgrade" apply upgrade)"
+check "it takes the stand-in's place on the page" "1 orig:1200:0 600:600:0 300:300:0 75:75:0" \
+    "$(sql "SELECT COUNT(*) FROM album_covers WHERE albumid = $single_id AND main = 'n' AND variant = '300'") $(sql "SELECT GROUP_CONCAT(CONCAT(variant, ':', width, ':', needs_upgrade) ORDER BY width DESC SEPARATOR ' ') FROM album_covers WHERE albumid = $single_id AND main = 'y'")"
+check "and settles the doubt about it" "replaced 1100" \
+    "$(sql "SELECT CONCAT_WS(' ', resolution, resolved_by) FROM review_items WHERE entity_type = 'album' AND entity_id = $single_id AND reason = 'cover_placeholder'")"
+check "the same cover again changes nothing" "0 created, 0 updated, 1 unchanged, 0 refused" "$([ "$(import "$T/upgrade" apply upgrade-again)" = 0 ] && totals upgrade-again)"
 
 echo "> a batch with documents that do not hold up, on a fresh database and content/"
 make -s reset-db >"$T/out" 2>&1 || { bad "make reset-db succeeds"; cat "$T/out"; }

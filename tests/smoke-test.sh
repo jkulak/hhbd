@@ -388,6 +388,18 @@ run_fixture_tests() {
     test_page_multi "A search finding both shows each one's qualifier" "/szukaj.html?q=Solar" "Solar (SBM Label)" "Solar (raper z Poznania)"
     test_page "A page listing one of them links him" "/sklad-solara-p66.html" 'href="/solar-sbm-label-p64.html"'
     test_page_absent "under his name alone" "/sklad-solara-p66.html" "(SBM Label)"
+    # What an import left to settle (#103): nothing for a visitor, a panel for the fixtures' admin.
+    test_page_absent "A visitor sees no review panel" "/solar-raper-z-poznania-p65.html" "Do przejrzenia"
+    local jar visitor_opts="$CURL_OPTS"
+    jar=$(mktemp)
+    curl -s -o /dev/null --max-time 10 $CURL_OPTS -c "$jar" --data-urlencode "email=admin@example.com" --data-urlencode "password=adminpass" "$BASE_URL/uzytkownik/logowanie.html"
+    CURL_OPTS="$visitor_opts -b $jar"
+    test_page_multi "An admin sees a namesake's doubt and the artist it may be" "/solar-raper-z-poznania-p65.html" "Do przejrzenia" "Połącz z: Solar (SBM Label) (id 64)" "To inny wykonawca"
+    test_page_multi "And an album's disputed date with the sources' values" "/eldo-podmiejski-gwar-a50.html" "Źródła nie zgadzają się co do daty" "Data: 2013-05-17"
+    test_page_multi "And a stand-in cover" "/wdowa-superextra-a535.html" "Okładka zastępcza" "Ta okładka zostaje"
+    test_page_multi "The list counts the open items by reason" "/admin/do-przejrzenia.html" 'data-reason="namesake">1<' 'data-reason="single_source">1<' "Solar (raper z Poznania)"
+    CURL_OPTS="$visitor_opts"
+    rm -f "$jar"
     echo ""
 }
 

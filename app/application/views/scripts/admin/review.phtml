@@ -1,0 +1,31 @@
+<div id="main">
+  <h1>Do przejrzenia</h1>
+  <p>Wątpliwości, które zostawił import. Każdą rozstrzygasz na stronie, której dotyczy.</p>
+  <?php foreach ((array) $this->reviewMessages as $message): ?>
+    <p class="review-message"><?php echo $this->escape($message) ?></p>
+  <?php endforeach ?>
+  <ul class="review-counts">
+    <li><a href="<?php echo $this->url(array(), 'adminReview') ?>">Wszystkie</a>: <?php echo array_sum($this->counts) ?></li>
+    <?php foreach ($this->counts as $reason => $count): ?>
+      <li><a href="<?php echo $this->url(array(), 'adminReview') ?>?powod=<?php echo $reason ?>"><?php echo $this->escape(Model_Review_Api::REASONS[$reason]['label']) ?></a>: <span class="count" data-reason="<?php echo $reason ?>"><?php echo $count ?></span></li>
+    <?php endforeach ?>
+  </ul>
+  <?php if (empty($this->items)): ?>
+    <p>Nic nie czeka.</p>
+  <?php else: ?>
+    <table>
+      <caption>Otwarte<?php if ($this->reason): ?>: <?php echo $this->escape(Model_Review_Api::REASONS[$this->reason]['label']) ?><?php endif ?>, od najnowszych</caption>
+      <thead><tr><th>Od</th><th>Powód</th><th>Czego dotyczy</th></tr></thead>
+      <tbody>
+        <?php foreach ($this->items as $item): ?>
+          <?php $entity = isset($this->entities[$item->entityType][$item->entityId]) ? $this->entities[$item->entityType][$item->entityId] : null ?>
+          <tr>
+            <td><?php echo $this->escape($item->created) ?></td>
+            <td><?php echo $this->escape($item->getLabel()) ?></td>
+            <td><?php if ($entity): ?><a href="<?php echo $entity['url'] ?>#review-<?php echo $item->id ?>"><?php echo $this->escape($entity['name']) ?></a><?php else: ?><?php echo $item->entityType . ' ' . $item->entityId ?><?php endif ?></td>
+          </tr>
+        <?php endforeach ?>
+      </tbody>
+    </table>
+  <?php endif ?>
+</div>

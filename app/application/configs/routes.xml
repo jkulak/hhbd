@@ -47,6 +47,25 @@
         </defaults>
         <reverse>admin/statystyki.html</reverse>
       </adminStats>
+
+      <!-- What an import left to settle (#103): the open items, and the form that settles one -->
+      <adminReview>
+        <route>admin/do-przejrzenia.html</route>
+        <defaults>
+          <controller>admin</controller>
+          <action>review</action>
+        </defaults>
+        <reverse>admin/do-przejrzenia.html</reverse>
+      </adminReview>
+
+      <adminReviewSettle>
+        <route>admin/do-przejrzenia/rozstrzygnij.html</route>
+        <defaults>
+          <controller>admin</controller>
+          <action>settle</action>
+        </defaults>
+        <reverse>admin/do-przejrzenia/rozstrzygnij.html</reverse>
+      </adminReviewSettle>
       
       <!-- Albumy Wykonawcy Wytwórnie "O nas" Blog Kontakt "Zasady użytkowania" "Mapa strony" -->
       <!-- articles -->

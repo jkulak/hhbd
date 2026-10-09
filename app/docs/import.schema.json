@@ -133,7 +133,7 @@
           "maxLength": 190
         },
         "review": {
-          "description": "Why a person should look at the artist once it is in, such as a name hhbd already has: {\"reason\": \"same name as hhbd artist 2311\", \"suggestions\": [2311]}. An artist with a review has a disambiguation.",
+          "description": "Why a person should look at the artist once it is in, such as a name hhbd already has: {\"reason\": \"same name as hhbd artist 2311\", \"suggestions\": [2311]}. An artist with a review has a disambiguation. It opens a review item on the artist's page, where an admin merges it into a suggestion, keeps it apart, or changes its qualifier (#103).",
           "oneOf": [
             { "type": "null" },
             {
@@ -218,6 +218,23 @@
           ]
         },
         "description": { "type": ["string", "null"] },
+        "review": {
+          "description": "What the sources left for a person to settle on the album's page (#103): a date or a release type they disagree on, with the values each gave, or a release only one catalogue knew. A stand-in cover asks for review by its needs_upgrade, not here.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["reason"],
+            "properties": {
+              "reason": { "enum": ["date_disputed", "type_disputed", "single_source"] },
+              "values": {
+                "description": "The values the sources gave: dates as 2016, 2016-11 or 2016-11-03, types as release_type has them.",
+                "type": "array",
+                "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+              },
+              "note": { "type": ["string", "null"], "maxLength": 500 }
+            }
+          }
+        },
         "cover": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/cover" }] },
         "tracklist": {
           "type": "array",
