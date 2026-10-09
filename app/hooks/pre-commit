@@ -14,15 +14,27 @@ fi
 # Track if any checks fail
 FAILED=0
 
+# PHP from the host when it has one; otherwise in the app's image with the repository mounted,
+# as on a Mac with no PHP: in_php <command> [arguments...]
+in_php() {
+    cmd=$1
+    shift
+    if command -v php >/dev/null 2>&1; then
+        "$cmd" "$@"
+    else
+        docker compose --progress quiet run --rm --no-deps -T -v "$(pwd):/w" -w /w --entrypoint "$cmd" app "$@"
+    fi
+}
+
 # ============================================================================
 # 1. PHP CS Fixer - Check code style
 # ============================================================================
 echo "📋 Checking code style with php-cs-fixer..."
 if [ -f "app/vendor/bin/php-cs-fixer" ]; then
-    app/vendor/bin/php-cs-fixer fix --dry-run --diff --config=.php-cs-fixer.dist.php --path-mode=intersection $STAGED_FILES
+    in_php app/vendor/bin/php-cs-fixer fix --dry-run --diff --config=.php-cs-fixer.dist.php --path-mode=intersection $STAGED_FILES
     if [ $? -ne 0 ]; then
         echo "❌ Code style issues found."
-        echo "Run: app/vendor/bin/php-cs-fixer fix"
+        echo "Run: make cs-fix FILES=\"$(echo $STAGED_FILES)\""
         echo ""
         FAILED=1
     else
@@ -38,15 +50,13 @@ fi
 # 2. PHP Linting - Check for syntax errors
 # ============================================================================
 echo "🔍 Linting PHP files..."
+# Every file in one run of PHP, so one container at most
+LINT_ERRORS=$(in_php sh -c 'for f; do php -l "$f" >/dev/null 2>&1 || { echo "❌ Syntax error in: $f"; php -l "$f"; }; done' lint $STAGED_FILES)
 LINT_FAILED=0
-for FILE in $STAGED_FILES; do
-    php -l "$FILE" > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        echo "❌ Syntax error in: $FILE"
-        php -l "$FILE"
-        LINT_FAILED=1
-    fi
-done
+if [ -n "$LINT_ERRORS" ]; then
+    echo "$LINT_ERRORS"
+    LINT_FAILED=1
+fi
 
 if [ $LINT_FAILED -eq 0 ]; then
     echo "✓ All files have valid PHP syntax"

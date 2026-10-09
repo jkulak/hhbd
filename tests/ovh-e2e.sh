@@ -8,7 +8,8 @@
 #   - every container becomes healthy (`up --wait`, which is how ci-deploy judges a deploy)
 #   - nothing is published on the host, and the database runs the cache sizes chosen in #67,
 #     which compose.yaml and compose.ci.yaml share
-#   - the smoke test passes through the edge
+#   - the importer's image writes the fixtures' images into the content volume, and the smoke
+#     test passes through the edge
 #   - nginx takes the client's address from X-Real-IP sent by the edge, and from nobody else
 #   - a .php file that does not exist is nginx's own 404, without PHP-FPM or a log line (#34)
 #   - nginx writes no access log and nothing at all on a healthy run; the app container writes
@@ -175,6 +176,16 @@ for _ in $(seq 1 30); do
     via_edge -o /dev/null http://hhbd.pl/ && break
     sleep 1
 done
+
+# The fixtures' covers, photos, logos and news images in the content volume, as make test-images
+# makes them, so the smoke test finds the files a page names (#133).
+echo "> the fixtures' images, written into the content volume by the importer's image"
+if compose run --rm --no-deps -T --entrypoint php importer app/tools/generate-test-images.php >"$T/images" 2>&1; then
+    ok "the importer's image writes the fixtures' images into the content volume"
+else
+    bad "the importer's image writes the fixtures' images into the content volume"
+    tail -10 "$T/images"
+fi
 
 echo "> the smoke test, through the edge"
 if SMOKE_CURL_OPTS="--connect-to hhbd.pl:80:127.0.0.1:$PORT" ./tests/smoke-test.sh http://hhbd.pl >"$T/smoke" 2>&1; then

@@ -379,6 +379,8 @@ run_fixture_tests() {
     test_page_multi "An album links where it can be heard" "/wdowa-superextra-a535.html" "https://www.deezer.com/album/302127" "https://music.apple.com/album/1440857781"
     test_page "An artist's Discogs data is credited (Mes)" "/mes-p35.html" "https://www.discogs.com/artist/271903"
     test_page "Another name stored mangled reads right (#27)" "/mes-p35.html" "JŹW"
+    test_page "A news item shows its image from content/news/ (#133)" "/premiera-nowego-albumu-pezeta-n1.html" 'id="news-attachment" src="/content/news/test-news-001.jpg"'
+    test_page_200 "and nginx serves it" "/content/news/test-news-001.jpg"
     test_redirect_301 "An old address's underscore finds a slug written with a dash (#26)" "/n/dj_technik" "/dj-technik-p6.html"
     test_not_found "A song on no album and by no artist is a 404, not a 500 (#37)" "/bez-albumu-s9100.html" "Call to a member function"
     test_page_multi "An artist's main photo carries its credit and licence (Mes)" "/mes-p35.html" "Jan Kowalski" "https://creativecommons.org/licenses/by-sa/4.0/"
@@ -519,6 +521,7 @@ run_tests() {
     # nginx logged an error for every bot asking (#34)
     echo "--- Missing Files ---"
     test_not_found "A .php file that does not exist is nginx's 404, not PHP-FPM's" "/wp-login.php" "File not found."
+    test_not_found "No dotfile is served (#139)" "/.htaccess" "RewriteEngine"
     echo ""
 
     # Static pages

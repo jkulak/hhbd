@@ -21,8 +21,8 @@ person's decision; nothing releases on its own.
   old addresses, where they belong.
 
 ### Changed
-- PHP 8.4, from Debian 13's own packages, in every image: the web's, the importer's, CI's builder
-  and the dev container (#37). PHP 7.4 had been out of support since 2022 and its image's
+- PHP 8.4, from Debian 13's own packages, in every image: the web's, the importer's and CI's
+  builder (#37). PHP 7.4 had been out of support since 2022 and its image's
   Debian 11 was fetched from archive.debian.org with no security update ever again; Debian 13
   and PHP 8.4 are both supported to 2028, and a rebuild takes Debian's security updates. Nothing
   is compiled. On a copy of production, the same 942 pages answer about four times faster:
@@ -64,7 +64,32 @@ person's decision; nothing releases on its own.
   scope, where the shared one meant the app's image was built from scratch on every run; and
   the production stack test gets its images built with the layer cache.
 
+- CI logs in to Docker Hub before it builds (#135): GitHub's runners share their addresses with
+  every other build, so Docker Hub's anonymous limit, counted per address, was used up by others
+  and failed ours with 429, a pull request that changed one line of CLAUDE.md among them. The
+  token is the repository's `DOCKERHUB_TOKEN` secret, the user its `DOCKERHUB_USERNAME`
+  variable.
+
+### Removed
+- The VS Code dev container (#136): nobody uses it. What it did moves to the local stack, as the
+  host has no PHP: the development override runs the app on the `builder` stage, so
+  `docker compose exec app composer install` fills `app/vendor`; `make test-unit` runs the unit
+  tests in the importer's image, GD's included, with no stack up; `make cs` and `make cs-fix`
+  run php-cs-fixer; `make hooks` installs the git hooks, and the pre-commit hook runs PHP in the
+  app's image where the host has none.
+
 ### Fixed
+- A news item shows its image again (#133). The page built the address from a path the
+  configuration never had, so it was the bare file name, which loaded nothing; it is
+  `/content/news/` now, the file name encoded, as old names hold spaces, Polish letters and a
+  literal `%`. Migration 0032: 18 news items named a file that is in no copy, among them the
+  mangled `trÃ“`, and no longer name one; 5 kept their file's name only up to a `%` and get it
+  whole. `make ovh-check-images` checks news images too.
+- nginx serves no file whose path has a part starting with a dot: production served
+  `app/public/.htaccess` and `.htaccess-example` to anyone (#139). They are gone, with the
+  other files nothing used: two PHP configs no image loads, a template and two language files
+  nothing reads, a stats script, eight images and a font no page shows, `tools/` (January's
+  performance scripts) and the notes for other assistants (Copilot's and Gemini's).
 - A song on no album and by no artist answers 404, where its page failed with 500: three old
   songs on production (#37). A label with no release yet gets a description without a newest
   one.
