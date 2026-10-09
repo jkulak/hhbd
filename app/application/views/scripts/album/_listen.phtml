@@ -1,0 +1,12 @@
+<?php
+// Plain links to the album where it can be heard, from its external ids (#62): no artwork and
+// no badge, which the stores' terms would ask for.
+$listen = array_filter(array(
+    'Deezer'      => Model_ExternalId_Api::pageUrl($this->externalIds, 'deezer', array('album')),
+    'Apple Music' => Model_ExternalId_Api::pageUrl($this->externalIds, 'itunes', array('collection')),
+));
+?>
+<?php if (!empty($listen)): ?>
+  <li><span>Posłuchaj:</span> <?php $i = 0; foreach ($listen as $name => $url): ?><?php if ($i++ > 0): ?>, <?php endif ?><a href="<?php echo $url ?>" rel="nofollow">
+    <?php echo $name ?></a><?php endforeach ?></li>
+<?php endif ?>
