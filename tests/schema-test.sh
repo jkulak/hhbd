@@ -19,6 +19,8 @@
 #   - every link table has a unique key, and its duplicates are archived and come back with
 #     the down (#57)
 #   - an artist with members is a band, type 'b', as the pages decide it (#65)
+#   - a role name is unique, the role-less row 0 stays, and a credit without a role takes one
+#     only where the artist's other credits agree (#66)
 #   - going down to the baseline brings the old schema back, and up removes it again
 #
 # It changes rows to prove these and ends with make reset-db, so the database ends as a reset
@@ -153,7 +155,7 @@ fi
 
 echo "> unique link tables"
 UNIQUE_TABLES="album_artist_lookup altnames_lookup artist_city_lookup artist_lookup band_lookup city_label_lookup collection feature_lookup music_lookup ratings remix_lookup scratch_lookup wishlist"
-uniques() { sql "SELECT GROUP_CONCAT(DISTINCT table_name ORDER BY table_name SEPARATOR ' ') FROM information_schema.statistics WHERE table_schema = DATABASE() AND non_unique = 0 AND index_name LIKE 'u\\_%'"; }
+uniques() { sql "SELECT GROUP_CONCAT(DISTINCT table_name ORDER BY table_name SEPARATOR ' ') FROM information_schema.statistics WHERE table_schema = DATABASE() AND non_unique = 0 AND index_name LIKE 'u\\_%' AND table_name <> 'feattypes'"; }
 dupes() { # the duplicated rows of the fixtures, as table:count
     sql "SELECT CONCAT_WS(' ',
         CONCAT('album_artist:', (SELECT GROUP_CONCAT(status ORDER BY status) FROM album_artist_lookup WHERE albumid = 535 AND artistid = 8)),
@@ -182,6 +184,18 @@ check "every artist with members is typed 'b'" "0" "$(sql "$BANDS_WITH_OTHER_TYP
 check "the two that were not are now; a 'b' without members and an artist whose member is missing keep theirs" "60:b 61:b 62:b 63:x" "$(types)"
 check "the archive holds both old types" "60:x 61:m" "$(sql "SELECT GROUP_CONCAT(CONCAT(JSON_VALUE(row_data, '$.id'), ':', JSON_VALUE(row_data, '$.type')) ORDER BY id SEPARATOR ' ') FROM migration_archive WHERE version = '0012'")"
 
+echo "> roles"
+credits() { sql "SELECT GROUP_CONCAT(CONCAT(songid, ':', artistid, ':', feattype) ORDER BY songid SEPARATOR ' ') FROM feature_lookup WHERE (songid, artistid) IN ((6, 36), (7, 41), (10, 42))"; }
+roles() { sql "SELECT CONCAT((SELECT COUNT(*) FROM feattypes WHERE id = 0 AND feattype IS NULL), ' row 0, ', (SELECT COUNT(*) FROM feattypes WHERE feattype = 'testest'), ' testest, ', (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'feattypes' AND index_name = 'u_feattypes'), ' key')"; }
+check "row 0 stays, the test role is gone, and role names have a unique key" "1 row 0, 0 testest, 1 key" "$(roles)"
+check "a credit without a role takes the artist's only other role; the others stay without one" "6:36:1 7:41:0 10:42:0" "$(credits)"
+check "the archive holds the deleted role and the changed credit" "feattypes deleted 1, feature_lookup changed 1" "$(sql "SELECT GROUP_CONCAT(CONCAT(table_name, ' ', action, ' ', n) ORDER BY table_name SEPARATOR ', ') FROM (SELECT table_name, action, COUNT(*) n FROM migration_archive WHERE version = '0013' GROUP BY table_name, action) a")"
+if sql "INSERT INTO feattypes (feattype) VALUES ('SCRATCH')" >"$T/out" 2>&1; then
+    bad "a role name cannot be stored twice, whatever its case"
+else
+    ok "a role name cannot be stored twice, whatever its case"
+fi
+
 echo "> down to the baseline brings the old schema back, and up removes it"
 rows_before=$(sql "SELECT COUNT(*) FROM songs")
 ./scripts/migrate.sh down "$after_baseline" >"$T/out" 2>&1 || { bad "down $after_baseline succeeds"; cat "$T/out"; }
@@ -195,6 +209,7 @@ check "after down: every duplicate back as the fixtures had it" \
     "album_artist:0,999,999 band:2 altnames:2 artist:2 collection:1,2 ratings:1@$(sql "SELECT added FROM ratings WHERE ID = 1"),1001@2010-05-02 10:00:00" "$(dupes)"
 check "after down: no unique keys on the link tables" "NULL" "$(uniques)"
 check "after down: the artists' types as the fixtures had them" "60:x 61:m 62:b 63:x" "$(types)"
+check "after down: the roles and credits as the fixtures had them" "1 row 0, 1 testest, 0 key 6:36:0 7:41:0 10:42:0" "$(roles) $(credits)"
 check "after down: no archive" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'migration_archive'")"
 check "after down: added changes on update again, in 11 tables plus the lyrics log" "12" "$(count "$TIMES_WITH_ON_UPDATE")"
 check "after down: the catalog's added has no default" "0" "$(count "table_name IN ($CATALOG) AND column_name = 'added' AND column_default = 'current_timestamp()'")"
@@ -207,6 +222,7 @@ check "after up again: no zero-date default" "NULL" "$(col "column_default LIKE 
 check "after up again: the cities merged as before" "1:1:999 2:35:999 3:46:0" "$(pairs artist_city_lookup)"
 check "after up again: the keys and one row per key" "$UNIQUE_TABLES album_artist:999 band:1" "$(uniques) $(dupes | cut -d' ' -f1-2)"
 check "after up again: the bands typed again" "60:b 61:b 62:b 63:x" "$(types)"
+check "after up again: the roles cleaned again" "1 row 0, 0 testest, 1 key 6:36:1 7:41:0 10:42:0" "$(roles) $(credits)"
 
 echo "> back to the fixtures"
 if make -s reset-db >"$T/out" 2>&1; then ok "make reset-db leaves the database as the fixtures have it"; else bad "make reset-db leaves the database as the fixtures have it"; cat "$T/out"; fi
