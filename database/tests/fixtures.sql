@@ -341,7 +341,7 @@ INSERT INTO `feattypes` (`id`, `feattype`, `status`) VALUES
 -- ============================================
 INSERT INTO `news` (`ID`, `title`, `news`, `glyph`, `graph`, `viewed`, `added`) VALUES
 (1877, 'ONAR - Jak na pierwszej płycie [wideo]', 'Onar wraca z nowym singlem promującym jego najnowszy album. Artysta prezentuje świeży materiał, który nawiązuje do jego wcześniejszej twórczości.', '', '', 2500, '2024-01-15 10:00:00'),
-(1, 'Premiera nowego albumu Pezeta', 'Pezet zapowiada nowy album na wiosnę. Fani nie mogą się doczekać!', '', '', 3000, '2024-02-01 12:00:00'),
+(1, 'Premiera nowego albumu Pezeta', 'Pezet zapowiada nowy album na wiosnę. Fani nie mogą się doczekać!', '', 'test-news-001.jpg', 3000, '2024-02-01 12:00:00'),
 (2, 'Sokół wraca na scenę', 'Po dłuższej przerwie Sokół ogłasza trasę koncertową.', '', '', 2800, '2024-02-15 14:00:00'),
 (3, 'Nowy teledysk Tedego', 'Tede prezentuje nowy klip do singla z nadchodzącego albumu.', '', '', 2600, '2024-03-01 10:00:00'),
 (4, 'Paluch z płytą roku?', 'Krytycy zachwyceni nowym materiałem Palucha.', '', '', 2400, '2024-03-15 16:00:00'),
