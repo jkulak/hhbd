@@ -34,6 +34,7 @@
 #   - an artist's photo file appears once per artist; artistid is an int (#61)
 #   - the catalogue is utf8mb4 with the Polish collation: Ż is not Z, case does not count,
 #     Polish order, and a four-byte character survives an insert and a page view (#71)
+#   - the lookups the pages make by artist, album, label and views have indexes (#69)
 #   - no date, datetime or timestamp column holds a zero part, the server runs with
 #     NO_ZERO_IN_DATE and NO_ZERO_DATE, the CHECKs refuse one even in a session that allows it,
 #     partial dates keep their year or month as a precision, and the downs put every zero date
@@ -285,6 +286,11 @@ fi
 # Gone before the down: in utf8mb3_general_ci Zabson and Żabson would be one name, and the
 # microphone could not be stored, so the down would rightly refuse.
 sql "DELETE FROM artists WHERE id = 9001 OR name IN ('Zabson', 'Lux Testowy', 'Łoś Testowy', 'Mazur Testowy', 'Zenek Testowy')"
+
+echo "> indexes the pages' joins use"
+check "lookups by artist, by album, by label and by views have their indexes (#69)" \
+    "albums.labelid album_artist_lookup.artistid album_lookup.albumid,disc,track artist_lookup.artistid feature_lookup.artistid music_lookup.artistid remix_lookup.artistid scratch_lookup.artistid songs.viewed" \
+    "$(sql "SELECT GROUP_CONCAT(CONCAT(table_name, '.', cols) ORDER BY table_name SEPARATOR ' ') FROM (SELECT table_name, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS cols FROM information_schema.statistics WHERE table_schema = DATABASE() AND index_name IN ('i_album_artist_lookup_artistid', 'i_artist_lookup_artistid', 'i_feature_lookup_artistid', 'i_music_lookup_artistid', 'i_scratch_lookup_artistid', 'i_remix_lookup_artistid', 'i_album_lookup_albumid', 'i_albums_labelid', 'i_songs_viewed') GROUP BY table_name, index_name) x")"
 
 echo "> no zero dates"
 # Every date, datetime and timestamp column, and how many of its values have a zero part.

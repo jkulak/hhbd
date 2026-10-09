@@ -50,7 +50,8 @@ class Model_Label_Api extends Jkl_Model_Api
 
     public function getFullList()
     {
-        $query = "SELECT t1.id AS lab_id, t1.`name`, t1.`website`, count(t2.id) AS album_count
+        // The website as a VARCHAR, so grouping keeps its temporary table in memory (#69).
+        $query = "SELECT t1.id AS lab_id, t1.`name`, CAST(t1.`website` AS CHAR(255)) AS website, count(t2.id) AS album_count
               FROM labels t1, albums t2
               WHERE (t2.`labelid`=t1.id)
               GROUP BY t1.`id`
