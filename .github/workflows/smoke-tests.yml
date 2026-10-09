@@ -146,6 +146,12 @@ jobs:
           # date and type, and forms that must not count; it ends with a reset (#103).
           ./tests/review-test.sh http://localhost:8080
 
+      - name: Check an admin's edits and their undo
+        run: |
+          # make edit's merges, deletes and set, each applied and undone, the data compared
+          # before and after; it ends with a reset (#115).
+          ./tests/edit-test.sh http://localhost:8080
+
       - name: Show logs on failure
         if: failure()
         run: |

@@ -67,7 +67,7 @@ check "a value that is no date is refused, the item left open" "302 open - 0 - 2
 echo "> merging Solar from Poznań into the SBM one"
 # The merge's list against the schema: a column that may hold an artist's id and is not on it
 # would be left naming an artist that is gone.
-covered=$(docker compose exec -T app php -r 'class Jkl_Model_Api {} require "/var/www/html/app/application/models/Review/Api.php"; foreach (Model_Review_Api::ARTIST_COLUMNS as $t => $cs) { foreach ($cs as $c) { echo "$t.$c\n"; } }' | sort | paste -sd' ' -)
+covered=$(docker compose exec -T app php -r 'class Jkl_Model_Api {} require "/var/www/html/app/application/models/Edit/Api.php"; foreach (Model_Edit_Api::ARTIST_COLUMNS as $t => $cs) { foreach ($cs as $c) { echo "$t.$c\n"; } }' | sort | paste -sd' ' -)
 check "every column that may hold an artist's id is one the merge moves" \
     "$(sql "SELECT CONCAT(table_name, '.', column_name) FROM information_schema.columns WHERE table_schema = DATABASE() AND column_name IN ('artistid', 'bandid', 'aid') ORDER BY 1" | sort | paste -sd' ' -)" "$covered"
 # References of every kind for the duplicate, one of them a band membership the kept artist
@@ -88,8 +88,11 @@ check "the kept artist has them, but the membership it had already" "$((before64
 check "the duplicate is gone, and its URL redirects to the kept one" "0 301 /solar-sbm-label-p64.html" \
     "$(sql "SELECT COUNT(*) FROM artists WHERE id = 65") $(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$URL/solar-raper-z-poznania-p65.html" | sed "s|$URL||")"
 check "the item closed by the admin, with the note" "merged 10 1 ten sam, inna wytwórnia" "$(item 1)"
-check "what it moved and dropped is recorded to undo it" "Solar raper z Poznania 8 1" \
-    "$(sql "SELECT CONCAT_WS(' ', JSON_VALUE(undo_data, '$.artist.name'), JSON_VALUE(undo_data, '$.artist.disambiguation'), JSON_LENGTH(JSON_KEYS(undo_data, '$.moved')), JSON_LENGTH(undo_data, '$.dropped.band_lookup')) FROM review_items WHERE id = 1")"
+# The same merge as make edit's, journalled the same way (#115), through the panel.
+check "it is journalled as the command line's merges are, by the admin, through the panel" "merge-artists 10 panel ten sam, inna wytwórnia" \
+    "$(sql "SELECT CONCAT_WS(' ', o.operation, o.user_id, o.path, o.why) FROM edit_operations o JOIN review_items r ON o.id = JSON_VALUE(r.undo_data, '$.operation') WHERE r.id = 1")"
+check "with the artist deleted, every row moved, and the membership it had already dropped" "1 7 1" \
+    "$(sql "SELECT CONCAT_WS(' ', SUM(table_name = 'artists' AND action = 'deleted' AND JSON_VALUE(row_before, '$.disambiguation') = 'raper z Poznania'), SUM(action = 'changed' AND table_name <> 'artists'), SUM(table_name = 'band_lookup' AND action = 'deleted')) FROM edit_journal WHERE operation_id = (SELECT JSON_VALUE(undo_data, '$.operation') FROM review_items WHERE id = 1)")"
 check "the kept artist is recorded as changed by the admin" "10" "$(sql "SELECT updatedby FROM artists WHERE id = 64")"
 
 echo "> keeping apart, and a new qualifier"

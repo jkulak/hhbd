@@ -83,6 +83,11 @@ class AlbumController extends Zend_Controller_Action
     public function viewAction()
     {
         $params = $this->getRequest()->getParams();
+        // An album merged into another (#115) answers with the page of the one kept.
+        $into = Model_Edit_Api::getInstance()->albumMergedInto($params['id']);
+        if (null !== $into) {
+            $this->_helper->redirector->gotoUrl(Model_Album_Api::getInstance()->find($into)->getUrl(), array('code' => 301));
+        }
         $album = Model_Album_Api::getInstance()->find($params['id'], true);
 
         // Build canonical URL and redirect if current URL doesn't match
