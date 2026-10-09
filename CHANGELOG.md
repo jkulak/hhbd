@@ -8,6 +8,11 @@ decision; nothing tags on its own.
 ## Unreleased
 
 ### Changed
+- MariaDB's caches fit an all-InnoDB database (#67): the MyISAM key cache is 8 MB instead of
+  128 MB, since no table uses it, and the Aria page cache, which holds on-disk temporary
+  tables, 32 MB instead of 128 MB. The InnoDB buffer pool stays at 96 MB, about three times
+  the data. `compose.yaml` and `compose.ci.yaml` run the same flags, and the stack test checks
+  both the running values and that the three files agree.
 - Every table is InnoDB; 44 of 45 were MyISAM (#45). Migration 0005, with a down, converted a
   copy of production's data in a second with the data identical byte for byte. It brings crash
   recovery, row locks instead of table locks, and a consistent snapshot for the nightly
