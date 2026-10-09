@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
-# Every cover, thumbnail, artist photo and label logo the catalogue names, checked against the
-# content volume (#47): how many each kind names, how many are missing, and the missing files.
+# Every cover, thumbnail, artist photo, label logo and news image the catalogue names, checked
+# against the content volume (#47, #133): how many each kind names, how many are missing, and the
+# missing files.
 # Exits 1 when a file is missing, so CI can run it after loading the fixtures and generating
 # their images.
 #
@@ -39,7 +40,8 @@ files=$(printf '%s\n' "
 SELECT 'cover', CONCAT('a/', cover) FROM albums WHERE cover <> ''
 UNION ALL SELECT 'thumbnail', CONCAT('a/th/', LEFT(cover, CHAR_LENGTH(cover) - 4), '-th.jpg') FROM albums WHERE cover <> ''
 UNION ALL SELECT 'photo', CONCAT('p/', filename) FROM artists_photos WHERE filename <> ''
-UNION ALL SELECT 'logo', CONCAT('l/', logo) FROM labels WHERE logo <> '';" | db_sql)
+UNION ALL SELECT 'logo', CONCAT('l/', logo) FROM labels WHERE logo <> ''
+UNION ALL SELECT 'news image', CONCAT('news/', graph) FROM news WHERE graph <> '';" | db_sql)
 
 missing=$(printf '%s\n' "$files" | content_sh 'while IFS="	" read -r kind path; do [ -f "/var/www/html/content/$path" ] || printf "%s\t%s\n" "$kind" "$path"; done')
 
@@ -59,7 +61,7 @@ if [ -n "$changed" ]; then
 fi
 
 echo "images the catalogue names on $where"
-for kind in cover thumbnail photo logo "cover file" "photo file"; do
+for kind in cover thumbnail photo logo "news image" "cover file" "photo file"; do
     named=$(printf '%s\n%s\n' "$files" "$covers" | awk -F'\t' -v k="$kind" '$1 == k' | grep -c . || true)
     lost=$(printf '%s\n' "$missing" | awk -F'\t' -v k="$kind" '$1 == k' | grep -c . || true)
     printf '  %-10s %5s named, %5s missing or changed\n' "$kind" "$named" "$lost"
