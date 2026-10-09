@@ -7,7 +7,8 @@
  *
  * For every artists_photos row whose file content/p/<filename> exists and has no hash yet, it
  * fills width, height, SHA-256 and MIME type. A file the volume lacks keeps its row empty (#47).
- * Running it again changes nothing. It reads DB_HOST, DB_NAME, DB_USER and DB_PASSWORD from the
+ * Running it again changes nothing. A dry run makes the same changes in a transaction it rolls
+ * back, so it reports exactly what a run would, duplicates included. It reads DB_HOST, DB_NAME, DB_USER and DB_PASSWORD from the
  * environment and the files under CONTENT_DIR (/var/www/html/content by default), and needs no
  * GD: getimagesize() is in PHP's core.
  */
@@ -32,6 +33,10 @@ $db = new PDO(
     array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION)
 );
 
+if ($dryRun) {
+    $db->beginTransaction();
+}
+
 $update = $db->prepare('UPDATE artists_photos SET width = ?, height = ?, sha256 = ?, mime = ? WHERE id = ? AND sha256 IS NULL');
 
 $counts = array('filled' => 0, 'missing' => 0, 'unreadable' => 0, 'duplicate' => 0);
@@ -48,10 +53,6 @@ foreach ($rows as $row) {
         fwrite(STDERR, "  not an image: content/p/{$row['filename']}\n");
         continue;
     }
-    if ($dryRun) {
-        $counts['filled']++;
-        continue;
-    }
     try {
         $update->execute(array($size[0], $size[1], hash_file('sha256', $file), $size['mime'], (int) $row['id']));
         $counts['filled'] += $update->rowCount();
@@ -60,6 +61,10 @@ foreach ($rows as $row) {
         $counts['duplicate']++;
         fwrite(STDERR, "  the same file as another photo of artist {$row['artistid']}: content/p/{$row['filename']}\n");
     }
+}
+
+if ($dryRun) {
+    $db->rollBack();
 }
 
 printf(
