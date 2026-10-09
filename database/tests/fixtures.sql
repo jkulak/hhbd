@@ -727,6 +727,44 @@ UPDATE `albums` SET `labelid` = NULL WHERE `id` = 47;
 UPDATE `album_lookup` SET `track` = 101 WHERE `albumid` = 3 AND `songid` = 11;
 UPDATE `album_lookup` SET `track` = 201 WHERE `albumid` = 3 AND `songid` = 12;
 
+-- ============================================
+-- 25. TRACKS AT POSITION 0, and tracks of an album that does not exist (#59)
+-- Migration 0016 puts song 30, at position 0 on Światła Miasta (4), last on its disc, and
+-- deletes the two rows of album 9999, which has no row in albums.
+-- ============================================
+INSERT INTO `album_lookup` (`songid`, `albumid`, `track`, `status`) VALUES
+(30, 4, 0, 999),
+(14, 9999, 1, 999),
+(15, 9999, 0, 999);
+
+-- ============================================
+-- 26. THE PLACEHOLDER LABEL "BRAK" (27), as production has it (#55)
+-- Miejski Rytm (48) points at it; migration 0017 gives the album labelid NULL and deletes the
+-- label.
+-- ============================================
+INSERT INTO `labels` (`id`, `name`, `website`, `logo`, `status`, `viewed`) VALUES
+(27, 'BRAK', '', '', 0, 0);
+
+UPDATE `albums` SET `labelid` = 27 WHERE `id` = 48;
+
+-- ============================================
+-- 27. DATES WITH ZERO PARTS, a placeholder and an unconfirmed announcement (#54)
+-- Migration 0018 turns Podmiejski Gwar's 2013-00-00 (50) into 2013-01-01 with year precision
+-- and Polskie Karate's 0000-00-00 (778) into no date. Wiejska Cisza (49), a guessed month
+-- entered years ahead and never filled in, becomes an announcement. Korzenie (923) is one of
+-- the four 2017 placeholders production had, and goes.
+-- ============================================
+UPDATE `albums` SET `year` = '2013-00-00' WHERE `id` = 50;
+UPDATE `albums` SET `year` = '2016-12-00', `added` = '2013-02-27 21:32:18' WHERE `id` = 49;
+
+INSERT INTO `albums` (`id`, `title`, `labelid`, `year`, `legal`, `cover`, `artistabout`, `status`, `viewed`, `added`) VALUES
+(923, 'Korzenie', 1, '2017-01-00', 'y', '', '', 999, 10, '2015-02-25 19:39:45'),
+(778, 'Polskie Karate', 1, '0000-00-00', 'y', '', '', 999, 10, '2013-03-03 17:48:24');
+
+INSERT INTO `album_artist_lookup` (`albumid`, `artistid`, `status`) VALUES
+(923, 1, 999),
+(778, 2, 999);
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================

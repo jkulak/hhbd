@@ -224,7 +224,7 @@ class Model_Album_Api extends Jkl_Model_Api
         $page = ($page < 1) ? 0 : $page;
         $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id as lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
           'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
-          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t3.year' . '<="' . date('Y-m-d') . '") ' .
+          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t3.announced=0) ' .
           'GROUP BY t3.id ' .
           'ORDER BY t3.year DESC ' .
           'LIMIT ' . $count . ' ' .
@@ -238,7 +238,7 @@ class Model_Album_Api extends Jkl_Model_Api
         $page = ($page < 1) ? 0 : $page;
         $query = 'SELECT *, t3.id as alb_id, t1.id as art_id, t4.id AS lab_id, t3.added as alb_added, t3.addedby as alb_addedby, t3.viewed as alb_viewed ' .
           'FROM artists AS t1, album_artist_lookup AS t2, albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
-          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t3.year' . '>"' . date('Y-m-d') . '") ' .
+          'WHERE (t1.id=t2.artistid AND t2.albumid=t3.id AND t3.announced=1 AND t3.year>=CURDATE()) ' .
           'GROUP BY t3.id ' .
           'ORDER BY t3.year ASC ' .
           'LIMIT ' . $count . ' ' .
@@ -315,14 +315,15 @@ class Model_Album_Api extends Jkl_Model_Api
 
     public function getAlbumCount()
     {
-        $query = 'SELECT count(id) as albumcount FROM albums WHERE (year<="' . date('Y-m-d') . '")';
+        $query = 'SELECT count(id) as albumcount FROM albums WHERE announced=0';
         $result = $this->_db->fetchAll($query);
         return (int)$result[0]['albumcount'];
     }
 
     public function getAnnouncedCount()
     {
-        $query = 'SELECT count(id) as albumcount FROM albums WHERE (year>"' . date('Y-m-d') . '")';
+        // Announcements still ahead; one whose date passed unconfirmed is no news (#54).
+        $query = 'SELECT count(id) as albumcount FROM albums WHERE announced=1 AND year>=CURDATE()';
         $result = $this->_db->fetchAll($query);
         return (int)$result[0]['albumcount'];
     }

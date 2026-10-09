@@ -198,9 +198,11 @@ Rules the link tables follow, and the migration that set each one:
   | `city_label_lookup` | `labelid, cityid` |
   | `collection`, `wishlist`, `ratings` | `albumid, userid` |
 
-  `album_lookup` has none yet: 162 track positions on 19 albums hold two or more different
-  songs, so `(albumid, track)` would not hold until discs are told apart and those albums are
-  reviewed.
+  `album_lookup` has none yet: even with discs told apart (0016), 180 track positions on 22
+  albums hold two or more different songs, mostly two editions' tracklists on one album, which
+  a person has to review first (listed on #59).
+- **A track's disc is `album_lookup.disc`** and its place on that disc `track`, from 1 (0016,
+  #59). The old encoding, `disc * 100 + position` in `track`, is gone, and so is position 0.
 - **An artist with members is a band, type `b`** (0012, #65). The pages decide "band" by
   members (`Model_Artist_Container::isBand()`) and show no type today, but `type` is what the
   importer writes and the label a page would show ("Projekt" for `b`), so the two must agree:
@@ -235,6 +237,20 @@ digital-only release no longer passes for a CD.
 The older columns stay: `singiel` and `epfor` (the album an EP or single preceded, which the
 page still links as "Singiel do:"). 0014 typed every album they flag as a `single` when it has
 one to three tracks and an `ep` otherwise: 12 singles and 60 EPs on production.
+
+## Release dates
+
+`albums.year` is a whole date, or NULL when nothing is known (0018, #54).
+`release_date_precision` says how much of it is: `day`, `month` (stored as the month's first
+day) or `year` (stored as 1 January). The page shows "18 listopada 2016", "któregoś listopada
+2016" or "2016" accordingly. A CHECK refuses zero parts such as 2016-11-00, which the catalog
+used before.
+
+`announced` is 1 for a release that is not out yet, or not confirmed out. The album list shows
+the albums with 0; the upcoming list shows those with 1 whose date is still ahead. 0018 marked
+as announced the dates still to come and eight guessed ones entered years ahead and never
+filled in, and removed four 2017 placeholders. An album without a label has `labelid` NULL
+(0017, #55); the placeholder label 27 "BRAK" is gone.
 
 ## External ids
 

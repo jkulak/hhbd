@@ -87,15 +87,8 @@ class Model_Album_Container
         }
         $this->artistNames = self::artistNamesOf($this->credits);
 
-        // No label: labelid NULL, or until #55's migration retires it, the placeholder label
-        // "BRAK" (27) that stood for none.
-        $this->label = null;
-        if (!empty($params['lab_id'])) {
-            $label = Model_Label_Api::getInstance()->find($params['lab_id']);
-            if ($label->name != 'BRAK') {
-                $this->label = $label;
-            }
-        }
+        // No label is labelid NULL (#55).
+        $this->label = !empty($params['lab_id']) ? Model_Label_Api::getInstance()->find($params['lab_id']) : null;
 
         if (!empty($params['legal'])) {
             $this->legal = ($params['legal'] == 'y') ? true : false;
