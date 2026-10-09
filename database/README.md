@@ -242,7 +242,9 @@ one to three tracks and an `ep` otherwise: 12 singles and 60 EPs on production.
 
 `album_covers` (0019, #60) describes each cover file: the album, the variant (`orig`, `600`,
 `300` or `75` px), its `path` under `content/`, width, height, SHA-256 and MIME type, its
-`source` and `sourceurl`, its `licence`, and whether it is the `main` cover. A path rather than
+`source` and `sourceurl`, its `licence`, whether it is the `main` cover, and whether it
+`needs_upgrade`: a stand-in, such as a 600 px Discogs cover, to replace when a larger one turns
+up (#96). A path rather than
 a bare name, so the covers already on the volume stay where they are (`a/<name>` and
 `a/th/<name>-th.jpg`) while new variants go under `a/<variant>/`. One album, variant and hash
 appear once.
