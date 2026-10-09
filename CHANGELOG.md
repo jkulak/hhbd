@@ -7,6 +7,17 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
+### Added
+- `external_ids` (migration 0006, with a down): the ids a catalog row has in Discogs,
+  MusicBrainz, Wikidata, Deezer, iTunes, the Polish Wikipedia, its barcode and ISRC, so an
+  import finds the rows it created before instead of adding them twice (#51). An id belongs to
+  at most one row, and the vocabulary is closed. `Model_ExternalId_Api` normalises every value
+  before it is stored or looked up (barcodes as GTIN-14, so an EAN-13 and the UPC-A of the
+  same record match) and refuses an id another row already has. `database/README.md` has the
+  vocabulary and the rules.
+- `Jkl_Db::fetchAll()` and `query()` take bound values, so new code passes values from outside
+  sources as parameters instead of escaping them into the query.
+
 ### Changed
 - MariaDB's caches fit an all-InnoDB database (#67): the MyISAM key cache is 8 MB instead of
   128 MB, since no table uses it, and the Aria page cache, which holds on-disk temporary
