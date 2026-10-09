@@ -37,7 +37,7 @@ class AlbumController extends Zend_Controller_Action
         $keywords = array();
         $description = array();
         foreach ($this->view->albums->items as $key => $value) {
-            $keywords[] = $value->artist->name;
+            $keywords[] = $value->artistNames;
             $description[] = $value->title;
         }
 
@@ -70,7 +70,7 @@ class AlbumController extends Zend_Controller_Action
         $keywords = array();
         $description = array();
         foreach ($this->view->albums->items as $key => $value) {
-            $keywords[] = $value->artist->name;
+            $keywords[] = $value->artistNames;
             $description[] = $value->title;
         }
 
@@ -101,11 +101,11 @@ class AlbumController extends Zend_Controller_Action
 
         $this->view->comments = Model_Comment_Api::getInstance()->getComments($album->id, Model_Comment_Container::TYPE_ALBUM);
 
-        $this->view->title = $album->artist->name . ' - ' . $album->title . ' (' . $album->year . ')';
+        $this->view->title = $album->artistNames . ' - ' . $album->title . ' (' . $album->year . ')';
         $this->view->headTitle()->set($this->view->title, 'PREPEND');
         // An album without a label (#55) leaves the label out of every sentence below.
         $byLabel = !empty($album->label) ? ' przez wytwórnię ' . $album->label->name : '';
-        $this->view->headMeta()->setName('keywords', $album->artist->name . ',' . $album->title . ',teksty,premiera,download,tracklista' . (!empty($album->label) ? ',' . $album->label->name : ''));
+        $this->view->headMeta()->setName('keywords', $album->artistNames . ',' . $album->title . ',teksty,premiera,download,tracklista' . (!empty($album->label) ? ',' . $album->label->name : ''));
 
         $releaseDate = '';
         if (!empty($album->releaseDateNormalized)) {
@@ -122,11 +122,11 @@ class AlbumController extends Zend_Controller_Action
             }
         }
 
-        $this->view->headMeta()->setName('description', $album->artist->name . ' "' . $album->title . '"' . $releaseInfo . '. U nas teksty utworów, tracklista, oraz inne szczegółowe informacje o albumie.');
+        $this->view->headMeta()->setName('description', $album->artistNames . ' "' . $album->title . '"' . $releaseInfo . '. U nas teksty utworów, tracklista, oraz inne szczegółowe informacje o albumie.');
 
         // Open Graph Protocol (see more: http://mgp.me)
         $og = new Jkl_Og('Hhbd.pl');
-        $og->setTitle($album->artist->name . ' - ' . $album->title . ' (' . $album->year . ')');
+        $og->setTitle($album->artistNames . ' - ' . $album->title . ' (' . $album->year . ')');
         $description = empty($album->description) ? $album->autoDescription : $album->description;
         $og->setDescription($description);
         $og->setImage($album->thumbnail);
@@ -185,7 +185,7 @@ class AlbumController extends Zend_Controller_Action
           ((!empty($scratch)) ? 'Scratch i cuty na płycie to zasługa: ' . implode(', ', array_unique($scratch)) . '. ' : '') .
           ((!empty($feat)) ? 'Gościnnie na albumie udzielają się: ' . implode(', ', array_unique($feat)) . '. ' : '') .
           '' .
-          $album->artist->name . ' to prawdziwy polski hip-hop. ' .
+          $album->artistNames . ' to prawdziwy polski hip-hop. ' .
           'Aby zobaczyć teksty piosenek, należy kliknąć w tytuły na liście powyżej. Do każdej piosenki dołączony jest teledysk. Jeżeli teledyski nieodpowiadają tytułowi, możesz to zgłosić.';
         return $description;
     }
