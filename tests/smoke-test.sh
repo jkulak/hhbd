@@ -16,7 +16,7 @@
 # Most checks hold on the test fixtures and on production alike: the fixtures copy the rows the
 # checks look at (Mes, Superextra, Pogoda, Alkopoligamia, news 1877). The fixture checks look at
 # cases only the fixtures hold (an album on no label, a two-disc album, Discogs provenance, ...)
-# and run unless SMOKE_TARGET=production, which deploy/ovh-release.sh sets.
+# and run unless SMOKE_TARGET=production, which deploy/ovh/smoke.sh sets.
 #
 
 BASE_URL="${1:-http://localhost:8080}"

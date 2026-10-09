@@ -7,7 +7,7 @@
 # Usage: scripts/import-runs.sh [<how many>, 20 by default]
 #
 # Where it reads, DB_TARGET: local (this checkout's compose project, the default) or ovh
-# (production's database over ssh, OVH_HOST from .env), as scripts/migrate.sh reaches them.
+# (production's database over ssh, OVH_HOST from gcloud-ovh-migrate's .env), as scripts/migrate.sh reaches them.
 #
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
