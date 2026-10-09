@@ -93,6 +93,11 @@ jobs:
         run: |
           bash ./tests/smoke-test.sh http://localhost:8080
 
+      - name: Check the images the catalogue names
+        run: |
+          # Every cover, thumbnail, photo and logo the fixtures name is in content/ (#47).
+          ./scripts/check-images.sh
+
       - name: Check make reset-db
         run: |
           # On the stack the smoke test just used: resets, row counts, the smoke test again after
