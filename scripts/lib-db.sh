@@ -55,6 +55,14 @@ local_db_container() {
     printf '%s\n' "$cid"
 }
 
+# A session without NO_ZERO_IN_DATE and NO_ZERO_DATE, which the server runs with since #88. The
+# migrations up to 0027 read the zero dates the catalogue held before then, rebuild tables that
+# still hold them, and their downs write them back; a database built from the fixtures holds
+# them again. The CHECKs 0018 and 0024-0027 put on those columns refuse new zero dates in any
+# session, so a migration cannot add one by accident.
+# shellcheck disable=SC2034 # used by the scripts that source this file
+LEGACY_DATES_SESSION="SET SESSION sql_mode = TRIM(BOTH ',' FROM REPLACE(REPLACE(CONCAT(',', @@SESSION.sql_mode, ','), ',NO_ZERO_IN_DATE,', ','), ',NO_ZERO_DATE,', ','));"
+
 # mariadb as root inside a db container, with the container's own password, SQL on stdin, rows
 # out as tab-separated lines. utf8mb4 is stated because the client's default in the image is
 # utf8mb3, which cannot hold every character the data carries. No credential passes through the

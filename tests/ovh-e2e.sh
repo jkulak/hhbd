@@ -118,6 +118,8 @@ check "nothing is published on the host" \
 check "the database runs with production's cache sizes (buffer pool, key cache, Aria cache)" \
     "100663296 8388608 33554432" \
     "$(docker exec "$PROJECT-db-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -uroot -N -B -e "SELECT CONCAT_WS(\" \", @@innodb_buffer_pool_size, @@key_buffer_size, @@aria_pagecache_buffer_size)"')"
+check "the database runs with NO_ZERO_IN_DATE and NO_ZERO_DATE (#88)" "1 1" \
+    "$(docker exec "$PROJECT-db-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -uroot -N -B -e "SELECT CONCAT_WS(\" \", FIND_IN_SET(\"NO_ZERO_IN_DATE\", @@GLOBAL.sql_mode) > 0, FIND_IN_SET(\"NO_ZERO_DATE\", @@GLOBAL.sql_mode) > 0)"')"
 db_flags() { sed -n '/^  db:/,/^  [a-z]/p' "$1" | sed -n '/command: >/{n;p;}' | sed 's/^ *//'; }
 check "compose.yaml and compose.ci.yaml run the database with production's flags" \
     "$(db_flags deploy/ovh/compose.yaml) | $(db_flags deploy/ovh/compose.yaml)" "$(db_flags compose.yaml) | $(db_flags compose.ci.yaml)"

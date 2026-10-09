@@ -34,6 +34,10 @@
 #   - an artist's photo file appears once per artist; artistid is an int (#61)
 #   - the catalogue is utf8mb4 with the Polish collation: Ż is not Z, case does not count,
 #     Polish order, and a four-byte character survives an insert and a page view (#71)
+#   - no date, datetime or timestamp column holds a zero part, the server runs with
+#     NO_ZERO_IN_DATE and NO_ZERO_DATE, the CHECKs refuse one even in a session that allows it,
+#     partial dates keep their year or month as a precision, and the downs put every zero date
+#     back (#88)
 #   - two artists may share a name with different qualifiers, but a name without one is one
 #     artist's; the down folds the qualifier into the name, refuses before changing anything
 #     when that name is taken, and the up splits it again, unless the archive went too (#102)
@@ -282,6 +286,36 @@ fi
 # microphone could not be stored, so the down would rightly refuse.
 sql "DELETE FROM artists WHERE id = 9001 OR name IN ('Zabson', 'Lux Testowy', 'Łoś Testowy', 'Mazur Testowy', 'Zenek Testowy')"
 
+echo "> no zero dates"
+# Every date, datetime and timestamp column, and how many of its values have a zero part.
+zero_dates() {
+    sql "SELECT CONCAT_WS(' ', $(sql "SELECT GROUP_CONCAT(CONCAT('(SELECT COUNT(*) FROM \`', table_name, '\` WHERE MONTH(\`', column_name, '\`) = 0 OR DAY(\`', column_name, '\`) = 0)') SEPARATOR ', ') FROM information_schema.columns WHERE table_schema = DATABASE() AND data_type IN ('date', 'datetime', 'timestamp')"))" | tr ' ' '\n' | awk '{ s += $1 } END { print s }'
+}
+check "no date, datetime or timestamp column holds a zero part" "0" "$(zero_dates)"
+check "the server runs with NO_ZERO_IN_DATE and NO_ZERO_DATE" "1 1" "$(sql "SELECT CONCAT_WS(' ', FIND_IN_SET('NO_ZERO_IN_DATE', @@GLOBAL.sql_mode) > 0, FIND_IN_SET('NO_ZERO_DATE', @@GLOBAL.sql_mode) > 0)")"
+check "a band's start and end: a year, a month, not known" "22:1998-01-01:year:- 23:1998-03-01:month:2003-01-01:year" \
+    "$(sql "SELECT GROUP_CONCAT(CONCAT_WS(':', id, since, since_precision, IFNULL(till, '-'), IF(till IS NULL, NULL, till_precision)) ORDER BY id SEPARATOR ' ') FROM artists WHERE id IN (22, 23)")"
+check "a member's join and departure" "1998-01-01 year 2003-12-01 month" \
+    "$(sql "SELECT CONCAT_WS(' ', insince, insince_precision, awaysince, awaysince_precision) FROM band_lookup WHERE artistid = 35 AND bandid = 23")"
+check "a user's unknown times, and a news item's, are NULL" "8:NULL 9:NULL:NULL 2:NULL" \
+    "$(sql "SELECT CONCAT('8:', IFNULL(usr_added, 'NULL'), ' 9:', IFNULL((SELECT usr_updated FROM hhb_users WHERE usr_id = 9), 'NULL'), ':', IFNULL((SELECT usr_last_login FROM hhb_users WHERE usr_id = 9), 'NULL'), ' 2:', IFNULL((SELECT expires FROM news WHERE ID = 2), 'NULL')) FROM hhb_users WHERE usr_id = 8")"
+if sql "INSERT INTO hhb_users (usr_email, usr_password, usr_display_name, usr_added) VALUES ('nowy@example.com', MD5('x'), 'Nowy', NOW())" >"$T/out" 2>&1; then
+    ok "a registration, which writes only its added time, goes in"
+else
+    bad "a registration, which writes only its added time, goes in"; cat "$T/out"
+fi
+sql "DELETE FROM hhb_users WHERE usr_email = 'nowy@example.com'"
+if sql "UPDATE artists SET since = '2001-00-00' WHERE id = 22" >"$T/out" 2>&1; then
+    bad "the server refuses a zero part"
+else
+    ok "the server refuses a zero part"
+fi
+if sql "SET SESSION sql_mode = ''; UPDATE band_lookup SET awaysince = '2004-00-00' WHERE artistid = 35 AND bandid = 23" >"$T/out" 2>&1; then
+    bad "and so does the CHECK, in a session that allows zero dates"
+else
+    ok "and so does the CHECK, in a session that allows zero dates"
+fi
+
 echo "> artists who share a name"
 check "an artist's name is unique with its qualifier, not alone" "name,disambiguation" \
     "$(sql "SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'artists' AND index_name = 'u_artists_name' AND non_unique = 0")"
@@ -349,6 +383,8 @@ check "after down: no archive" "0" "$(sql "SELECT COUNT(*) FROM information_sche
 check "after down: added changes on update again, in 11 tables plus the lyrics log" "12" "$(count "$TIMES_WITH_ON_UPDATE")"
 check "after down: the catalog's added has no default" "0" "$(count "table_name IN ($CATALOG) AND column_name = 'added' AND column_default = 'current_timestamp()'")"
 check "after down: album_prices.added defaults to the zero date again" "album_prices.added" "$(col "column_default LIKE '%0000-00-00%'")"
+check "after down: the zero and partial dates back as the fixtures had them" "1998-00-00 0000-00-00 1998-03-00 2003-00-00 | 1998-00-00 2003-12-00 | 0000-00-00 00:00:00 0000-00-00 00:00:00 0000-00-00 00:00:00 | 0000-00-00 00:00:00" \
+    "$(sql "SELECT CONCAT_WS(' | ', (SELECT GROUP_CONCAT(CONCAT_WS(' ', since, till) ORDER BY id SEPARATOR ' ') FROM artists WHERE id IN (22, 23)), (SELECT CONCAT_WS(' ', insince, awaysince) FROM band_lookup WHERE artistid = 35 AND bandid = 23), (SELECT CONCAT_WS(' ', (SELECT usr_added FROM hhb_users WHERE usr_id = 8), usr_updated, usr_last_login) FROM hhb_users WHERE usr_id = 9), (SELECT expires FROM news WHERE ID = 2))")"
 check "after down: the qualifiers folded into the names" "64:Solar (SBM Label) 65:Solar (raper z Poznania)" \
     "$(sql "SELECT GROUP_CONCAT(CONCAT(id, ':', name) ORDER BY id SEPARATOR ' ') FROM artists WHERE id IN (64, 65)")"
 ./scripts/migrate.sh up >"$T/out" 2>&1 || { bad "up succeeds"; cat "$T/out"; }
@@ -356,6 +392,7 @@ check "after up again: every table InnoDB" "InnoDB $(tables)" "$(engines)"
 check "after up again: no row lost" "$rows_before" "$(sql "SELECT COUNT(*) FROM songs")"
 check "after up again: no added changes on update" "0" "$(count "$TIMES_WITH_ON_UPDATE")"
 check "after up again: no zero-date default" "NULL" "$(col "column_default LIKE '%0000-00-00%'")"
+check "after up again: no zero date anywhere" "0" "$(zero_dates)"
 check "after up again: the cities merged as before" "1:1:999 2:35:999 3:46:0" "$(pairs artist_city_lookup)"
 check "after up again: the keys and one row per key" "$UNIQUE_TABLES album_artist:999 band:1" "$(uniques) $(dupes | cut -d' ' -f1-2)"
 check "after up again: the bands typed again" "60:b 61:b 62:b 63:x" "$(types)"
