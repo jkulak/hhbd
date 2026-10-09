@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# Copied from jkulak/gcloud-ovh-migrate at 5f9a189, so this repo runs the same gate and the
-# same helper as the platform does (CONTRACT.md §4). Keep it in step with that file.
-#
 # Edit or inspect a SOPS-encrypted file, with sops in a container so nothing is installed
-# on this Mac. Needs the age private key locally to decrypt; see SECRETS.md in gcloud-ovh-migrate.
+# on this Mac. Needs the age private key locally to decrypt; see SECRETS.md.
 #
 # The editor runs inside the container, so it is the container's vi, not this Mac's
 # $EDITOR — an EDITOR naming a Mac app would not exist in there. SECRETS_EDITOR=vim works
@@ -25,11 +22,13 @@ cd "$(git rev-parse --show-toplevel)"
 AGE_KEY=${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}
 cmd=${1:-}; file=${2:-}
 usage() { echo "usage: $0 {edit|show} <file.enc.env> | set <file.enc.env> <KEY>" >&2; exit 2; }
+# Either check failing means usage; nothing after `usage` runs, since it exits.
+# shellcheck disable=SC2015
 [ -n "$cmd" ] && [ -n "$file" ] || usage
 
 case "$cmd" in
   edit)
-    [ -f "$AGE_KEY" ] || { echo "x no age key at $AGE_KEY; see SECRETS.md in gcloud-ovh-migrate" >&2; exit 1; }
+    [ -f "$AGE_KEY" ] || { echo "x no age key at $AGE_KEY; see SECRETS.md" >&2; exit 1; }
     exec "$DOCKER" run --rm -it \
       -v "$PWD:/w" -w /w \
       -v "$AGE_KEY:/age.txt:ro" -e SOPS_AGE_KEY_FILE=/age.txt \
@@ -39,7 +38,7 @@ case "$cmd" in
   set)
     key=${3:-}
     [[ $key =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || usage
-    [ -f "$AGE_KEY" ] || { echo "x no age key at $AGE_KEY; see SECRETS.md in gcloud-ovh-migrate" >&2; exit 1; }
+    [ -f "$AGE_KEY" ] || { echo "x no age key at $AGE_KEY; see SECRETS.md" >&2; exit 1; }
     value=
     if [ -t 0 ]; then
       printf 'Paste %s (it will not be shown), then Enter: ' "$key" >&2
@@ -54,6 +53,8 @@ case "$cmd" in
     # file, drops the key's old line, appends the new one and encrypts the lot under the
     # rule .sops.yaml gives this path. The result lands in the container's /tmp first, so
     # a failure anywhere leaves the file as it was.
+    # The script in single quotes runs inside the container, which expands it.
+    # shellcheck disable=SC2016
     printf '%s\n' "$value" | "$DOCKER" run --rm -i \
       -v "$PWD:/w" -w /w \
       -v "$AGE_KEY:/age.txt:ro" -e SOPS_AGE_KEY_FILE=/age.txt \
@@ -72,7 +73,7 @@ case "$cmd" in
     ;;
   show)
     # Variable names only. Printing a decrypted value to a terminal puts it in scrollback
-    # and in any terminal log, which is exactly what gcloud-ovh-migrate/SECRETS.md is avoiding.
+    # and in any terminal log, which is exactly what SECRETS.md is avoiding.
     grep -oE '^[A-Za-z_][A-Za-z0-9_]*' "$file" | grep -v '^sops_' | sort -u
     ;;
   *)

@@ -144,14 +144,14 @@ cp database-metrics-before.txt load-test-before.txt response-time-before.txt res
 ### Step 2: Deploy New Configuration
 
 ```bash
-# The tuning lives in deploy/compose.ovh.yaml:
+# The tuning lives in deploy/ovh/compose.yaml:
 # - innodb-buffer-pool-size=256M (was 128M)
 # - innodb-old-blocks-time=1000
 # - innodb-buffer-pool-dump-at-shutdown=1
 # - innodb-buffer-pool-load-at-startup=1
 # - memory limit: 512M (was 384M)
 
-# It reaches production with a release (deploy/README.md); locally:
+# It reaches production with a release (deploy/ovh/README.md); locally:
 docker compose up -d db
 
 # Warm up the buffer pool
@@ -248,7 +248,7 @@ After optimization:
 
 - Scripts require `docker`, `mysql-client`, `bc`, and `curl`
 - Container must have sufficient memory (512MB recommended)
-- On the OVH host every container has a memory limit in deploy/compose.ovh.yaml
+- On the OVH host every container has a memory limit in deploy/ovh/compose.yaml
 - Buffer pool dump/load feature ensures fast startup after restarts
 - All data without access TTL will stay in memory indefinitely
 
