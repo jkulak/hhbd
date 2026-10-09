@@ -12,6 +12,10 @@ decision; nothing tags on its own.
   release tags alone, instead of reading it from repository secrets any branch could read.
 
 ### Added
+- `migration_archive` (migration 0009, with a down): a migration that deletes or changes rows
+  keeps them there as JSON, so its down puts them back exactly. The rows stay in the database
+  rather than in the migration files, which run on the fixtures as well as on production and sit
+  in a public repository.
 - The import has its own row in `users` (migration 0008, with a down): `ID` 1100, login
   `import`, no password. The importer writes it into `addedby` for what it creates and into
   `updatedby` for what it changes, so an imported row shows as one without a look at
@@ -50,6 +54,12 @@ decision; nothing tags on its own.
   backoffice gets written from scratch.
 
 ### Fixed
+- Artist pages show the cities the archived backoffice recorded: they were in
+  `city_artist_lookup`, which no page read, while the pages read `artist_city_lookup` (#64).
+  Migration 0010 moves the old table's pairs over (168 on production, once each; three more
+  name a missing artist or city and stay out), so 224 links show instead of 56, drops the old
+  table, and adds a unique key on artist and city. Its down restores both tables from the
+  archive.
 - `added` keeps the time a row was added. In eleven tables it was `ON UPDATE
   current_timestamp()`, so any update rewrote it; `artists_photos` had already lost 58 of 120
   dates that way. The catalog's `added` defaults to the current time, and nothing defaults to a

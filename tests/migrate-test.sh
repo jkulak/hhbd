@@ -107,9 +107,13 @@ check "up applies the rest, and nothing is pending" "0 pending" "$(summary | gre
 check "the data is what reset-db loaded" "$first" "$(counts)"
 
 echo "> a database with the schema but no record: production before its baseline"
+# The baseline's schema, as production's dump had it: later migrations may drop baseline
+# tables (0010 drops city_artist_lookup), so go down to it before forgetting the record.
+migrate down $((migration_count - 1))
+at_baseline=$(counts)
 sql "DROP TABLE schema_migrations"
 if migrate up; then bad "up on it is refused"; else check "up on it is refused and points at baseline" "'baseline' first" "$(has "'baseline' first")"; fi
-check "and changed nothing" "$first" "$(counts)"
+check "and changed nothing" "$at_baseline" "$(counts)"
 if migrate baseline; then ok "baseline records 0001 without running it ($(last | sed 's/^ok [^:]*: //'))"; else bad "baseline records 0001 without running it"; cat "$T/out"; fi
 migrate status
 check "status shows the baseline applied and only what came after it pending" "1 applied, $((migration_count - 1)) pending" "$(summary)"
