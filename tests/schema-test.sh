@@ -16,6 +16,8 @@
 #     what it added (#63)
 #   - artist cities live in one table, the one the pages read, one row per pair (#64); the
 #     old table's rows wait in migration_archive and come back with the down
+#   - every link table has a unique key, and its duplicates are archived and come back with
+#     the down (#57)
 #   - going down to the baseline brings the old schema back, and up removes it again
 #
 # It changes rows to prove these and ends with make reset-db, so the database ends as a reset
@@ -148,6 +150,30 @@ else
     ok "a pair cannot be stored twice"
 fi
 
+echo "> unique link tables"
+UNIQUE_TABLES="album_artist_lookup altnames_lookup artist_city_lookup artist_lookup band_lookup city_label_lookup collection feature_lookup music_lookup ratings remix_lookup scratch_lookup wishlist"
+uniques() { sql "SELECT GROUP_CONCAT(DISTINCT table_name ORDER BY table_name SEPARATOR ' ') FROM information_schema.statistics WHERE table_schema = DATABASE() AND non_unique = 0 AND index_name LIKE 'u\\_%'"; }
+dupes() { # the duplicated rows of the fixtures, as table:count
+    sql "SELECT CONCAT_WS(' ',
+        CONCAT('album_artist:', (SELECT GROUP_CONCAT(status ORDER BY status) FROM album_artist_lookup WHERE albumid = 535 AND artistid = 8)),
+        CONCAT('band:', (SELECT COUNT(*) FROM band_lookup WHERE artistid = 2 AND bandid = 22)),
+        CONCAT('altnames:', (SELECT COUNT(*) FROM altnames_lookup WHERE artistid = 4 AND altname = 'Tede')),
+        CONCAT('artist:', (SELECT COUNT(*) FROM artist_lookup WHERE songid = 7329 AND artistid = 8)),
+        CONCAT('collection:', (SELECT GROUP_CONCAT(ID ORDER BY ID) FROM collection WHERE albumid = 535 AND userid = 1)),
+        CONCAT('ratings:', (SELECT GROUP_CONCAT(CONCAT(ID, '@', added) ORDER BY ID) FROM ratings WHERE albumid = 535 AND userid = 1)))"
+}
+check "every link table has its unique key" "$UNIQUE_TABLES" "$(uniques)"
+check "one row per key is left, the published copy where they differed, the oldest where rows have ids" \
+    "album_artist:999 band:1 altnames:1 artist:1 collection:1 ratings:1@$(sql "SELECT added FROM ratings WHERE ID = 1")" "$(dupes)"
+check "the archive holds every copy and every row put back" \
+    "album_artist_lookup deleted 3, album_artist_lookup inserted 1, altnames_lookup deleted 2, altnames_lookup inserted 1, artist_lookup deleted 2, artist_lookup inserted 1, band_lookup deleted 2, band_lookup inserted 1, collection deleted 1, ratings deleted 1" \
+    "$(sql "SELECT GROUP_CONCAT(CONCAT(table_name, ' ', action, ' ', n) ORDER BY table_name, action SEPARATOR ', ') FROM (SELECT table_name, action, COUNT(*) n FROM migration_archive WHERE version = '0011' GROUP BY table_name, action) a")"
+if sql "INSERT INTO band_lookup (artistid, bandid) VALUES (2, 22)" >"$T/out" 2>&1; then
+    bad "a link cannot be stored twice"
+else
+    ok "a link cannot be stored twice"
+fi
+
 echo "> down to the baseline brings the old schema back, and up removes it"
 rows_before=$(sql "SELECT COUNT(*) FROM songs")
 ./scripts/migrate.sh down "$after_baseline" >"$T/out" 2>&1 || { bad "down $after_baseline succeeds"; cat "$T/out"; }
@@ -157,6 +183,9 @@ check "after down: none of the import's tables" "0" "$(sql "SELECT COUNT(*) FROM
 check "after down: no import user" "0" "$(sql "SELECT COUNT(*) FROM users WHERE ID = 1100")"
 check "after down: the old city table again, duplicate and orphan included" "1:1:999 1:99999:999 2:35:0 2:35:999 3:46:0" "$(pairs city_artist_lookup)"
 check "after down: the table the pages read as the fixtures had it" "1:1:999" "$(pairs artist_city_lookup)"
+check "after down: every duplicate back as the fixtures had it" \
+    "album_artist:0,999,999 band:2 altnames:2 artist:2 collection:1,2 ratings:1@$(sql "SELECT added FROM ratings WHERE ID = 1"),1001@2010-05-02 10:00:00" "$(dupes)"
+check "after down: no unique keys on the link tables" "NULL" "$(uniques)"
 check "after down: no archive" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'migration_archive'")"
 check "after down: added changes on update again, in 11 tables plus the lyrics log" "12" "$(count "$TIMES_WITH_ON_UPDATE")"
 check "after down: the catalog's added has no default" "0" "$(count "table_name IN ($CATALOG) AND column_name = 'added' AND column_default = 'current_timestamp()'")"
@@ -167,6 +196,7 @@ check "after up again: no row lost" "$rows_before" "$(sql "SELECT COUNT(*) FROM 
 check "after up again: no added changes on update" "0" "$(count "$TIMES_WITH_ON_UPDATE")"
 check "after up again: no zero-date default" "NULL" "$(col "column_default LIKE '%0000-00-00%'")"
 check "after up again: the cities merged as before" "1:1:999 2:35:999 3:46:0" "$(pairs artist_city_lookup)"
+check "after up again: the keys and one row per key" "$UNIQUE_TABLES album_artist:999 band:1" "$(uniques) $(dupes | cut -d' ' -f1-2)"
 
 echo "> back to the fixtures"
 if make -s reset-db >"$T/out" 2>&1; then ok "make reset-db leaves the database as the fixtures have it"; else bad "make reset-db leaves the database as the fixtures have it"; cat "$T/out"; fi

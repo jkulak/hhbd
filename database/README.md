@@ -184,6 +184,23 @@ Rules the link tables follow, and the migration that set each one:
 - **An artist's cities are in `artist_city_lookup`**, one row per artist and city, which the
   artist page reads (0010, #64). The archived backoffice wrote a second table,
   `city_artist_lookup`, that no page read; 0010 moved its pairs over and dropped it.
+- **A link is stored once.** Every link table has a unique key on what one row means (0011,
+  #57), so an import that runs twice, or credits a track twice, is refused by the database:
+
+  | Table | Unique key |
+  |---|---|
+  | `album_artist_lookup` | `albumid, artistid` |
+  | `artist_city_lookup` | `artistid, cityid` |
+  | `band_lookup` | `artistid, bandid` |
+  | `altnames_lookup` | `artistid, altname(190)` |
+  | `artist_lookup`, `music_lookup`, `scratch_lookup`, `remix_lookup` | `songid, artistid` |
+  | `feature_lookup` | `songid, artistid, feattype` |
+  | `city_label_lookup` | `labelid, cityid` |
+  | `collection`, `wishlist`, `ratings` | `albumid, userid` |
+
+  `album_lookup` has none yet: 162 track positions on 19 albums hold two or more different
+  songs, so `(albumid, track)` would not hold until discs are told apart and those albums are
+  reviewed.
 
 ## External ids
 
