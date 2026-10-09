@@ -8,6 +8,24 @@ person's decision; nothing releases on its own.
 
 ## Unreleased
 
+### Changed
+- hhbd logs in the shared host's format (#101; CONTRACT.md §9 in gcloud-ovh-migrate): one JSON
+  object per line with `time` in UTC, `level`, `msg`, `logger`, and the edge's `request_id` on
+  a line written for a request.
+  - Zend_Log writes through `Jkl_Log_Formatter_Json`, with no new dependency.
+  - PHP's errors, uncaught exceptions and fatal errors come through handlers that
+    `auto_prepend_file` installs in every script. Each is one line with `error` and `stack`, cut
+    to stay under 16 KB, and PHP-FPM's `log_limit` lets it through whole.
+  - A page that does not exist is an `info` line. Only a failed request is an `error`, where
+    every exception used to be EMERG.
+  - nginx keeps no access log, which the edge already keeps, and sets `log_not_found off`.
+  - The nginx entrypoint and PHP-FPM say nothing at a start.
+  - The importer's progress lines are JSON too.
+  - `nginx` and `app` leave `LOG_FORMAT_PENDING`, so `make ovh-stack-test` checks every line
+    they write.
+  - `make ovh-e2e` reads the client's address through the application instead of the access
+    log.
+
 ## 2026.10.7 — 2026-10-09
 
 The command line for an admin's edits, with its journal and undo (#115), whose tables migration
