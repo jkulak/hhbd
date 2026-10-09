@@ -15,7 +15,7 @@ Development workflow
 - **Initial setup (new clone)**: 
   1. Start services: `docker compose up -d --build` (from host, not inside dev container)
   2. Seed DB: `make reset-db` (the schema from `database/migrations/`, the fixtures from `database/tests/fixtures.sql`)
-  3. Generate images: `docker compose exec app php app/tools/generate-test-images.php`
+  3. Generate images: `make test-images` (in the importer's image, the one with GD)
   4. Open in VS Code → "Reopen in Container" (dev container auto-installs composer deps)
   5. **Alternative DB setup (production-like data)**: Copy production dump to `database/dev/init.sql` (git-ignored). Docker will auto-import on first start; then `make migrate-baseline`. See [database/README.md](database/README.md) for details.
 - **Dev container networking**: Dev container auto-connects to `hhbd_default` docker network via `postStartCommand`. If tests fail to reach nginx, manually run: `docker network connect hhbd_default $(hostname)`

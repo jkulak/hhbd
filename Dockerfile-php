@@ -1,5 +1,5 @@
 # =============================================================================
-# Stage 1: Builder/Test - includes GD extension for test image generation
+# Stage 1: Builder - composer and the application, the stage CI's app runs on
 # =============================================================================
 FROM php:7.4-fpm as builder
 
@@ -9,21 +9,15 @@ FROM php:7.4-fpm as builder
 # holds all three bullseye suites.
 RUN sed -i 's|http://deb.debian.org|http://archive.debian.org|g' /etc/apt/sources.list
 
-# Install system dependencies including GD libraries and composer requirements
+# Composer unpacks packages with unzip, or clones them with git. No GD here: the importer's
+# image has it from Debian's packages, and CI's test images are made there.
 RUN apt-get update && apt-get install -y \
-    libfreetype6-dev \
-    libjpeg62-turbo-dev \
-    libpng-dev \
     libfcgi-bin \
-    libzip-dev \
     unzip \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions including GD for test image generation
-RUN docker-php-ext-install pdo pdo_mysql zip \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) gd
+RUN docker-php-ext-install pdo pdo_mysql
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -96,28 +90,31 @@ COPY conf/php/production.ini /usr/local/etc/php/conf.d/99-production.ini
 # It writes the cover, photo and logo sizes from the one original a batch ships (#96), so it
 # needs GD for the formats originals come in: JPEG, PNG and WebP. It runs and exits, so it is
 # PHP's CLI image, not FPM, and the web image stays without GD.
-FROM php:7.4-cli as importer
+# Debian's own PHP 7.4 with GD, from packages: nothing to compile. The official image builds
+# GD from source on every build that misses the layer cache, which was a minute of each CI run
+# and release. Bullseye's PHP is the same 7.4.33 the app's image runs.
+FROM debian:bullseye-slim as importer
 
 # Bullseye's packages from the archive, as in the builder stage
-RUN sed -i 's|http://deb.debian.org|http://archive.debian.org|g' /etc/apt/sources.list
-
-RUN apt-get update && apt-get install -y \
-    libjpeg62-turbo-dev \
-    libpng-dev \
-    libwebp-dev \
+RUN sed -i 's|http://deb.debian.org|http://archive.debian.org|g' /etc/apt/sources.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    php7.4-cli \
+    php7.4-gd \
+    php7.4-json \
+    php7.4-mbstring \
+    php7.4-mysql \
+    php7.4-xml \
     && rm -rf /var/lib/apt/lists/* \
-    && docker-php-ext-install pdo pdo_mysql \
-    && docker-php-ext-configure gd --with-jpeg --with-webp \
-    && docker-php-ext-install -j$(nproc) gd
+    && php -r 'exit((extension_loaded("pdo_mysql") && gd_info()["JPEG Support"] && gd_info()["PNG Support"] && gd_info()["WebP Support"]) ? 0 : 1);'
 
 WORKDIR /var/www/html
 
 COPY --from=builder /var/www/html/app ./app
 
-COPY conf/php/production.ini /usr/local/etc/php/conf.d/99-production.ini
+COPY conf/php/production.ini /etc/php/7.4/cli/conf.d/99-production.ini
 # A decoded original takes four bytes a pixel, a 6000 x 4000 photo 96 MB, beside the copy being
 # scaled; the web's 256M leaves too little room for that. zz- loads it after 99-production.ini.
-RUN echo "memory_limit = 512M" > /usr/local/etc/php/conf.d/zz-importer.ini
+RUN echo "memory_limit = 512M" > /etc/php/7.4/cli/conf.d/zz-importer.ini
 
 # A batch arrives as a tar on stdin, so it reaches the OVH host over ssh without a copy left
 # there, and the report leaves on stdout: make import and make ovh-import stream it alike.
