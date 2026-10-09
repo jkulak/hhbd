@@ -378,6 +378,7 @@ run_fixture_tests() {
     test_page_absent "Discogs's CC0 data is not credited (Jestem Hip Hopem)" "/pezet-jestem-hip-hopem-a1.html" "Data provided by Discogs"
     test_page_multi "An album links where it can be heard" "/wdowa-superextra-a535.html" "https://www.deezer.com/album/302127" "https://music.apple.com/album/1440857781"
     test_page "An artist's Discogs data is credited (Mes)" "/mes-p35.html" "https://www.discogs.com/artist/271903"
+    test_page "Another name stored mangled reads right (#27)" "/mes-p35.html" "JŹW"
     test_page_multi "An artist's main photo carries its credit and licence (Mes)" "/mes-p35.html" "Jan Kowalski" "https://creativecommons.org/licenses/by-sa/4.0/"
     test_page_multi "An artist's other photos are in a gallery, captioned (Mes)" "/mes-p35.html" "Zdjęcia" "Anna Nowak" "(zmodyfikowane)"
     test_page "A joint album links both its artists" "/pezet-jestem-hip-hopem-a1.html" "&amp; <a href"
