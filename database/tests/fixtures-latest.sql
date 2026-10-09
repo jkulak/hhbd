@@ -26,3 +26,12 @@ INSERT INTO `external_ids` (`entity_type`, `entity_id`, `source`, `kind`, `value
 ('album', 535, 'itunes', 'collection', '1440857781'),
 ('album', 1, 'discogs', 'master', '7654321'),
 ('artist', 35, 'discogs', 'artist', '271903');
+
+-- Mes's photos as a gallery (#61): his main photo gets the credit a Commons licence asks for, and a
+-- second photo, cropped, goes below it with its own.
+UPDATE `artists_photos` SET `credit` = 'Jan Kowalski', `licence` = 'CC BY-SA 4.0',
+       `licence_url` = 'https://creativecommons.org/licenses/by-sa/4.0/',
+       `sourceurl` = 'https://commons.wikimedia.org/wiki/File:Mes_test.jpg'
+ WHERE `artistid` = 35 AND `main` = 'y';
+INSERT INTO `artists_photos` (`artistid`, `filename`, `description`, `main`, `source`, `sourceurl`, `licence`, `licence_url`, `credit`, `modified`, `addedby`) VALUES
+(35, 'test-artist-030.jpg', 'Mes na koncercie', 'n', 'commons', 'https://commons.wikimedia.org/wiki/File:Mes_koncert.jpg', 'CC BY 4.0', 'https://creativecommons.org/licenses/by/4.0/', 'Anna Nowak', 1, 1100);
