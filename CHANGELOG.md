@@ -8,7 +8,15 @@ person's decision; nothing releases on its own.
 
 ## Unreleased
 
+### Added
+- `make edit` and `make ovh-edit` set several columns of a row in one operation (#145):
+  `DO="set albums 535" VALUE='{"title": "...", "year": "2010-06-15", "notes": null}'`. One
+  operation in the journal and one undo, where one column at a time took ten of each; a column
+  the row lacks, `id`, `updated` or `updatedby` in the object refuses all of them.
+
 ### Fixed
+- `make edit DO="set ..." VALUE=` sets an empty string, as it says; the tool dropped the empty
+  argument on the way and refused the call.
 - An admin's edits name them in `updatedby` the way the rest of the history does (#132, migration
   0033): `updatedby` and `addedby` are `users` IDs, and the review panel and `make edit` wrote the
   admin's `hhb_users` id instead, which in `users` is someone else. `users.hhb_usr_id` links an

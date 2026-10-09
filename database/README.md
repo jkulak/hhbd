@@ -216,6 +216,7 @@ follow, a clean-up of a whole kind of row.
 make ovh-edit DO="merge-albums 850 841" BY=<admin> WHY="duplicate of 841, #114"               # a dry run
 make ovh-edit DO="merge-albums 850 841" BY=<admin> WHY="duplicate of 841, #114" MODE=apply
 make ovh-edit DO="undo 12" BY=<admin> WHY="merged the wrong one" MODE=apply
+make ovh-edit DO="set albums 535" VALUE='{"title": "Superextra", "catalog_cd": "ALK 003", "notes": null}' BY=<admin> WHY="from the cover"
 ```
 
 **The operations:**
@@ -223,6 +224,10 @@ make ovh-edit DO="undo 12" BY=<admin> WHY="merged the wrong one" MODE=apply
 - `delete-album <id>`, `delete-artist <id>` and `delete-label <id>`;
 - `set <albums|artists|labels|songs> <id> <column>`, with the value in `VALUE` or NULL without
   it;
+- `set <albums|artists|labels|songs> <id>`, with the columns in `VALUE` as one JSON object, a
+  `null` for NULL (#145). It is one operation and one undo however many columns it names. A
+  column the row lacks refuses them all, and so do `id`, `updated` and `updatedby`, which `set`
+  writes itself; one column at a time can still correct those two;
 - `undo <operation>`.
 
 **How a call is checked and run:**
