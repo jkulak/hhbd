@@ -12,8 +12,8 @@
  * Usage:
  *   php app/tools/generate-test-images.php
  *
- * Or from Docker:
- *   docker compose exec app php app/tools/generate-test-images.php
+ * Or from Docker, in the importer's image, the one with GD:
+ *   make test-images
  */
 
 // Configuration
