@@ -385,7 +385,8 @@ run_tests() {
     # Core pages
     echo "--- Listing Pages ---"
     test_page "Homepage" "/" "Pezet"
-    test_page "Album List" "/albumy.html" "Jestem Hip Hopem"
+    # The table, not a title: production's top album was a 2017 placeholder until #54 removed it.
+    test_page "Album List" "/albumy.html" "Lista albumów hip-hopowych"
     test_page "Premieres" "/premiery.html" "Stasiak"
     test_page "Artist List" "/wykonawcy.html" "Eldo"
     test_page "Label List" "/wytwornie.html" "Asfalt"
