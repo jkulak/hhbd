@@ -14,6 +14,8 @@
 #     lists the runs (#52)
 #   - the import is users row 1100, which nobody can log in as, and the documented query lists
 #     what it added (#63)
+#   - artist cities live in one table, the one the pages read, one row per pair (#64); the
+#     old table's rows wait in migration_archive and come back with the down
 #   - going down to the baseline brings the old schema back, and up removes it again
 #
 # It changes rows to prove these and ends with make reset-db, so the database ends as a reset
@@ -135,6 +137,17 @@ sql "UPDATE artists SET addedby = 1100 WHERE id = 35"
 sql "UPDATE labels SET addedby = 1100 WHERE id = 58"
 check "the README's query lists what the import added" "artist 35 label 58" "$(sql "SELECT 'album' AS type, id, title AS name, added FROM albums WHERE addedby = 1100 UNION ALL SELECT 'artist', id, name, added FROM artists WHERE addedby = 1100 UNION ALL SELECT 'label', id, name, added FROM labels WHERE addedby = 1100 ORDER BY added, type, id" | awk -F'\t' '{ printf "%s%s %s", sep, $1, $2; sep = " " }')"
 
+echo "> one artist-city table"
+pairs() { sql "SELECT GROUP_CONCAT(CONCAT(cityid, ':', artistid, ':', status) ORDER BY cityid, artistid, status SEPARATOR ' ') FROM \`$1\`"; }
+check "the old table is gone" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'city_artist_lookup'")"
+check "its pairs are in the table the pages read, once each, without the orphan" "1:1:999 2:35:999 3:46:0" "$(pairs artist_city_lookup)"
+check "the archive holds every old row and every pair put in" "artist_city_lookup inserted 2, city_artist_lookup deleted 5" "$(sql "SELECT GROUP_CONCAT(CONCAT(table_name, ' ', action, ' ', n) ORDER BY table_name SEPARATOR ', ') FROM (SELECT table_name, action, COUNT(*) n FROM migration_archive WHERE version = '0010' GROUP BY table_name, action) a")"
+if sql "INSERT INTO artist_city_lookup (cityid, artistid) VALUES (2, 35)" >"$T/out" 2>&1; then
+    bad "a pair cannot be stored twice"
+else
+    ok "a pair cannot be stored twice"
+fi
+
 echo "> down to the baseline brings the old schema back, and up removes it"
 rows_before=$(sql "SELECT COUNT(*) FROM songs")
 ./scripts/migrate.sh down "$after_baseline" >"$T/out" 2>&1 || { bad "down $after_baseline succeeds"; cat "$T/out"; }
@@ -142,6 +155,9 @@ check "after down: 44 tables on MyISAM again, hhb_comments and the migrations' o
 check "after down: no row lost in the conversions" "$rows_before" "$(sql "SELECT COUNT(*) FROM songs")"
 check "after down: none of the import's tables" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('external_ids', 'import_runs', 'import_provenance')")"
 check "after down: no import user" "0" "$(sql "SELECT COUNT(*) FROM users WHERE ID = 1100")"
+check "after down: the old city table again, duplicate and orphan included" "1:1:999 1:99999:999 2:35:0 2:35:999 3:46:0" "$(pairs city_artist_lookup)"
+check "after down: the table the pages read as the fixtures had it" "1:1:999" "$(pairs artist_city_lookup)"
+check "after down: no archive" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'migration_archive'")"
 check "after down: added changes on update again, in 11 tables plus the lyrics log" "12" "$(count "$TIMES_WITH_ON_UPDATE")"
 check "after down: the catalog's added has no default" "0" "$(count "table_name IN ($CATALOG) AND column_name = 'added' AND column_default = 'current_timestamp()'")"
 check "after down: album_prices.added defaults to the zero date again" "album_prices.added" "$(col "column_default LIKE '%0000-00-00%'")"
@@ -150,6 +166,7 @@ check "after up again: every table InnoDB" "InnoDB $(tables)" "$(engines)"
 check "after up again: no row lost" "$rows_before" "$(sql "SELECT COUNT(*) FROM songs")"
 check "after up again: no added changes on update" "0" "$(count "$TIMES_WITH_ON_UPDATE")"
 check "after up again: no zero-date default" "NULL" "$(col "column_default LIKE '%0000-00-00%'")"
+check "after up again: the cities merged as before" "1:1:999 2:35:999 3:46:0" "$(pairs artist_city_lookup)"
 
 echo "> back to the fixtures"
 if make -s reset-db >"$T/out" 2>&1; then ok "make reset-db leaves the database as the fixtures have it"; else bad "make reset-db leaves the database as the fixtures have it"; cat "$T/out"; fi

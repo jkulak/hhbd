@@ -338,6 +338,7 @@ run_tests() {
     echo "--- Detail Pages ---"
     test_page "Label Detail (Alkopoligamia)" "/alkopoligamia-l58.html" "Alkopoligamia"
     test_page "Artist Detail (Mes)" "/mes-p35.html" "Piotr  Szmidt"
+    test_page_multi "Artist city from the old backoffice table (Mes)" "/mes-p35.html" "Miasto:" "Kraków"
     test_page_multi "Album Detail (Wdowa - Superextra)" "/wdowa-superextra-a535.html" "Wdowa" "Pogoda" "Alkopoligamia"
     test_page_multi "Song Detail (Wdowa - Pogoda)" "/pogoda-s7329.html" "Dj Technik" "Beatmo"
     test_page "News Detail" "/onar-jak-na-pierwszej-plycie-wideo-n1877.html" "Onar wraca z nowym singlem"
