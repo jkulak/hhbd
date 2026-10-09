@@ -265,6 +265,16 @@ It records each existing cover as `300`, `600` or `orig` by its size and its thu
 `75`, source `legacy`, and adds nothing on a second run. `make check-images` also checks every
 row's file is there with the recorded hash.
 
+## Artist photos
+
+An artist can have several photos (`artists_photos`); the page shows the main one at the top and
+the others in a gallery below, each with the caption its licence asks for: "Fot. <credit>,
+<licence>", the credit linked to `sourceurl`, the licence to `licence_url`, and "(zmodyfikowane)"
+when `modified` says the file was cropped or resized (0020, #61). `Model_Image_Api::addArtistPhoto()`
+keeps exactly one main photo per artist. Width, height, SHA-256 and MIME type come from the
+files: `make photos-backfill` and `make ovh-photos-backfill` fill them for the photos already on
+the volume, and `make check-images` verifies each recorded hash.
+
 ## Release dates
 
 `albums.year` is a whole date, or NULL when nothing is known (0018, #54).
