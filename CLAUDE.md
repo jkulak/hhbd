@@ -220,7 +220,7 @@ GitHub Actions workflows (`.github/workflows/`):
 - **unit-tests.yml** - PHPUnit tests with coverage
 - **smoke-tests.yml** - Integration tests with Docker
 - **deploy-checks.yml** - The secrets gate, the release flow, and the production stack behind a stand-in edge
-- **release.yml** - Builds both images for a pushed tag `vYYYY.MM.N` and deploys them to the OVH host
+- **release.yml** - Builds the app, nginx and importer images for a pushed tag `vYYYY.MM.N` and deploys the first two to the OVH host
 
 The first three run on pull requests (and by hand), never again on the push a merge makes to `main`; a newer push to a pull request cancels the older run. `release.yml` runs on a pushed release tag.
 

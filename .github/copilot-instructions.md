@@ -93,7 +93,7 @@ When implementing features
 
 Deployment (OVH)
 - Production runs on the shared OVH host behind its Caddy edge and Cloudflare; see [deploy/README.md](deploy/README.md).
-- A release is a CalVer tag `vYYYY.MM.N`: [release.yml](.github/workflows/release.yml) builds both images to GHCR and [deploy/ovh-release.sh](deploy/ovh-release.sh) rolls them out through the host's `ci-deploy`, rolling back on a failed smoke test.
+- A release is a CalVer tag `vYYYY.MM.N`: [release.yml](.github/workflows/release.yml) builds the app, nginx and importer images to GHCR and [deploy/ovh-release.sh](deploy/ovh-release.sh) rolls them out through the host's `ci-deploy`, rolling back on a failed smoke test.
 - Configuration reaches the host only through `make ovh-install` ([deploy/ovh-install.sh](deploy/ovh-install.sh)); the production compose is [deploy/compose.ovh.yaml](deploy/compose.ovh.yaml), secrets are in `deploy/hhbd.enc.env` (SOPS).
 
 ⚠️ CRITICAL: Database Safety Rule

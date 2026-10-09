@@ -67,6 +67,25 @@ services:
         limits:
           memory: 256M
 
+  # The import job (#56), run by `make ovh-import` with a batch streamed in over ssh. It runs
+  # and exits, so it carries a profile and `up` never starts it (CONTRACT.md §6); ci-deploy
+  # does not pull it either, so `make ovh-import` does. The one container that writes content.
+  importer:
+    image: ghcr.io/jkulak/hhbd-importer:${IMAGE_TAG:?}
+    profiles: [jobs]
+    environment:
+      APPLICATION_ENV: production
+      DB_HOST: db
+      DB_NAME: hhbd
+      DB_USER: hhbd
+      DB_PASSWORD: ${DB_PASSWORD:?}
+    volumes:
+      - content:/var/www/html/content
+    deploy:
+      resources:
+        limits:
+          memory: 640M
+
   db:
     image: mariadb:10.11.8
     restart: unless-stopped
@@ -107,8 +126,8 @@ services:
 volumes:
   # The database. Backed up as a dump, as db's labels say, not as a volume.
   db_data:
-  # Covers, photos and logos, hhbd_content on the host. Only nginx reads it; nothing in the
-  # stack writes it since the backoffice was archived. Backed up as a volume.
+  # Covers, photos and logos, hhbd_content on the host. nginx reads it, and the importer job is
+  # the one thing that writes it since the backoffice was archived. Backed up as a volume.
   content:
 
 networks:

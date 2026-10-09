@@ -23,7 +23,8 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '7.4'
-          extensions: mbstring, xml, pdo, pdo_mysql
+          # gd for the importer's image sizes (#96), as the importer image has it
+          extensions: mbstring, xml, pdo, pdo_mysql, gd
           coverage: xdebug
 
       - name: Cache Composer cache

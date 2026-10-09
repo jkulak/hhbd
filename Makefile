@@ -65,6 +65,10 @@ ovh-photos-backfill: ## Record the size, type and hash of production's artist ph
 ovh-check-images: ## List the covers, photos and logos production's catalogue names but its content volume lacks
 	DB_TARGET=ovh ./scripts/check-images.sh
 
+.PHONY: ovh-import
+ovh-import: ## Read an import batch into production's catalogue: make ovh-import BATCH=<dir> MODE=apply (a dry run without MODE)
+	@./deploy/ovh-import.sh "$${BATCH:?BATCH is the batch directory}" $(or $(MODE),dry-run)
+
 .PHONY: ovh-import-runs
 ovh-import-runs: ## List the last import runs on production's database, newest first; N=50 for more
 	DB_TARGET=ovh ./scripts/import-runs.sh $(or $(N),20)
@@ -133,6 +137,10 @@ photos-backfill: ## Record the size, type and hash of the local artist photos on
 .PHONY: check-images
 check-images: ## List the covers, photos and logos the local catalogue names but content/ lacks
 	./scripts/check-images.sh
+
+.PHONY: import
+import: ## Read an import batch into the local catalogue and content/: make import BATCH=<dir> MODE=apply (a dry run without MODE)
+	@COPYFILE_DISABLE=1 tar --no-xattrs -C "$${BATCH:?BATCH is the batch directory}" -cf - . | docker compose run --rm -T importer --$(or $(MODE),dry-run)
 
 .PHONY: import-runs
 import-runs: ## List the last import runs on the local database, newest first; N=50 for more

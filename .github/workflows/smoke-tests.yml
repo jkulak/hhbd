@@ -47,6 +47,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build importer image with cache
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile-php
+          target: importer
+          tags: |
+            ${{ env.COMPOSE_PROJECT_NAME }}-importer:latest
+          load: true
+          cache-from: type=gha,scope=importer
+          cache-to: type=gha,mode=max,scope=importer
+
       - name: Start Docker Compose services
         run: |
           # compose.ci.yaml overrides to use 'builder' stage which includes GD for test image generation
@@ -121,6 +133,12 @@ jobs:
           # Every table InnoDB (#45); added never changes on update, the catalog's added has a
           # default, no zero-date defaults, and a page view leaves added and updated alone (#48).
           ./tests/schema-test.sh http://localhost:8080
+
+      - name: Check the importer
+        run: |
+          # The test batch: a dry run, an apply, the same apply again, and a batch with
+          # documents that do not hold up; it ends with a reset (#56).
+          ./tests/import-test.sh http://localhost:8080
 
       - name: Show logs on failure
         if: failure()

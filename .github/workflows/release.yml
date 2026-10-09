@@ -79,6 +79,24 @@ jobs:
           cache-from: type=gha,scope=nginx
           cache-to: type=gha,mode=max,scope=nginx
 
+      # Not deployed: the import job's image (#56), which make ovh-import pulls for the tag
+      # the host runs.
+      - name: Build and push the importer image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile-php
+          target: importer
+          push: true
+          platforms: linux/amd64
+          tags: ${{ env.IMAGE_PREFIX }}-importer:${{ env.TAG }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ env.TAG }}
+          cache-from: type=gha,scope=importer
+          cache-to: type=gha,mode=max,scope=importer
+
       - name: Pin the host and load the deploy key
         env:
           OVH_DEPLOY_SSH_KEY: ${{ secrets.OVH_DEPLOY_SSH_KEY }}
