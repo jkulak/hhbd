@@ -207,6 +207,12 @@ Rules the link tables follow, and the migration that set each one:
   whoever writes `band_lookup` also sets the band's type. A member
   counts when the member's own row exists. A `b` artist without members is not changed: 66 of
   them on production, many of them duos whose members were never entered, are listed on #65.
+- **A credit's role is a `feattypes` row, found by name** (0013, #66). Role names are unique
+  under the table's collation, so "rap" is "Rap"; `Model_FeatType_Api::resolve()` returns a
+  role's id and adds the role when it is new. A credit without a role points at row 0, which
+  has no name and is never deleted: the song page joins it for every such credit. 0013 gave
+  a role to a role-less credit only where all the artist's other credits share one (223 on
+  production); the other 356 stay at 0, because any role for them would be a guess.
 
 ## External ids
 

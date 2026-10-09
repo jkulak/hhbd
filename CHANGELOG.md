@@ -14,6 +14,9 @@ decision; nothing tags on its own.
   release tags alone, instead of reading it from repository secrets any branch could read.
 
 ### Added
+- `Model_FeatType_Api::resolve()` finds a credit's role by name, whatever its case, and adds a
+  role nobody has used yet, so imported credits named "Rap" or "Cuty" land on one row each
+  (#66).
 - `migration_archive` (migration 0009, with a down): a migration that deletes or changes rows
   keeps them there as JSON, so its down puts them back exactly. The rows stay in the database
   rather than in the migration files, which run on the fixtures as well as on production and sit
@@ -56,6 +59,10 @@ decision; nothing tags on its own.
   backoffice gets written from scratch.
 
 ### Fixed
+- Role names in `feattypes` are unique, and the unused test role is gone (#66). Migration 0013
+  also gave a role to 223 of the 579 credits stored without one, where every other credit of
+  the same artist has that role; the rest stay without a role rather than get a guessed one.
+  Its down restores both.
 - An artist with members is typed as a band (#65). The pages decide "band" by members and show
   no type yet, so nothing visible changes, but the importer and any page that shows the label
   now have one rule to follow. Migration 0012 set type `b` on the 67 artists on production that
