@@ -12,6 +12,8 @@
 #   - an external id belongs to one row, and is compared byte for byte (#51)
 #   - provenance belongs to a run that exists, a run's report is JSON, and make import-runs
 #     lists the runs (#52)
+#   - the import is users row 1100, which nobody can log in as, and the documented query lists
+#     what it added (#63)
 #   - going down to the baseline brings the old schema back, and up removes it again
 #
 # It changes rows to prove these and ends with make reset-db, so the database ends as a reset
@@ -127,12 +129,19 @@ check "make import-runs lists the run with its time, totals and provenance rows"
     "$(./scripts/import-runs.sh 1 | tail -1 | awk '{ $2 = ""; $3 = ""; print }' | tr -s ' ' | sed 's/^ //')"
 check "both tables compare bytes, like external_ids" "import_provenance utf8mb4_bin import_runs utf8mb4_bin" "$(sql "SELECT GROUP_CONCAT(CONCAT(table_name, ' ', table_collation) ORDER BY table_name SEPARATOR ' ') FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('import_runs', 'import_provenance')")"
 
+echo "> the import in addedby"
+check "users has the import as 1100, with no password" "import, no password" "$(sql "SELECT CONCAT(login, IF(pass IS NULL, ', no password', ', a password')) FROM users WHERE ID = 1100")"
+sql "UPDATE artists SET addedby = 1100 WHERE id = 35"
+sql "UPDATE labels SET addedby = 1100 WHERE id = 58"
+check "the README's query lists what the import added" "artist 35 label 58" "$(sql "SELECT 'album' AS type, id, title AS name, added FROM albums WHERE addedby = 1100 UNION ALL SELECT 'artist', id, name, added FROM artists WHERE addedby = 1100 UNION ALL SELECT 'label', id, name, added FROM labels WHERE addedby = 1100 ORDER BY added, type, id" | awk -F'\t' '{ printf "%s%s %s", sep, $1, $2; sep = " " }')"
+
 echo "> down to the baseline brings the old schema back, and up removes it"
 rows_before=$(sql "SELECT COUNT(*) FROM songs")
 ./scripts/migrate.sh down "$after_baseline" >"$T/out" 2>&1 || { bad "down $after_baseline succeeds"; cat "$T/out"; }
 check "after down: 44 tables on MyISAM again, hhb_comments and the migrations' own on InnoDB" "InnoDB 2, MyISAM 44" "$(engines)"
 check "after down: no row lost in the conversions" "$rows_before" "$(sql "SELECT COUNT(*) FROM songs")"
 check "after down: none of the import's tables" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('external_ids', 'import_runs', 'import_provenance')")"
+check "after down: no import user" "0" "$(sql "SELECT COUNT(*) FROM users WHERE ID = 1100")"
 check "after down: added changes on update again, in 11 tables plus the lyrics log" "12" "$(count "$TIMES_WITH_ON_UPDATE")"
 check "after down: the catalog's added has no default" "0" "$(count "table_name IN ($CATALOG) AND column_name = 'added' AND column_default = 'current_timestamp()'")"
 check "after down: album_prices.added defaults to the zero date again" "album_prices.added" "$(col "column_default LIKE '%0000-00-00%'")"

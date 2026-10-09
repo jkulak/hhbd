@@ -122,9 +122,9 @@ renaming them across 45 tables would risk more than it would clear up.
 | Column | Means | Kept by |
 |---|---|---|
 | `added` | when the row was added | the database: `DEFAULT current_timestamp()`, and **never** `ON UPDATE`, so an update cannot rewrite it |
-| `addedby` | who added it: an `ID` in the old `users` table; `0` means unknown | whoever inserts; the archived backoffice did |
-| `updated` | when the row was last **edited**, by a person | whoever edits; nothing automatic |
-| `updatedby` | who edited it, an `ID` in `users` | whoever edits |
+| `addedby` | who added it: an `ID` in the old `users` table; `0` means unknown, `1100` the import | whoever inserts; the archived backoffice did, the importer does |
+| `updated` | when the row was last **edited**, by a person or by the import | whoever edits; nothing automatic |
+| `updatedby` | who edited it, an `ID` in `users`; `1100` the import | whoever edits |
 | `status` | `999` published, counted by the site; `0` not published (the only two values production holds) | the editor |
 | `viewed` | page views | the application, on every view (`/stat`) |
 
@@ -142,6 +142,30 @@ For migrations that follow from it:
   `timestamp` cannot hold a time after 2038-01-19. A log has its own name for it, as
   `import_runs.started` does.
 - **No column defaults to a zero date** (`'0000-00-00 …'`): strict SQL modes reject it.
+
+### The import in addedby and updatedby
+
+The import is a row of its own in `users` (0008, #63): **`ID` 1100**, login `import`, no
+password, so nothing logs in as it. The importer writes 1100 into `addedby` for every row it
+creates, and into `updatedby`, with the time in `updated`, when it changes a field of a row
+that exists; a document it reports `unchanged` touches neither. So an imported row shows as one
+in these columns alone; `import_provenance` says from where, field by field.
+
+The importer reads the id from `IMPORT_USER_ID`, 1100 when unset, through
+`Model_Provenance_Api::getImportUserId()`, and refuses to run when `users` has no import row
+with that id. A fixed id rather than whatever `AUTO_INCREMENT` gives keeps it the same in every
+database, so this paragraph can name it.
+
+What the import added, oldest first:
+
+```sql
+SELECT 'album' AS type, id, title AS name, added FROM albums WHERE addedby = 1100
+UNION ALL SELECT 'artist', id, name, added FROM artists WHERE addedby = 1100
+UNION ALL SELECT 'label', id, name, added FROM labels WHERE addedby = 1100
+ORDER BY added, type, id;
+```
+
+And what it changed that a person had added: the same with `updatedby = 1100 AND addedby <> 1100`.
 
 One thing is known lost and cannot be recovered from the database: 58 of the 120 `added`
 values in `artists_photos`, overwritten in one mass update while `added` still had `ON UPDATE`.
