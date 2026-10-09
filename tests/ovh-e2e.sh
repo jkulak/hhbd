@@ -193,8 +193,10 @@ else
     bad "an X-Real-IP sent by the client through the edge is replaced (got '$seen')"
 fi
 printf '%s' "$addr" | docker exec -i "$PROJECT-app-1" sh -c 'cat > /var/www/html/app/public/addr.php'
+docker exec "$PROJECT-nginx-1" touch /var/www/html/app/public/addr.php
 seen=$(docker run --rm --network edge busybox:1.37.0 wget -q -O - --header 'Host: hhbd.pl' --header 'X-Real-IP: 198.51.100.9' http://hhbd-web/addr.php)
 docker exec "$PROJECT-app-1" rm -f /var/www/html/app/public/addr.php
+docker exec "$PROJECT-nginx-1" rm -f /var/www/html/app/public/addr.php
 case "$seen" in
     172.30.0.*) ok "X-Real-IP from anywhere but the edge is ignored ($seen)" ;;
     *)          bad "X-Real-IP from anywhere but the edge is ignored (got '$seen')" ;;
