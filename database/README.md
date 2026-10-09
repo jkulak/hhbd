@@ -201,6 +201,12 @@ Rules the link tables follow, and the migration that set each one:
   `album_lookup` has none yet: 162 track positions on 19 albums hold two or more different
   songs, so `(albumid, track)` would not hold until discs are told apart and those albums are
   reviewed.
+- **An artist with members is a band, type `b`** (0012, #65). The pages decide "band" by
+  members (`Model_Artist_Container::isBand()`) and show no type today, but `type` is what the
+  importer writes and the label a page would show ("Projekt" for `b`), so the two must agree:
+  whoever writes `band_lookup` also sets the band's type. A member
+  counts when the member's own row exists. A `b` artist without members is not changed: 66 of
+  them on production, many of them duos whose members were never entered, are listed on #65.
 
 ## External ids
 

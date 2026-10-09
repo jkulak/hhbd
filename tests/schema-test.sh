@@ -18,6 +18,7 @@
 #     old table's rows wait in migration_archive and come back with the down
 #   - every link table has a unique key, and its duplicates are archived and come back with
 #     the down (#57)
+#   - an artist with members is a band, type 'b', as the pages decide it (#65)
 #   - going down to the baseline brings the old schema back, and up removes it again
 #
 # It changes rows to prove these and ends with make reset-db, so the database ends as a reset
@@ -174,6 +175,13 @@ else
     ok "a link cannot be stored twice"
 fi
 
+echo "> bands"
+types() { sql "SELECT GROUP_CONCAT(CONCAT(id, ':', type) ORDER BY id SEPARATOR ' ') FROM artists WHERE id BETWEEN 60 AND 63"; }
+BANDS_WITH_OTHER_TYPES="SELECT COUNT(*) FROM artists a WHERE a.type <> 'b' AND a.id IN (SELECT b.bandid FROM band_lookup b JOIN artists m ON m.id = b.artistid)"
+check "every artist with members is typed 'b'" "0" "$(sql "$BANDS_WITH_OTHER_TYPES")"
+check "the two that were not are now; a 'b' without members and an artist whose member is missing keep theirs" "60:b 61:b 62:b 63:x" "$(types)"
+check "the archive holds both old types" "60:x 61:m" "$(sql "SELECT GROUP_CONCAT(CONCAT(JSON_VALUE(row_data, '$.id'), ':', JSON_VALUE(row_data, '$.type')) ORDER BY id SEPARATOR ' ') FROM migration_archive WHERE version = '0012'")"
+
 echo "> down to the baseline brings the old schema back, and up removes it"
 rows_before=$(sql "SELECT COUNT(*) FROM songs")
 ./scripts/migrate.sh down "$after_baseline" >"$T/out" 2>&1 || { bad "down $after_baseline succeeds"; cat "$T/out"; }
@@ -186,6 +194,7 @@ check "after down: the table the pages read as the fixtures had it" "1:1:999" "$
 check "after down: every duplicate back as the fixtures had it" \
     "album_artist:0,999,999 band:2 altnames:2 artist:2 collection:1,2 ratings:1@$(sql "SELECT added FROM ratings WHERE ID = 1"),1001@2010-05-02 10:00:00" "$(dupes)"
 check "after down: no unique keys on the link tables" "NULL" "$(uniques)"
+check "after down: the artists' types as the fixtures had them" "60:x 61:m 62:b 63:x" "$(types)"
 check "after down: no archive" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'migration_archive'")"
 check "after down: added changes on update again, in 11 tables plus the lyrics log" "12" "$(count "$TIMES_WITH_ON_UPDATE")"
 check "after down: the catalog's added has no default" "0" "$(count "table_name IN ($CATALOG) AND column_name = 'added' AND column_default = 'current_timestamp()'")"
@@ -197,6 +206,7 @@ check "after up again: no added changes on update" "0" "$(count "$TIMES_WITH_ON_
 check "after up again: no zero-date default" "NULL" "$(col "column_default LIKE '%0000-00-00%'")"
 check "after up again: the cities merged as before" "1:1:999 2:35:999 3:46:0" "$(pairs artist_city_lookup)"
 check "after up again: the keys and one row per key" "$UNIQUE_TABLES album_artist:999 band:1" "$(uniques) $(dupes | cut -d' ' -f1-2)"
+check "after up again: the bands typed again" "60:b 61:b 62:b 63:x" "$(types)"
 
 echo "> back to the fixtures"
 if make -s reset-db >"$T/out" 2>&1; then ok "make reset-db leaves the database as the fixtures have it"; else bad "make reset-db leaves the database as the fixtures have it"; cat "$T/out"; fi
