@@ -21,34 +21,6 @@ class Model_Review_Api extends Jkl_Model_Api
         'merge' => 'merged', 'keep' => 'kept', 'qualifier' => 'qualified', 'accept' => 'accepted', 'pick' => 'picked',
     );
 
-    /**
-     * Every column that holds an artist's id, as table => columns; a merge points them all at
-     * the artist it keeps. The schema test checks no artistid, bandid or aid column is missing.
-     */
-    public const ARTIST_COLUMNS = array(
-        'album_artist_lookup'   => array('artistid'),
-        'altnames_lookup'       => array('artistid'),
-        'artist_city_lookup'    => array('artistid'),
-        'artist_concert_lookup' => array('artistid'),
-        'artist_lookup'         => array('artistid'),
-        'artists_everyweek'     => array('aid'),
-        'artists_photos'        => array('artistid'),
-        'band_lookup'           => array('artistid', 'bandid'),
-        'feature_lookup'        => array('artistid'),
-        'music_lookup'          => array('artistid'),
-        'news_artist_lookup'    => array('artistid'),
-        'remix_lookup'          => array('artistid'),
-        'scratch_lookup'        => array('artistid'),
-    );
-
-    /** And the tables that name a row by its type and id, as table => (type column, id column, an artist's type) */
-    public const ARTIST_ENTITIES = array(
-        'external_ids'      => array('entity_type', 'entity_id', 'artist'),
-        'import_provenance' => array('entity_type', 'entity_id', 'artist'),
-        'hhb_comments'      => array('com_object_type', 'com_object_id', 'p'),
-        'review_items'      => array('entity_type', 'entity_id', 'artist'),
-    );
-
     private const RELEASE_TYPES = array('album', 'ep', 'mixtape', 'compilation', 'beat_tape', 'single', 'other');
 
     private static $_instance;
@@ -151,7 +123,17 @@ class Model_Review_Api extends Jkl_Model_Api
         try {
             $undo = null;
             if ('merge' === $action) {
-                $undo = $this->mergeArtist($item, (int) $value, $userId);
+                // The same merge as the command line's, journalled the same way (#115); the item
+                // keeps naming the artist it was about.
+                $operation = Model_Edit_Api::getInstance()->run(
+                    'merge-artists',
+                    array($item->entityId, (int) $value),
+                    $userId,
+                    null === $note ? sprintf('review item %d: %s', $item->id, $item->getLabel()) : $note,
+                    'panel',
+                    array('keep_review_items' => array($item->id), 'review_item' => $item->id)
+                );
+                $undo = array('operation' => $operation);
             } elseif ('qualifier' === $action) {
                 $this->setQualifier($item->entityId, $value, $userId);
             } elseif ('accept' === $action && 'cover_placeholder' === $item->reason) {
@@ -176,75 +158,6 @@ class Model_Review_Api extends Jkl_Model_Api
             'UPDATE review_items SET resolved = NOW(), resolved_by = ?, resolution = ?, note = ?, undo_data = ? WHERE id = ? AND resolved IS NULL',
             array((int) $userId, $resolution, $note, null === $undo ? null : json_encode($undo, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), (int) $id)
         );
-    }
-
-    /**
-     * Merges the item's artist into another: every reference to it points at the one kept, the
-     * duplicate row goes, and its old URL redirects. A reference the kept artist has already
-     * (both credited on one song) is dropped instead of doubled. Everything moved or dropped,
-     * and the deleted row, is returned for the item's undo_data, so the merge can be taken back.
-     *
-     * @return array
-     */
-    private function mergeArtist(Model_Review_Container $item, $intoId, $userId)
-    {
-        $fromId = $item->entityId;
-        if ($intoId === $fromId || !$this->artistExists($intoId)) {
-            throw new RuntimeException(sprintf('There is no other artist %d to merge into.', $intoId));
-        }
-        $artist = $this->_db->fetchAll('SELECT * FROM artists WHERE id = ?', array($fromId));
-        if (empty($artist)) {
-            throw new RuntimeException(sprintf('Artist %d is gone already.', $fromId));
-        }
-        $undo = array('artist' => $artist[0], 'into' => $intoId, 'moved' => array(), 'dropped' => array());
-
-        foreach (self::ARTIST_COLUMNS as $table => $columns) {
-            foreach ($columns as $column) {
-                $this->moveRows($table, "`$column` = ?", array($fromId), "`$column` = ?", array($intoId), $undo);
-            }
-        }
-        // A member of the band it is merged into would be its own member.
-        $self = $this->_db->fetchAll('SELECT * FROM band_lookup WHERE artistid = bandid AND artistid = ?', array($intoId));
-        if (!empty($self)) {
-            $undo['dropped']['band_lookup'] = array_merge(isset($undo['dropped']['band_lookup']) ? $undo['dropped']['band_lookup'] : array(), $self);
-            $this->_db->query('DELETE FROM band_lookup WHERE artistid = bandid AND artistid = ?', array($intoId));
-        }
-        foreach (self::ARTIST_ENTITIES as $table => list($typeColumn, $idColumn, $type)) {
-            $where = "`$typeColumn` = ? AND `$idColumn` = ?";
-            if ('review_items' === $table) {
-                // This item keeps naming the artist it was about.
-                $where .= ' AND id <> ' . (int) $item->id;
-            }
-            $this->moveRows($table, $where, array($type, $fromId), "`$idColumn` = ?", array($intoId), $undo);
-        }
-
-        $this->_db->query('DELETE FROM artists WHERE id = ?', array($fromId));
-        $this->_db->query('UPDATE artist_merges SET into_id = ? WHERE into_id = ?', array($intoId, $fromId));
-        $this->_db->query(
-            'INSERT INTO artist_merges (id, into_id, review_item_id) VALUES (?, ?, ?)',
-            array($fromId, $intoId, $item->id)
-        );
-        $this->touch('artists', $intoId, $userId);
-        return $undo;
-    }
-
-    /**
-     * Points the rows $where finds at the kept artist. Rows a unique key refuses, because the
-     * kept artist has the same one, stay behind and are dropped.
-     */
-    private function moveRows($table, $where, array $whereValues, $set, array $setValues, array &$undo)
-    {
-        $rows = $this->_db->fetchAll("SELECT * FROM `$table` WHERE $where", $whereValues);
-        if (empty($rows)) {
-            return;
-        }
-        $this->_db->query("UPDATE IGNORE `$table` SET $set WHERE $where", array_merge($setValues, $whereValues));
-        $left = $this->_db->fetchAll("SELECT * FROM `$table` WHERE $where", $whereValues);
-        if (!empty($left)) {
-            $this->_db->query("DELETE FROM `$table` WHERE $where", $whereValues);
-            $undo['dropped'][$table] = array_merge(isset($undo['dropped'][$table]) ? $undo['dropped'][$table] : array(), $left);
-        }
-        $undo['moved'][$table] = array_merge(isset($undo['moved'][$table]) ? $undo['moved'][$table] : array(), $rows);
     }
 
     private function setQualifier($artistId, $qualifier, $userId)
@@ -296,11 +209,6 @@ class Model_Review_Api extends Jkl_Model_Api
     private function touch($table, $id, $userId)
     {
         $this->_db->query("UPDATE `$table` SET updatedby = ?, updated = NOW() WHERE id = ?", array((int) $userId, (int) $id));
-    }
-
-    private function artistExists($id)
-    {
-        return !empty($this->_db->fetchAll('SELECT id FROM artists WHERE id = ?', array((int) $id)));
     }
 
     /** The artist a merged one became, following merges of merges; null for one never merged */
