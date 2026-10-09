@@ -7,6 +7,28 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
+### Added
+- An admin settles on hhbd.pl what an import left for a person (#103).
+  - Migration 0023 adds `review_items` and `artist_merges`.
+  - The importer opens an item for:
+    - an artist's `review` (a namesake, #102);
+    - a stand-in cover;
+    - a release's new `review`: a date or a type the sources disagree on, or a release only one
+      catalogue knew.
+  - A logged-in admin sees the open items on the album, artist or label page, and all of them
+    with counts under "Do przejrzenia". A visitor sees nothing, and those pages are not cached.
+  - Each item is settled with one form, carrying a session token: merge a namesake into an
+    artist, keep it apart or change its qualifier; keep a cover; pick a date or a type; mark a
+    release checked.
+  - A merge moves every reference to the artist kept, deletes the duplicate, redirects its old
+    URL, and records what it moved so it can be undone.
+  - A larger cover in a later batch replaces a stand-in and settles its item. That is the way to
+    upload a better cover, so the web image stays without GD.
+  - `tests/review-test.sh` runs every action as the fixtures' admin.
+
+### Fixed
+- The fixtures' admin can log in: the password is hashed with the salt `Model_User` adds.
+
 ## 2026.10.4 — 2026-10-09
 
 The code for migration 0022, which production's database has run under 2026.10.3 since

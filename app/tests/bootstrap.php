@@ -36,6 +36,7 @@ $autoloader->registerNamespace('Model_');
 // Manually require custom view helpers (they don't follow Zend autoload path)
 require_once APPLICATION_PATH . '/views/helpers/LoggedIn.php';
 require_once APPLICATION_PATH . '/views/helpers/RestUrl.php';
+require_once APPLICATION_PATH . '/views/helpers/IsAdmin.php';
 
 // Set up timezone
 date_default_timezone_set('Europe/Warsaw');

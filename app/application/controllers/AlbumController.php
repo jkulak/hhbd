@@ -91,6 +91,12 @@ class AlbumController extends Zend_Controller_Action
 
         $album->autoDescription = $this->_generateDescription($album);
         $this->view->album = $album;
+        // What an import left to settle about it, for an admin's eyes only (#103).
+        if ($this->view->IsAdmin()) {
+            $this->getResponse()->setHeader('Cache-Control', 'private, no-store', true);
+            $this->view->reviewItems = Model_Review_Api::getInstance()->openFor('album', (int) $album->id);
+            $this->view->reviewMessages = $this->_helper->flashMessenger->getMessages();
+        }
         $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . '/' . $canonicalSlug;
         $this->view->artistsAlbums = Model_Album_Api::getInstance()->getArtistsAlbums($album->artist->id, array($album->id), 10);
         $this->view->popularAlbums = Model_Album_Api::getInstance()->getPopular(10);
