@@ -26,6 +26,7 @@ class Jkl_Tools_Date
   */
   public static function getNormalDate($date, $precision = null)
   {
+    $date = (string) $date;
     if (null === $precision) {
       $precision = self::precisionOf($date);
     }

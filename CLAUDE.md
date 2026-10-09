@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-HHBD is a Polish Hip-Hop Database - a content management system for music catalog featuring artists, albums, songs, labels, user profiles, comments, ratings, and community features. Built with **Zend Framework 1** (shardj/zf1-future) and **PHP 7.4**.
+HHBD is a Polish Hip-Hop Database - a content management system for music catalog featuring artists, albums, songs, labels, user profiles, comments, ratings, and community features. Built with **Zend Framework 1** (shardj/zf1-future) and **PHP 8.4**.
 
 ## Repository Structure
 
@@ -46,7 +46,7 @@ docker compose down
 
 ### Dev Container (Recommended)
 
-VS Code Dev Container provides PHP 7.4 environment with Xdebug, Composer, and PHP CodeSniffer. Opens automatically in VS Code with Dev Containers extension.
+VS Code Dev Container provides PHP 8.4, from Debian 13's packages as the images have it, with Xdebug and Composer. Opens automatically in VS Code with Dev Containers extension.
 
 ### First-Time Setup
 
@@ -195,7 +195,7 @@ The archived panels are abandoned for good (decided 2026-10-09): they are not up
 
 ## Development vs Production
 
-In **development mode** (`compose.override.yaml` loaded automatically):
+In **development mode** (`compose.override.yaml` loaded automatically; `compose.override.example.yaml` is the one to copy):
 - PHP errors displayed with full reporting
 - Opcache validates file timestamps (picks up changes immediately)
 - `app/` directory mounted as volume (overwrites vendor/ - requires `composer install` after rebuild)
@@ -229,7 +229,7 @@ The first three run on pull requests (and by hand), never again on the push a me
 ## Important Notes
 
 - **Legacy codebase**: Uses Zend Framework 1 (EOL but maintained by shardj/zf1-future)
-- **PHP 7.4**: Target version (not PHP 8+ due to ZF1 compatibility)
+- **PHP 8.4**: Debian 13's own packages in every image (`Dockerfile-php`): nothing is compiled, a rebuild takes Debian's security updates, and both Debian 13 and PHP 8.4 are supported to 2028. shardj/zf1-future runs on it. Classes that fill properties they do not declare (the model containers, the controllers' `$params`) carry `#[\AllowDynamicProperties]` (#37)
 - **Database**: MariaDB 10.11, credentials in environment variables
 - **Content directory**: User uploads stored in `content/` - excluded from git, shared across services via Docker volumes
 - **Polish language**: Many UI strings, comments, and routes are in Polish

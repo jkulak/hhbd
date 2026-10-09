@@ -9,6 +9,7 @@
  * @package default
  **/
 
+#[\AllowDynamicProperties]
 class Model_Album_Container
 {
     /**
@@ -110,7 +111,7 @@ class Model_Album_Container
         $this->media = self::mediaOf($params);
 
         $this->releaseDate = $params['year'];
-        $this->year = substr($params['year'], 0, 4);
+        $this->year = substr((string) $params['year'], 0, 4);
         $this->releaseDatePrecision = !empty($params['release_date_precision'])
             ? $params['release_date_precision']
             : Jkl_Tools_Date::precisionOf($this->releaseDate);

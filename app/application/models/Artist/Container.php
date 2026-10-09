@@ -9,6 +9,7 @@
  * @package default
  **/
 
+#[\AllowDynamicProperties]
 class Model_Artist_Container
 {
     public const TYPE_ARTIST = "Wykonawca";
@@ -77,7 +78,7 @@ class Model_Artist_Container
             $this->description = $params['profile'];
 
             //it happens it has only spaces, so it's trimmed
-            $this->concertInfo = trim($params['concertinfo']);
+            $this->concertInfo = trim((string) $params['concertinfo']);
 
             $this->type = $this->_artistTypes[$params['type']];
             $this->isSpecial = ($params['special'] == 1) ? true : false;

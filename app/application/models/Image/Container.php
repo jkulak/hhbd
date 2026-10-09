@@ -9,6 +9,7 @@
  * @package default
  **/
 
+#[\AllowDynamicProperties]
 class Model_Image_Container
 {
   

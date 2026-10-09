@@ -1,5 +1,6 @@
 <?php
 
+#[\AllowDynamicProperties]
 class ArtistController extends Zend_Controller_Action
 {
     public function init()
@@ -110,7 +111,7 @@ class ArtistController extends Zend_Controller_Action
         $this->view->og = $og->getMetaData();
 
         $this->view->headTitle()->headTitle($artist->qualifiedName, 'PREPEND');
-        // $this->view->headMeta()->setName('description', $artist->name . ' - teksty, dyskografia, biografia '. implode($albumList, ', '));
+        // $this->view->headMeta()->setName('description', $artist->name . ' - teksty, dyskografia, biografia '. implode(', ', $albumList));
         if (!empty($artist->description)) {
             $this->view->headMeta()->setName('description', Jkl_Tools_String::trim_str($artist->description, 160));
         } else {

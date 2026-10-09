@@ -3,6 +3,7 @@
 /**
  * One external id of a catalogue row, as stored in external_ids.
  */
+#[\AllowDynamicProperties]
 class Model_ExternalId_Container
 {
     public $entityType;

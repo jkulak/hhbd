@@ -1,5 +1,5 @@
 {
-    "name": "HHBD PHP 7.4",
+    "name": "HHBD PHP 8.4",
     "build": {
         "dockerfile": "Dockerfile",
         "context": ".."
@@ -24,8 +24,8 @@
                 // "mechatroner.rainbow-csv",
             ],
             "settings": {
-                "php.validate.executablePath": "/usr/local/bin/php",
-                "intelephense.environment.phpVersion": "7.4.0"
+                "php.validate.executablePath": "/usr/bin/php",
+                "intelephense.environment.phpVersion": "8.4.0"
             }
         }
     },
@@ -40,7 +40,7 @@
         "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
             "version": "latest",
             "enableNonRootDocker": "true",
-            "moby": "true"
+            "moby": "false"
         }
     },
     "forwardPorts": [

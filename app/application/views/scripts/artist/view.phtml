@@ -18,7 +18,7 @@
         <li>Nazywa się: <?php echo $this->artist->realName ?></li>
       <?php endif ?>
       <?php if (!empty($this->artist->alsoKnownAs->items)): ?>
-        <li>Znany także jako: <?php echo implode($this->artist->alsoKnownAs->items, ', ') ?></li>
+        <li>Znany także jako: <?php echo implode(', ', $this->artist->alsoKnownAs->items) ?></li>
       <?php endif ?>
       <?php if (!empty($this->artist->website)): ?>
         <li>Oficjalna strona internetowa: <a href="<?php echo $this->artist->website ?>" target="_blank"><?php echo $this->artist->website ?></a></li>
@@ -56,9 +56,6 @@
       <?php if (!empty($this->artist->trivia)): ?>
         <li>Ciekawostki: <?php echo $this->artist->trivia ?></li>
       <?php endif ?>
-      <!-- <?php if ($this->artist->voteCount > 3): ?>
-             <li><span>Ocena:</span> <?php echo $this->artist->rating ?>/10 (<?php echo $this->artist->voteCount ?> głosów)</li>
-           <?php endif ?> -->
       <?php if ('' !== ($added = $this->AddedFor('artist', $this->artist->id))): ?>
         <li>Dodano: <?php echo $added ?></li>
       <?php endif ?>

@@ -3,6 +3,7 @@
 /**
  * One doubt for a person (#103): what row it is about, why, and how it was settled.
  */
+#[\AllowDynamicProperties]
 class Model_Review_Container
 {
     public $id;

@@ -1,0 +1,16 @@
+# The local stack in development mode: copy to compose.override.yaml (git-ignored), which docker
+# compose reads by itself.
+services:
+  app:
+    environment:
+      APPLICATION_ENV: development
+    volumes:
+      # zz-, so it loads after the image's 99-production.ini and its opcache settings win: the
+      # code is re-read on every change
+      - ./conf/php/development.ini:/etc/php/8.4/fpm/conf.d/zz-development.ini:ro
+
+  db:
+    volumes:
+      # A dump at database/dev/init.sql (git-ignored), loaded on the first start of an empty
+      # volume; see database/README.md
+      - ./database/dev:/docker-entrypoint-initdb.d
