@@ -368,6 +368,8 @@ run_fixture_tests() {
     test_page "A nielegal" "/zabson-lesna-sciezka-a47.html" "[nielegal]"
     test_page "An album without a label renders" "/zabson-lesna-sciezka-a47.html" "Wydawnictwo:"
     test_page "An album without a label is in its artist's list" "/zabson-p50.html" "Leśna Ścieżka"
+    test_page "An album that was on the placeholder label renders" "/borixon-miejski-rytm-a48.html" "Wydawnictwo:"
+    test_page_absent "The label list has no placeholder label" "/wytwornie.html" ">BRAK<"
     test_page_multi "A two-disc tracklist is numbered by disc" "/eldo-trzecia-czesc-tryptyku-a3.html" "1-01" "2-01"
     test_page_multi "Discogs data is credited and linked (Superextra)" "/wdowa-superextra-a535.html" "Data provided by Discogs." "https://www.discogs.com/release/1234567"
     test_page_absent "Discogs's CC0 data is not credited (Jestem Hip Hopem)" "/pezet-jestem-hip-hopem-a1.html" "Data provided by Discogs"

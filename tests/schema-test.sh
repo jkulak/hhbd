@@ -27,6 +27,7 @@
 #     several (#58)
 #   - a track's disc has its own column: no track number is 0 or encodes a disc, and the
 #     tracks of an album that does not exist are gone (#59)
+#   - an album without a label has labelid NULL; the placeholder label 27 is gone (#55)
 #   - going down to the baseline brings the old schema back, and up removes it again
 #
 # It changes rows to prove these and ends with make reset-db, so the database ends as a reset
@@ -215,6 +216,9 @@ check "no track number is 0 or encodes a disc" "0" "$(sql "SELECT COUNT(*) FROM 
 check "the two-disc album's tracks are on discs 1 and 2, the track at 0 is last, the missing album's are gone" "3:11:1-1 3:12:2-1 4:13:1-1 4:14:1-2 4:30:1-3" "$(tracks "CONCAT(disc, '-', track)")"
 check "the archive holds every row of the albums it touched, as they were" "3:2 4:3 9999:2" "$(sql "SELECT GROUP_CONCAT(CONCAT(a, ':', n) ORDER BY a SEPARATOR ' ') FROM (SELECT JSON_VALUE(row_data, '$.albumid') a, COUNT(*) n FROM migration_archive WHERE version = '0016' GROUP BY a) x")"
 
+echo "> no label"
+check "the placeholder label is gone and its album has no label" "0 NULL" "$(sql "SELECT CONCAT((SELECT COUNT(*) FROM labels WHERE id = 27), ' ', IFNULL((SELECT labelid FROM albums WHERE id = 48), 'NULL'))")"
+
 echo "> down to the baseline brings the old schema back, and up removes it"
 rows_before=$(sql "SELECT COUNT(*) FROM songs")
 ./scripts/migrate.sh down "$after_baseline" >"$T/out" 2>&1 || { bad "down $after_baseline succeeds"; cat "$T/out"; }
@@ -230,6 +234,7 @@ check "after down: no unique keys on the link tables" "NULL" "$(uniques)"
 check "after down: the artists' types as the fixtures had them" "60:x 61:m 62:b 63:x" "$(types)"
 check "after down: no credit columns" "0" "$(count "table_name = 'album_artist_lookup' AND column_name IN ('role', 'position', 'credited_as')")"
 check "after down: the old track numbers, and the missing album's rows, back" "3:11:101 3:12:201 4:13:1 4:14:2 4:30:0 9999:14:1 9999:15:0" "$(tracks track)"
+check "after down: the placeholder label back, and its album on it" "BRAK 27" "$(sql "SELECT CONCAT((SELECT name FROM labels WHERE id = 27), ' ', (SELECT labelid FROM albums WHERE id = 48))")"
 check "after down: no release type columns" "0" "$(count "table_name = 'albums' AND column_name IN ('release_type', 'media_digital', 'catalog_digital')")"
 check "after down: the roles and credits as the fixtures had them" "1 row 0, 1 testest, 0 key 6:36:0 7:41:0 10:42:0" "$(roles) $(credits)"
 check "after down: no archive" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'migration_archive'")"
