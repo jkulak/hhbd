@@ -33,7 +33,9 @@ The first reset keeps its result as a dump inside the db container, under a key 
 migrations, the fixtures, the scripts that run them, and the day. Every later reset with the same
 key loads that dump instead, in under a second, and gets the same tables, columns, indexes and
 rows; a change to any of those files, or a new day, builds it from the migrations again. The
-last line says which of the two it was. `RESET_DB_FULL=1 make reset-db` always builds it. A
+last line says which of the two it was. Loaded from a dump, it is the database a restore of
+production's nightly backup gives, which MariaDB treats differently in one respect: see the
+rule on defaults under Migrations. `RESET_DB_FULL=1 make reset-db` always builds it. A
 dump outlives no container: a recreated db starts without one.
 
 It acts only on the running db container of this checkout's compose project, on the local
@@ -90,6 +92,13 @@ Rules the runner (`scripts/migrate.sh`) enforces:
   production, whose rows differ, and the repository is public while some rows (ratings,
   collections) record what people did. 0010 is a worked example.
 
+- **A default changes with `MODIFY`**, restating the whole column, not with `ALTER COLUMN ...
+  SET DEFAULT`. MariaDB 10.11 ignores the latter, with no error, when the column's default is
+  an expression such as `current_timestamp()` that came with `CREATE TABLE`, which is how every
+  table of a database loaded from a dump came about: a restore of the nightly backup, or
+  `make reset-db`'s kept result. On a database built by the migrations it works, so only the
+  dump shows it; the downs of 0003 and 0004 were caught that way.
+
 And one rule `make test-schema` holds: **every table is InnoDB**, since 0005 (#45). A new table
 says `ENGINE=InnoDB`; MyISAM has no crash recovery, locks a whole table per write, and gives the
 nightly `mysqldump --single-transaction` no consistent snapshot.
@@ -101,7 +110,7 @@ fill does not need the fixtures changed, unless the smoke test should see someth
 
 `make test-migrate` exercises all of it against the running stack: up and down with the data
 intact, a failing migration, `down all` and back, the baseline, the refusals, and the ssh path
-to production through a stand-in. CI runs it after the smoke test.
+to production through a stand-in. CI runs it in the smoke workflow's tools half.
 
 ### The baseline
 
