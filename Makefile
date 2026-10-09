@@ -146,6 +146,28 @@ import-runs: ## List the last import runs on the local database, newest first; N
 
 # --- Tests --------------------------------------------------------------------------------
 
+# PHP runs in the stack's images, as this Mac has none: the importer's has GD, so the image tests
+# run too, and neither needs the stack up. app/vendor first: docker compose exec app composer install
+.PHONY: test-unit
+test-unit: ## Run the unit tests, in the importer's image (it has GD); app/vendor installed first
+	docker compose run --rm --no-deps -T --entrypoint php importer app/vendor/bin/phpunit -c app/tests/phpunit.xml
+
+# The repository mounted whole, as the config is at its root; FILES= limits it to some files
+PHP_CS_FIXER = docker compose run --rm --no-deps -T -v "$(CURDIR):/w" -w /w --entrypoint app/vendor/bin/php-cs-fixer app
+
+.PHONY: cs
+cs: ## Check the code style (PSR-12) with php-cs-fixer; FILES="app/..." for some files only
+	$(PHP_CS_FIXER) fix --dry-run --diff --config=.php-cs-fixer.dist.php $(if $(FILES),--path-mode=intersection $(FILES))
+
+.PHONY: cs-fix
+cs-fix: ## Fix the code style with php-cs-fixer; FILES="app/..." for some files only
+	$(PHP_CS_FIXER) fix --config=.php-cs-fixer.dist.php $(if $(FILES),--path-mode=intersection $(FILES))
+
+.PHONY: hooks
+hooks: ## Install the git hooks from app/hooks into this checkout (a worktree shares the main one's)
+	cp app/hooks/pre-commit "$$(git rev-parse --git-common-dir)/hooks/pre-commit"
+	chmod +x "$$(git rev-parse --git-common-dir)/hooks/pre-commit"
+
 .PHONY: smoke
 smoke: ## Smoke-test the local stack (docker compose up first): make smoke URL=http://localhost:8080
 	./tests/smoke-test.sh $(or $(URL),http://localhost:8080)

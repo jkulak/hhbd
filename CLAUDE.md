@@ -25,7 +25,7 @@ The old admin panel (`backoffice/`) left `main` on 2026-01-04 and lives on the b
 The project runs in Docker Compose with 4 services (app, nginx, db, adminer):
 
 ```bash
-# Start all services (development mode with compose.override.yaml)
+# Development mode: copy compose.override.example.yaml to compose.override.yaml once
 docker compose up -d
 
 # Rebuild containers after code changes
@@ -44,9 +44,7 @@ docker compose down
 - Adminer (DB): http://localhost:8082
 - MariaDB: localhost:3306
 
-### Dev Container (Recommended)
-
-VS Code Dev Container provides PHP 8.4, from Debian 13's packages as the images have it, with Xdebug and Composer. Opens automatically in VS Code with Dev Containers extension.
+There is no PHP on the host: PHP runs in the stack's images, the `make` targets below run it there, and in development mode the app runs the `builder` stage, which has composer.
 
 ### First-Time Setup
 
@@ -56,8 +54,11 @@ After starting Docker services:
 # The database: the schema from database/migrations/, the smoke-test fixtures on top
 make reset-db
 
-# Install dependencies
+# app/vendor, with the dev dependencies
 docker compose exec app composer install
+
+# The git hooks
+make hooks
 ```
 
 For production-like data instead, load a dump and record the baseline with `make migrate-baseline`; see [database/README.md](database/README.md).
@@ -72,15 +73,12 @@ For production-like data instead, load a dump and record the baseline with `make
 ### Testing
 
 ```bash
-# Run unit tests (in dev container or app service)
-cd app && ./vendor/bin/phpunit -c tests/phpunit.xml
+# Unit tests, in the importer's image (it has GD), with no stack running
+make test-unit
 
-# Run unit tests with coverage report
-cd app && ./vendor/bin/phpunit -c tests/phpunit.xml --coverage-html tests/coverage
-
-# Run smoke tests (integration tests - requires running services)
-./tests/smoke-test.sh
-./tests/smoke-test.sh http://localhost:8080  # custom URL
+# Smoke tests (integration tests - requires running services)
+make smoke
+make smoke URL=http://localhost:8080  # custom URL
 ```
 
 Unit tests cover library classes (`Jkl_*`), view helpers, and model logic with mocked dependencies. Smoke tests verify key pages load with database data.
@@ -88,25 +86,23 @@ Unit tests cover library classes (`Jkl_*`), view helpers, and model logic with m
 ### Code Style
 
 ```bash
-# Check code style (PSR-12) - from repo root
-app/vendor/bin/php-cs-fixer fix --dry-run --diff
+# Check code style (PSR-12), in the app's image
+make cs
 
 # Auto-fix code style issues
-app/vendor/bin/php-cs-fixer fix
+make cs-fix
 
 # Check specific files
-app/vendor/bin/php-cs-fixer fix --dry-run application/controllers/AlbumController.php
+make cs FILES="app/application/controllers/AlbumController.php"
 ```
 
 Configuration: [.php-cs-fixer.dist.php](.php-cs-fixer.dist.php) - uses PSR-12 standard.
 
 ### Pre-commit Hooks
 
-Git hooks are automatically installed via `composer install` (see [app/tools/setup-hooks.php](app/tools/setup-hooks.php)):
+`make hooks` installs them from [app/hooks/](app/hooks/) into the checkout's `.git/hooks/` (a worktree shares the main checkout's):
 
-- **pre-commit**: Runs PHP-CS-Fixer, PHP linting, checks for debugging artifacts (`var_dump`, `print_r`, `die`, etc.)
-
-Hooks are in [app/hooks/](app/hooks/) and copied to `.git/hooks/` during setup.
+- **pre-commit**: Runs PHP-CS-Fixer, PHP linting, checks for debugging artifacts (`var_dump`, `print_r`, `die`, etc.). Where the host has no PHP, it runs PHP in the app's image.
 
 ## Architecture
 
