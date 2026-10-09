@@ -24,12 +24,23 @@ class Model_Artist_Container
 
     public $id;
     public $name;
+    /** What tells the artist from another of the same name, '' for none (#102) */
+    public $disambiguation = '';
+    /** The name with its qualifier, "Solar (SBM Label)": the artist's own page and URL use it */
+    public $qualifiedName;
+    /** The name a list shows: the qualified one only when the list holds a namesake */
+    public $displayName;
 
     public function __construct($params, $full = false)
     {
         $this->id = $params['art_id'];
         $this->name = $params['name'];
-        $this->url = Jkl_Tools_Url::createUrl($this->name);
+        if (!empty($params['disambiguation'])) {
+            $this->disambiguation = $params['disambiguation'];
+        }
+        $this->qualifiedName = self::qualifiedNameOf($this->name, $this->disambiguation);
+        $this->displayName = $this->name;
+        $this->url = Jkl_Tools_Url::createUrl($this->qualifiedName);
         if (!empty($params['since'])) {
             $this->started = ($params['since'] != '0000-00-00') ? $params['since'] : null;
         }
@@ -151,10 +162,44 @@ class Model_Artist_Container
         return !empty($this->members->items);
     }
 
-    // this is for array_unique(), so artists can be compared
     public function __toString()
     {
         return $this->name;
+    }
+
+    /**
+     * "Solar (SBM Label)" for a name with a qualifier, the name alone without one.
+     *
+     * @return string
+     */
+    public static function qualifiedNameOf($name, $disambiguation)
+    {
+        return '' === (string) $disambiguation ? (string) $name : $name . ' (' . $disambiguation . ')';
+    }
+
+    /**
+     * Gives the artists of a list who share a name with another one in it their qualified name
+     * to show; the rest keep the plain name, so a list with one Solar says "Solar" (#102).
+     *
+     * @param Jkl_List|array $artists
+     * @return Jkl_List|array the same list
+     */
+    public static function qualifyNamesakes($artists)
+    {
+        $items = $artists instanceof Jkl_List ? $artists->items : $artists;
+        $count = array();
+        foreach ($items as $artist) {
+            if ($artist instanceof self) {
+                $key = mb_strtolower($artist->name, 'UTF-8');
+                $count[$key] = isset($count[$key]) ? $count[$key] + 1 : 1;
+            }
+        }
+        foreach ($items as $artist) {
+            if ($artist instanceof self) {
+                $artist->displayName = $count[mb_strtolower($artist->name, 'UTF-8')] > 1 ? $artist->qualifiedName : $artist->name;
+            }
+        }
+        return $artists;
     }
 
     /**

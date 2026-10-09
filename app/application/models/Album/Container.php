@@ -84,8 +84,14 @@ class Model_Album_Container
             $this->credits[] = array(
                 'artist' => $artist,
                 'role'   => $credit['role'],
-                'name'   => !empty($credit['credited_as']) ? $credit['credited_as'] : $artist->name,
+                'credited_as' => !empty($credit['credited_as']) ? $credit['credited_as'] : null,
             );
+        }
+        // An album credited to two artists of one name tells them apart (#102).
+        Model_Artist_Container::qualifyNamesakes(array_column($this->credits, 'artist'));
+        foreach ($this->credits as $i => $credit) {
+            $this->credits[$i]['name'] = null !== $credit['credited_as'] ? $credit['credited_as'] : $credit['artist']->displayName;
+            unset($this->credits[$i]['credited_as']);
         }
         if (!empty($this->credits)) {
             $this->artist = $this->credits[0]['artist'];

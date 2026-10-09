@@ -35,7 +35,7 @@
 
 <?php if ($this->artist->isBand()): ?>
   W skład projektu wchodzą: <?php foreach ($this->artist->members->items as $key => $value): ?>
-    <?php echo $value->name ?><?php if (sizeof($this->artist->members->items)-1 > $key): ?>, <?php endif ?><?php endforeach ?>.
+    <?php echo $value->displayName ?><?php if (sizeof($this->artist->members->items)-1 > $key): ?>, <?php endif ?><?php endforeach ?>.
 <?php endif ?>
 
 <?php if ($this->artist->albums->items): ?>
@@ -49,7 +49,7 @@ Data wydania pierwszego albumu to <?php echo $this->artist->albums->items[sizeof
 
 <?php if ($this->artist->projects->items): ?>
   <?php echo $this->artist->name ?> współtworzy <?php echo ((sizeof($this->artist->projects->items)>1)?'projekty':'projekt') ?> <?php foreach ($this->artist->projects->items as $key => $value): ?>
-    <?php echo $value->name ?><?php if (sizeof($this->artist->projects->items)-1 > $key): ?>, <?php endif ?><?php endforeach ?>.
+    <?php echo $value->displayName ?><?php if (sizeof($this->artist->projects->items)-1 > $key): ?>, <?php endif ?><?php endforeach ?>.
 <?php endif ?>
 
 <?php if (!empty($this->artist->projectAlbums->items)): ?>

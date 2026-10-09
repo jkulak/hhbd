@@ -69,9 +69,10 @@ one of:
 | `artist:taco-hemingway` | the document with that `ref` earlier in the batch |
 | `hhbd:artist:2241` | the row hhbd has with that id (`artist`, `label`, `album`, `song`) |
 | `discogs:artist:4320863` | the row that has that external id |
-| `name:Taco Hemingway` | the artist or label of that name |
+| `name:Taco Hemingway` | the artist or label of that name, when one has it |
 
-A reference to a document that was refused is refused in turn.
+A reference to a document that was refused is refused in turn. So is a `name:` that two artists
+share (#102): the error lists their `hhbd:artist:` ids to use instead.
 
 ## Finding a document's row
 
@@ -84,6 +85,23 @@ key third, and only a document that matches nothing makes a new row:
 
 Two external ids that point at two different rows are a conflict: the document is refused, and
 no id is moved (#51).
+
+## Artists who share a name
+
+hhbd can hold two artists of one name, told apart by a qualifier: "Solar (SBM Label)" and
+"Solar (raper z Poznania)" (#102, [database/README.md](../database/README.md#artists-who-share-a-name)).
+An artist document says which one it means:
+
+- **`disambiguation`.** The importer matches the artist by its name and this qualifier
+  together, never by the name alone. When nothing has both, it creates the artist under them.
+  External ids and `hhbd_id` still match first, and a row found that way gets the qualifier
+  where it has none.
+- **`review`**, `{"reason": "same name as hhbd artist 2311", "suggestions": [2311]}`. This asks a
+  person to look at the artist and needs a `disambiguation`. Until hhbd keeps review items
+  (#103), the reason is a warning in the report.
+- **A document with neither** is matched by its name as before. When the name belongs to more
+  than one artist, the document is refused, and the error lists them. It needs an id or a
+  qualifier.
 
 ## A row hhbd has
 
@@ -109,7 +127,8 @@ Links (aliases, members, cities, credits) are added where missing; none is remov
 |---|---|---|
 | label | `name`, `website`, `profile` | `labels` |
 | label | `logo` | `content/l/<sha256>.png`, 300 px on the longer side, `labels.logo` |
-| artist | `name`, `type`, `real_name`, `active_since`, `website`, `profile` | `artists` |
+| artist | `name`, `disambiguation`, `type`, `real_name`, `active_since`, `website`, `profile` | `artists` |
+| artist | `review` | a warning in the report, until #103 |
 | artist | `aliases` | `altnames_lookup` |
 | artist | `members` | `band_lookup`, and the artist's type becomes `b` (#65) |
 | artist | `cities` | `artist_city_lookup`, a city made when it is new (#64) |

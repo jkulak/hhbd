@@ -293,10 +293,39 @@ class Model_Import_Importer extends Jkl_Model_Api
     /** An artist or a label by name, compared under the catalogue's collation (#71) */
     private function byName($entity, $name)
     {
-        if (!in_array($entity, array('artist', 'label'), true)) {
+        if ('artist' === $entity) {
+            return $this->artistNamed($name);
+        }
+        if ('label' !== $entity) {
             return null;
         }
-        $rows = $this->_db->fetchAll('SELECT id FROM ' . self::TABLES[$entity] . ' WHERE name = ?', array(trim($name)));
+        $rows = $this->_db->fetchAll('SELECT id FROM labels WHERE name = ?', array(trim($name)));
+        return empty($rows) ? null : (int) $rows[0]['id'];
+    }
+
+    /**
+     * The one artist of that name, and of that qualifier when one is given (#102). A name two
+     * artists share names neither of them: the document has to say which, by an id or a
+     * qualifier, so it is refused rather than given the first.
+     *
+     * @return int|null
+     */
+    private function artistNamed($name, $disambiguation = null)
+    {
+        $sql = 'SELECT id, disambiguation FROM artists WHERE name = ?';
+        $values = array(trim($name));
+        if (null !== $disambiguation) {
+            $sql .= ' AND disambiguation = ?';
+            $values[] = $disambiguation;
+        }
+        $rows = $this->_db->fetchAll($sql . ' ORDER BY id', $values);
+        if (count($rows) > 1) {
+            $which = array();
+            foreach ($rows as $row) {
+                $which[] = 'hhbd:artist:' . $row['id'] . ('' === $row['disambiguation'] ? '' : ' "' . $row['disambiguation'] . '"');
+            }
+            throw new RuntimeException(sprintf('%d artists are called "%s" (%s); name one by its id or its qualifier', count($rows), trim($name), implode(', ', $which)));
+        }
         return empty($rows) ? null : (int) $rows[0]['id'];
     }
 
@@ -379,8 +408,11 @@ class Model_Import_Importer extends Jkl_Model_Api
     private function readArtist(array $doc)
     {
         $name = trim($doc['name']);
-        $id = $this->match('artist', $doc, function () use ($name) {
-            return $this->byName('artist', $name);
+        // A namesake the batch tells apart is matched by its name and qualifier together,
+        // never by the name alone (#102).
+        $disambiguation = trim((string) $this->value($doc, 'disambiguation', ''));
+        $id = $this->match('artist', $doc, function () use ($name, $disambiguation) {
+            return $this->artistNamed($name, '' === $disambiguation ? null : $disambiguation);
         });
         // An artist with members is a band (#65).
         $type = !empty($doc['members']) ? 'b' : $this->value($doc, 'type', 'x');
@@ -392,19 +424,33 @@ class Model_Import_Importer extends Jkl_Model_Api
         $created = null === $id;
         if ($created) {
             $this->_db->query(
-                "INSERT INTO artists (name, urlname, realname, type, since, website, profile, trivia, addedby, added, status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, '', ?, NOW(), 999)",
-                array($name, $this->slug($name, 40), $this->value($doc, 'real_name'), $type, $facts['since'],
-                    (string) $facts['website'], $facts['profile'], $this->userId)
+                "INSERT INTO artists (name, disambiguation, urlname, realname, type, since, website, profile, trivia, addedby, added, status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, NOW(), 999)",
+                array($name, $disambiguation, $this->slug(Model_Artist_Container::qualifiedNameOf($name, $disambiguation), 40),
+                    $this->value($doc, 'real_name'), $type, $facts['since'], (string) $facts['website'], $facts['profile'], $this->userId)
             );
             $id = (int) $this->_db->lastInsertId();
             $this->touch('core', 'facts', $facts);
         } else {
             // 'x' is the type nobody chose, so it is the one a batch may fill.
-            $this->fill('artists', $id, $name, 'core', array('realname' => $this->value($doc, 'real_name'), 'type' => 'x' === $type ? null : $type), array('type' => 'x'));
+            $this->fill('artists', $id, $name, 'core', array(
+                'disambiguation' => $disambiguation,
+                'realname'       => $this->value($doc, 'real_name'),
+                'type'           => 'x' === $type ? null : $type,
+            ), array('type' => 'x'));
             $this->fill('artists', $id, $name, 'facts', $facts);
         }
         $this->addIds('artist', $id, $doc);
+        // What the batch could not settle on its own goes to a person; until hhbd keeps review
+        // items (#103), the report says it.
+        if (!empty($doc['review'])) {
+            $this->warnings[] = sprintf(
+                'artist %d is for a person to review: %s%s',
+                $id,
+                $doc['review']['reason'],
+                empty($doc['review']['suggestions']) ? '' : ' (hhbd artist ' . implode(', ', $doc['review']['suggestions']) . ')'
+            );
+        }
 
         foreach (isset($doc['aliases']) ? $doc['aliases'] : array() as $alias) {
             $this->link('facts', 'altnames_lookup', array('artistid' => $id, 'altname' => trim($alias)));

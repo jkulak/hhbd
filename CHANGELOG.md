@@ -7,6 +7,24 @@ decision; nothing tags on its own.
 
 ## Unreleased
 
+### Added
+- Two artists may share a name, told apart by a qualifier (#102). The content project meets such
+  names every year it reads, 71 in 2016 alone.
+  - Migration 0022 adds `artists.disambiguation`. The unique key moves from the name to the name
+    and qualifier together, and a name without a qualifier still belongs to one artist.
+  - The artist's page, title, Open Graph and slug carry the qualifier: "Solar (SBM Label)" at
+    `solar-sbm-label-p64.html`. A list carries it only when it holds both artists: the artist
+    lists, the search and an album's credits.
+  - The search keeps two artists of one name apart; it used to merge results by name.
+  - The importer matches an artist document with a `disambiguation` by name and qualifier, never
+    by the name alone, and creates the artist under both. A document or a `name:` reference
+    whose name two artists share is refused, with their ids. A `review` is a warning in the
+    report until #103.
+  - The schema gains both fields.
+  - The fixtures hold two Solars and a band one of them is in.
+  - The down folds the qualifier into the name, and refuses before changing anything when that
+    name is taken.
+
 ### Fixed
 - `make ovh-covers-backfill` and `make ovh-photos-backfill` mount production's content volume.
   They named it `content`, as the compose file does, but `docker compose run -v` takes Docker's
