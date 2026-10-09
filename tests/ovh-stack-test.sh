@@ -6,7 +6,8 @@
 #
 # What it proves:
 #   - every container becomes healthy (`up --wait`, which is how ci-deploy judges a deploy)
-#   - nothing is published on the host
+#   - nothing is published on the host, and the database runs the cache sizes chosen in #67,
+#     which compose.yaml and compose.ci.yaml share
 #   - the smoke test passes through the edge
 #   - nginx takes the client's address from X-Real-IP sent by the edge, and from nobody else
 #   - nginx, PHP and the application log to the containers' output, and write no log files
@@ -106,6 +107,14 @@ else
 fi
 check "nothing is published on the host" \
     "0" "$(docker ps --filter "label=com.docker.compose.project=$PROJECT" --format '{{.Ports}}' | grep -c -- '->' || true)"
+
+# The cache sizes chosen for an all-InnoDB database (#67), as the server reports them.
+check "the database runs with production's cache sizes (buffer pool, key cache, Aria cache)" \
+    "100663296 8388608 33554432" \
+    "$(docker exec "$PROJECT-db-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -uroot -N -B -e "SELECT CONCAT_WS(\" \", @@innodb_buffer_pool_size, @@key_buffer_size, @@aria_pagecache_buffer_size)"')"
+db_flags() { sed -n '/^  db:/,/^  [a-z]/p' "$1" | sed -n '/command: >/{n;p;}' | sed 's/^ *//'; }
+check "compose.yaml and compose.ci.yaml run the database with production's flags" \
+    "$(db_flags deploy/compose.ovh.yaml) | $(db_flags deploy/compose.ovh.yaml)" "$(db_flags compose.yaml) | $(db_flags compose.ci.yaml)"
 
 for _ in $(seq 1 30); do
     via_edge -o /dev/null http://hhbd.pl/ && break
