@@ -65,6 +65,11 @@ person's decision; nothing releases on its own.
   the production stack test gets its images built with the layer cache.
 
 ### Fixed
+- nginx serves no file whose path has a part starting with a dot: production served
+  `app/public/.htaccess` and `.htaccess-example` to anyone (#139). They are gone, with the
+  other files nothing used: two PHP configs no image loads, a template and two language files
+  nothing reads, a stats script, eight images and a font no page shows, `tools/` (January's
+  performance scripts) and the notes for other assistants (Copilot's and Gemini's).
 - A song on no album and by no artist answers 404, where its page failed with 500: three old
   songs on production (#37). A label with no release yet gets a description without a newest
   one.
