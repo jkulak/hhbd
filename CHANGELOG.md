@@ -17,19 +17,14 @@ which the note leaves out. The sections before, by version, stay as they were.
 - Every merge to `main` now releases and deploys itself, so a finished change reaches hhbd.pl
   without a release cut by hand (#193). The release's note is the first sentence of each new
   entry here; a merge whose pull request did not pass is not released.
+- The text after a page's heading starts below it on a desktop screen, as on the years, Top 10
+  and the admin's review list, where it stood beside it (#208). The heading floats for the share
+  buttons on an album's, artist's, song's and label's page, which stay where they are.
 
 ### Internal
 - `release.yml` and `scripts/release-notes.py` come from gcloud-ovh-migrate's service template,
   and `deploy.yml` with them keeps the images' layer cache in the registry, `:buildcache`
   beside each image, where the next release reads it (#193).
-
-## Unreleased
-
-### Fixed
-- On a desktop screen the text after a page's heading stood beside it, as on the years, Top 10
-  and the admin's review list: the heading floats for the share buttons on an album's, artist's,
-  song's and label's page, and took everything else beside it too. Whatever follows a heading
-  starts below it now; the share buttons stay (#208).
 
 ## 2026.10.18 — 2026-10-11
 
