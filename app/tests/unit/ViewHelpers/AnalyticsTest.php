@@ -58,6 +58,7 @@ class Zend_View_Helper_AnalyticsTest extends TestCase
         $this->assertStringNotContainsString('googletagmanager.com', $script);
         $this->assertStringNotContainsString("gtag('event'", $script);
         $this->assertStringContainsString('<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6149271850793027" crossorigin="anonymous"></script>', $script);
+        $this->assertStringContainsString('<meta name="google-adsense-account" content="ca-pub-6149271850793027">', $script);
     }
 
     /**
