@@ -17,6 +17,9 @@ services:
       DB_NAME: hhbd
       DB_USER: hhbd
       DB_PASSWORD: hhbd_password
+      # The salt of the MD5 passwords from before #41: the fixtures' own here; production's
+      # comes with a dump, in .env
+      LEGACY_PASSWORD_SALT: ${LEGACY_PASSWORD_SALT:-fixtures-legacy-salt}
       # Feature flags
       SHOW_ADS: "true"
     healthcheck:

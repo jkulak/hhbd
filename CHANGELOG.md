@@ -10,6 +10,25 @@ person's decision; nothing releases on its own.
 
 The search finds names with ó in them, and finds them without their Polish letters, as people
 type on a phone (#151). jQuery 1.4.4 is gone (#43): the site's script is plain JavaScript.
+Passwords are hashed with bcrypt, and the comment question can no longer be answered by a bot
+(#41). Migrations 0034 and 0035 go to production first, and `make ovh-install` brings the new
+secret, `LEGACY_PASSWORD_SALT`, before the release.
+
+### Security
+- Passwords are stored with `password_hash()`, bcrypt, and checked in PHP (#41). They were
+  `md5(password . salt)`, one salt for every account, written in the code of this public
+  repository. An account from before still logs in with its MD5, checked with that salt from the
+  environment (`LEGACY_PASSWORD_SALT`), and the login writes a bcrypt hash in its place: nobody
+  has to set a new password. Migration 0034 widens `usr_password` to 255 characters. A password
+  may be up to 72 characters, where 20 was the most.
+- The comment question is held by the server and answered once (#41). The form carried
+  `md5(answer . salt)` to the browser, with the salt in the code, so a bot could make its own
+  pair and replay one for ever. Now the script asks `POST /comments/captcha` for a question when
+  someone starts a comment, the answer stays in `captcha_challenges` (migration 0035) under a
+  random token, and checking it deletes the row. A refused comment gets its reason as JSON and a
+  new question, where the script showed a generic error.
+- The login and the account lookups bind the e-mail and the display name instead of pasting
+  them into SQL (#41).
 
 ### Changed
 - The site's script is plain JavaScript, with no library under it (#43). jQuery 1.4.4, from

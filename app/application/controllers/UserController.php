@@ -49,34 +49,13 @@ class UserController extends Zend_Controller_Action
      **/
     private function _loginUser($email, $password)
     {
-        $isValid = false;
-
-        $db = Zend_Db_Table::getDefaultAdapter();
-        $authAdapter = new Zend_Auth_Adapter_DbTable($db);
-        $authAdapter->setTableName('hhb_users');
-        $authAdapter->setIdentityColumn('usr_email');
-        $authAdapter->setCredentialColumn('usr_password');
-        $authAdapter->setCredentialTreatment('MD5(?)');
-
-        $authAdapter->setIdentity($email);
-        $authAdapter->setCredential($password . Model_User::$passwordSalt);
-
-        $auth = Zend_Auth::getInstance();
-        $authResult = $auth->authenticate($authAdapter);
-
-        // Did the participant successfully login?
-        if ($authResult->isValid()) {
-            // retrive user data needed in the front
-            $data = $authAdapter->getResultRowObject(array('usr_display_name', 'usr_id', 'usr_is_admin', 'usr_login_count'));
-            $auth->getStorage()->write($data);
-            // save last login info
-            Model_User::getInstance()->update(
-                array('usr_last_login' => date('Y-m-d H:i:s'), 'usr_login_count' => $data->usr_login_count + 1),
-                'usr_email="' . $email . '"'
-            );
-            $isValid = true;
+        // Checked in PHP against password_hash(), or the MD5 from before, not in SQL (#41)
+        $data = Model_User::getInstance()->authenticate($email, $password);
+        if (null === $data) {
+            return false;
         }
-        return $isValid;
+        Zend_Auth::getInstance()->getStorage()->write($data);
+        return true;
     }
 
     public function loginAction()

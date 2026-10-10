@@ -1,10 +1,3 @@
-<?php
-// Generate simple math CAPTCHA
-$num1 = rand(1, 10);
-$num2 = rand(1, 10);
-$captchaAnswer = $num1 + $num2;
-$captchaHash = md5($captchaAnswer . 'hhbd_salt_2024');
-?>
 <?php // Display error messages ?>
 <?php if (isset($_GET['postError'])): ?>
   <div class="error-message" style="color: #c00; padding: 8px; margin-bottom: 10px; background: #fee; border: 1px solid #c00;">
@@ -34,12 +27,14 @@ $captchaHash = md5($captchaAnswer . 'hhbd_salt_2024');
       <input type="text" name="author" value="" />
     <?php endif ?>
 
-    <?php // Simple math CAPTCHA for anonymous users ?>
+    <?php // A question for anonymous users, which the script asks the server for when someone
+          // starts a comment; the server keeps its answer, and takes it once (#41) ?>
     <?php if (!$this->LoggedIn()): ?>
     <div class="captcha-field">
-      <label>Ile to <?php echo $num1 ?> + <?php echo $num2 ?>? (antyspam)</label>
-      <input type="text" name="captcha_answer" value="" autocomplete="off" required />
-      <input type="hidden" name="captcha_hash" value="<?php echo $captchaHash ?>" />
+      <label for="captcha-answer" id="captcha-question">Pytanie antyspamowe pojawi się, gdy zaczniesz pisać.</label>
+      <input type="text" name="captcha_answer" id="captcha-answer" value="" autocomplete="off" inputmode="numeric" required />
+      <input type="hidden" name="captcha_token" id="captcha-token" value="" />
+      <noscript><p>Komentarz bez logowania wymaga JavaScriptu, który zada pytanie antyspamowe.</p></noscript>
     </div>
     <?php endif ?>
 

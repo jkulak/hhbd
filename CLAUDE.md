@@ -193,6 +193,7 @@ Below 992 px the layout is the phones' and tablets' (#149): one column, a header
 **Environment variables** (set in compose.yaml/compose.override.yaml):
 - Database: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
 - Mail: `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_EMAIL`, `MAIL_FROM_NAME`
+- Passwords: `LEGACY_PASSWORD_SALT`, the salt of the MD5 passwords from before #41, which an account logs in with once before it gets a bcrypt hash (production's in `deploy/ovh/hhbd.enc.env`; the fixtures' is the default in `compose.yaml`)
 - Feature flags: `SHOW_ADS` (true/false)
 
 ### Backoffice
