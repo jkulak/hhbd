@@ -1,168 +1,280 @@
-// on load create a script to load a final script here
+/*
+ * The site's script, in plain JavaScript since #43: jQuery 1.4.4 (2010), with its published
+ * XSS holes, carried 78 KB to every page for a dozen small things, each below with the page it
+ * serves. Loaded with defer, so it runs once the page is parsed.
+ */
+(function () {
+    'use strict';
 
-function getCookie(name) {
-    var dc = document.cookie;
-    var cname = name + "=";
+    var YEAR = 350 * 24 * 60 * 60;
 
-    if (dc.length > 0) {
-        begin = dc.indexOf(cname);
-        if (begin != -1) {
-            begin += cname.length;
-            end = dc.indexOf(";", begin);
-            if (end == -1) end = dc.length;
-            return unescape(dc.substring(begin, end));
-        }
+    function $(selector, root) {
+        return (root || document).querySelector(selector);
     }
-    return null;
-}
 
-// cookies handling
-function setCookie(name, value, expires) {
-    document.cookie = name + "=" + escape(value) + "; path=/" + ((expires == null) ? "" : "; expires=" + expires.toGMTString());
-}
-
-var exp = new Date();
-exp.setTime(exp.getTime() + (1000 * 60 * 60 * 24 * 350));
-
-
-function commentSuccess(data) {
-    // ukryj formularz do postowania
-    $('#post-comment').hide();
-    $('#post-comment textarea').val('');
-
-    // pokaż przycisk zapostuj jeszcze raz
-    // $('#comment-form-show').prepend('<span class="msg ok">Twój komentarz został dodany!</span> ');
-    $('#comment-form-show').show();
-
-    //pojaw ładnie nowy komentarz
-    var newComment = '<li class="hidden"><span class="br">' + data.content + '</span><span class="secondary">';
-    if (data.authorId === null) {
-        newComment = newComment + data.author;
+    function $$(selector, root) {
+        return Array.prototype.slice.call((root || document).querySelectorAll(selector));
     }
-    else {
-        newComment = newComment + '<strong><a href="/' + data.author + '-u' + data.authorId + '.html">' + data.author + '</a></strong>';
+
+    function getCookie(name) {
+        var match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+        return match ? decodeURIComponent(match[1]) : null;
     }
-    var now = new Date();
-    var hour = now.getHours();
-    if (hour < 10) { hour = '0' + hour };
-    var minute = now.getMinutes();
-    if (minute < 10) { minute = '0' + minute }
-    var second = now.getSeconds();
-    if (second < 10) { second = '0' + second }
-    var monthNumber = now.getMonth() + 1;
-    if (monthNumber < 10) { monthNumber = '0' + monthNumber }
-    var monthDay = now.getDate();
-    if (monthDay < 10) { monthDay = '0' + monthDay }
-    var year = now.getFullYear();
-    newComment = newComment + ' (' + year + '-' + monthNumber + '-' + monthDay + ' ' + hour + ':' + minute + ':' + second + ')</span>';
-    $(newComment).prependTo("#comments ul").fadeIn(2500);
-}
 
+    function setCookie(name, value) {
+        document.cookie = name + '=' + encodeURIComponent(value) + '; path=/; max-age=' + YEAR + '; SameSite=Lax';
+    }
 
-$(function () {
-    // toggle tracklist additional information
-    $("#tracklist span.toggle > a").toggle(
-        function () {
-            $(this).text("Pokaż szczegóły");
-            $("ul.feat").hide();
-            setCookie('albumShowDetails', 0, exp);
-        },
-        function () {
-            $(this).text("Ukryj szczegóły");
-            $("ul.feat").show();
-            setCookie('albumShowDetails', 1, exp);
+    // A POST as jQuery sent it, so the controllers that answer an XMLHttpRequest with JSON still
+    // know it is one. It resolves to the JSON, with `error` set when the server did not say yes.
+    function post(url, body) {
+        return fetch(url, {
+            method: 'POST',
+            body: body,
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+        }).then(function (response) {
+            return response.json().catch(function () {
+                return {};
+            }).then(function (data) {
+                if (!response.ok && !data.error) {
+                    data.error = 'Problem z odpowiedzią serwera, spróbuj za jakiś czas.';
+                }
+                return data;
+            });
+        });
+    }
+
+    function fadeIn(element) {
+        element.classList.remove('fade-in');
+        void element.offsetWidth;
+        element.classList.add('fade-in');
+    }
+
+    // Album page: the tracklist's guests, music and scratches, hidden or shown, remembered
+    function tracklistDetails() {
+        var link = $('#tracklist span.toggle > a');
+        if (!link) {
+            return;
         }
-    );
-
-    // toggle view/hide autoDescription
-    $("#description span.toggle > a").toggle(
-        function () {
-            $(this).text("Ukryj opis standardowy");
-            $("p.auto").show();
-            setCookie('albumShowAuto', 1, exp);
-        },
-        function () {
-            $(this).text("Pokaż opis standardowy");
-            $("p.auto").hide();
-            setCookie('albumShowAuto', 0, exp);
+        function show(on) {
+            link.textContent = on ? 'Ukryj szczegóły' : 'Pokaż szczegóły';
+            $$('ul.feat').forEach(function (list) {
+                list.classList.toggle('is-hidden', !on);
+            });
         }
-    );
+        var shown = getCookie('albumShowDetails') !== '0';
+        show(shown);
+        link.addEventListener('click', function (event) {
+            event.preventDefault();
+            shown = !shown;
+            show(shown);
+            setCookie('albumShowDetails', shown ? 1 : 0);
+        });
+    }
 
-    $("#q").focus(function () {
-        if ($(this).text() == "Szukaj...") $(this).text("")
-    });
-
-    $('table tr').hover(
-        function () {
-            $(this).toggleClass('zebra');
+    // Album, artist, song and label pages: the generated description beside the written one
+    function autoDescription() {
+        var link = $('#description span.toggle > a');
+        if (!link) {
+            return;
         }
-    );
+        function show(on) {
+            link.textContent = on ? 'Ukryj opis standardowy' : 'Pokaż opis standardowy';
+            $$('p.auto').forEach(function (paragraph) {
+                paragraph.classList.toggle('js-hidden', !on);
+            });
+        }
+        var shown = getCookie('albumShowAuto') === '1';
+        show(shown);
+        link.addEventListener('click', function (event) {
+            event.preventDefault();
+            shown = !shown;
+            show(shown);
+            setCookie('albumShowAuto', shown ? 1 : 0);
+        });
+    }
 
-    // unhide javascript functionality, and hide what can be revelaed using js
-    $('.js-visible').show();
-    $('.js-hidden').hide();
+    // Every page: the phone's menu (#149), opened and closed by its button and by Escape
+    function menu() {
+        var button = $('#menu-toggle');
+        var header = $('#header');
+        if (!button || !header) {
+            return;
+        }
+        function set(open) {
+            header.classList.toggle('nav-open', open);
+            button.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+        button.addEventListener('click', function () {
+            set(!header.classList.contains('nav-open'));
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && header.classList.contains('nav-open')) {
+                set(false);
+                button.focus();
+            }
+        });
+    }
 
-    // read cookies and show/hide auto description
-    if (getCookie('albumShowDetails') == 0) { $("#tracklist span.toggle > a").click(); };
-    if (getCookie('albumShowAuto') == 1) { $("#description span.toggle > a").click(); };
+    // Album, artist, song, label and news pages: the comment form, its character count, its
+    // submission without leaving the page, and the new comment at the top of the list
+    function comments() {
+        var form = $('#post-comment');
+        if (!form) {
+            return;
+        }
+        var textarea = $('textarea', form);
+        var count = $('#comment-character-count');
+        var again = $('#comment-form-show');
+        var limit = 1000;
 
-    $('.covers img').tipsy({ 'html': 'true', 'gravity': 'n', 'delayOut': 3000, 'delayIn': 3000, title: function () { return this.getAttribute('original-title'); } });
+        if (textarea && count) {
+            textarea.addEventListener('input', function () {
+                var left = limit - textarea.value.length;
+                if (left < 0) {
+                    count.textContent = 'Komentarz nie może mieć więcej niż ' + limit + ' znaków.';
+                } else {
+                    count.textContent = 'Pozostało ' + left + ' znaków!';
+                }
+                count.classList.toggle('hidden', left >= 100);
+            });
+        }
 
-    // comments
-    $('#comment-form-show').click(function () {
-        $('#comments form').show();
-        $('#comments form textarea').focus();
-        $('#comment-form-show').hide();
-        return false;
-    });
+        if (again) {
+            again.addEventListener('click', function (event) {
+                event.preventDefault();
+                form.classList.remove('is-hidden');
+                again.classList.add('hidden');
+                if (textarea) {
+                    textarea.focus();
+                }
+            });
+        }
 
-    // submit comments 
-    $('#submit').click(function () {
-        var dataString = $('#post-comment').serialize();
-        $.ajax({
-            type: 'POST',
-            url: '/comments',
-            dataType: 'json',
-            data: dataString,
-            success: function (data) {
-                commentSuccess(data);
-            },
-            error: function () {
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            var button = $('input[type="submit"]', form);
+            if (button) {
+                button.disabled = true;
+            }
+            post(form.getAttribute('action'), new URLSearchParams(new FormData(form))).then(function (data) {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                added(data);
+            }).catch(function () {
                 alert('Problem z dodaniem komentarza, spróbuj za jakiś czas.');
-            }
-        })
-        return false;
-    });
+            }).then(function () {
+                if (button) {
+                    button.disabled = false;
+                }
+            });
+        });
 
-    // The phone's menu (#149): the button opens and closes it and says which it is; Escape
-    // closes it too, and gives the button its focus back
-    function setMenu(open) {
-        $('#header').toggleClass('nav-open', open);
-        $('#menu-toggle').attr('aria-expanded', open ? 'true' : 'false');
-    }
-    $('#menu-toggle').click(function () {
-        setMenu(!$('#header').hasClass('nav-open'));
-    });
-    $(document).keydown(function (e) {
-        if (e.keyCode == 27 && $('#header').hasClass('nav-open')) {
-            setMenu(false);
-            $('#menu-toggle').focus();
+        // The server sends the content and the author escaped, as the list shows them
+        function added(data) {
+            form.classList.add('is-hidden');
+            if (textarea) {
+                textarea.value = '';
+            }
+            if (again) {
+                again.classList.remove('hidden');
+            }
+            var now = new Date();
+            function two(n) {
+                return (n < 10 ? '0' : '') + n;
+            }
+            var when = now.getFullYear() + '-' + two(now.getMonth() + 1) + '-' + two(now.getDate()) + ' ' +
+                two(now.getHours()) + ':' + two(now.getMinutes()) + ':' + two(now.getSeconds());
+            var author = data.authorId === null
+                ? data.author
+                : '<strong><a href="/' + encodeURIComponent(data.author) + '-u' + parseInt(data.authorId, 10) + '.html">' + data.author + '</a></strong>';
+            var item = document.createElement('li');
+            item.innerHTML = '<span class="br">' + data.content + '</span><span class="secondary">' + author + ' (' + when + ')</span>';
+            var list = $('#comments ul');
+            if (list) {
+                list.insertBefore(item, list.firstChild);
+                fadeIn(item);
+            }
         }
-    });
+    }
 
-    // flag videoclip
-    $('#rateDown').click(function () {
-        $.ajax({
-            type: 'POST',
-            url: '/api/songs/flag-video',
-            success: function (data) {
-                $('#downCount').text(parseInt($('#downCount').text()) + 1);
-            },
-            error: function () {
+    // Song page: a logged-in user edits the lyrics in place
+    function lyrics() {
+        var link = $('#edit-lyrics');
+        var paragraph = $('#lyrics p');
+        if (!link || !paragraph) {
+            return;
+        }
+        link.addEventListener('click', function (event) {
+            event.preventDefault();
+            var form = document.createElement('form');
+            form.method = 'post';
+            form.action = link.getAttribute('href');
+            var textarea = document.createElement('textarea');
+            textarea.name = 'lyrics';
+            textarea.rows = 30;
+            textarea.value = paragraph.textContent.trim();
+            var save = document.createElement('input');
+            save.type = 'submit';
+            save.className = 'submit';
+            save.value = 'Zapisz';
+            form.appendChild(textarea);
+            form.appendChild(save);
+            var box = document.createElement('div');
+            box.className = 'adm';
+            box.id = 'adm-lyrics';
+            box.appendChild(form);
+            paragraph.replaceChildren(box);
+
+            form.addEventListener('submit', function (submitEvent) {
+                submitEvent.preventDefault();
+                save.disabled = true;
+                post(form.action, new URLSearchParams(new FormData(form))).then(function (data) {
+                    if (data.success) {
+                        paragraph.innerHTML = data.lyrics;
+                        fadeIn(paragraph);
+                    } else {
+                        alert(data['result-message'] || data.error || 'Problem z zapisaniem formularza, spróbuj za jakiś czas.');
+                        save.disabled = false;
+                    }
+                }).catch(function () {
+                    alert('Problem z zapisaniem formularza, spróbuj za jakiś czas.');
+                    save.disabled = false;
+                });
+            });
+        });
+    }
+
+    // Song page: "this is not the video of this song"
+    function flagVideo() {
+        var link = $('#rateDown');
+        var count = $('#downCount');
+        if (!link) {
+            return;
+        }
+        link.addEventListener('click', function (event) {
+            event.preventDefault();
+            post('/api/songs/flag-video', new URLSearchParams()).then(function (data) {
+                if (data.error) {
+                    alert('Problem ze zgłoszeniem, spróbuj za jakiś czas.');
+                    return;
+                }
+                if (count) {
+                    count.textContent = (parseInt(count.textContent, 10) || 0) + 1;
+                }
+            }).catch(function () {
                 alert('Problem ze zgłoszeniem, spróbuj za jakiś czas.');
-            }
-        })
+            });
+        });
+    }
 
-        return false;
-    });
-});
+    tracklistDetails();
+    autoDescription();
+    menu();
+    comments();
+    lyrics();
+    flagVideo();
+}());
