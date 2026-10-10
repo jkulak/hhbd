@@ -22,6 +22,11 @@ its own: releasing is the last step of finishing a change, taken by whoever made
   page's popular albums and artists are this week's. A period with too few views is filled up
   from all time, and says so (#194).
 
+- A page for each year's albums, `/albumy-2016.html`: every published album of the year by
+  date, those known to the day first, the year's most viewed beside, the years before and after
+  linked; `/albumy/lata.html` lists the years. Linked from the album list and the home page, and
+  in the sitemap of the lists. For searches like "polski rap 2016" (#196).
+
 ### Removed
 - `/stat`, the counter a page's script once called, which let anyone add views to any row with
   a GET (#68).

@@ -448,6 +448,9 @@ run_fixture_tests() {
     test_first_link "and this year's" "/albumy/popularne-rok.html" "-a[0-9]+\.html" "/woyza-wlasnym-sumptem-a780.html"
     test_first_link "while all time's is led by the most viewed ever" "/albumy/popularne.html" "-a[0-9]+\.html" "/pezet-jestem-hip-hopem-a1.html"
     test_first_link "The artist viewed this week leads the week's artists" "/wykonawcy/popularni-tydzien.html" "-p[0-9]+\.html" "/woyza-p68.html"
+    test_page "A year's page lists its albums (#196)" "/albumy-2010.html" 'href="/wdowa-superextra-a535.html"'
+    test_page_absent "but not one unpublished" "/albumy-2016.html" "-a779.html"
+    test_order "and those with a day before one with a month alone" "/albumy-2016.html" 'href="/woyza-wlasnym-sumptem-a780.html"' 'wiejska-cisza-a49.html"'
     # An unpublished album and the song only it has (#168): nowhere for a visitor
     test_not_found "An unpublished album is a 404 to a visitor (#168)" "/mes-tasma-robocza-a779.html" "Taśma Robocza"
     test_page_absent "and its artist's page does not list it" "/mes-p35.html" "Taśma Robocza"
@@ -603,6 +606,24 @@ test_first_link() {
         return 0
     fi
     local error="$name - the first is '$first', not '$expected'"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
+}
+
+# test_order <name> <path> <first> <second>: both are on the page, the first above the second
+test_order() {
+    local name="$1" path="$2" first="$3" second="$4" page a b
+    page=$(curl -s --max-time 10 $CURL_OPTS "${BASE_URL}${path}" 2>/dev/null)
+    a=$(grep -n -m1 -F -- "$first" <<<"$page" | cut -d: -f1)
+    b=$(grep -n -m1 -F -- "$second" <<<"$page" | cut -d: -f1)
+    if [[ -n "$a" && -n "$b" && "$a" -lt "$b" ]]; then
+        echo -e "${GREEN}✓${NC} $name"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - '$first' at line ${a:-none}, '$second' at line ${b:-none}"
     echo -e "${RED}✗${NC} $error"
     ERRORS+=("$error")
     ((FAILED++))
@@ -893,6 +914,15 @@ run_tests() {
     echo ""
 
     # Google's tags (#161, #162): consent first, everything denied; nothing of the old tags
+    # A page for each year's albums (#196)
+    echo "--- Years ---"
+    test_page_multi "The years with albums, each linked to its page" "/albumy/lata.html" "<h1>Polski hip-hop rok po roku</h1>" 'href="/albumy-2016.html"' 'rel="canonical" href="'"${BASE_URL}"'/albumy/lata.html"'
+    test_page_multi "2016's albums, with their year in the title" "/albumy-2016.html" "<h1>Polski hip-hop 2016: albumy i premiery roku</h1>" "<title>Polski rap 2016" 'rel="canonical" href="'"${BASE_URL}"'/albumy-2016.html"' 'href="/albumy-2015.html" rel="prev"'
+    test_not_found "A year without albums is a 404" "/albumy-1901.html" "Polski hip-hop 1901"
+    test_page "The sitemap of the lists names each year" "/sitemap-pages.xml" "<loc>${BASE_URL}/albumy-2016.html</loc>"
+    test_page "The album list links the years" "/albumy.html" 'href="/albumy-2016.html"'
+    echo ""
+
     # Popularity over a period (#194)
     echo "--- Rankings ---"
     test_page_multi "The albums of the last 7 days" "/albumy/popularne-tydzien.html" "<h1>Najpopularniejsze albumy z ostatnich 7 dni</h1>" 'href="/albumy/popularne-miesiac.html"' 'rel="canonical" href="'"${BASE_URL}"'/albumy/popularne-tydzien.html"'

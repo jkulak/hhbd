@@ -12,7 +12,7 @@ class SitemapController extends Zend_Controller_Action
     /** The kinds of page with a sitemap, in the index's order */
     public const KINDS = array('pages', 'albums', 'artists', 'news', 'songs', 'labels');
 
-    /** The pages that list others: the lists and the rankings over each period (#194) */
+    /** The pages that list others: the lists, the years (#196) and the rankings over each period (#194) */
     public const PAGES = array('/', '/albumy.html', '/wykonawcy.html', '/wytwornie.html', '/premiery.html', '/top10.html');
 
     /** The protocol's most for one file; hhbd has about 12,000 songs, the longest list */
@@ -75,6 +75,11 @@ class SitemapController extends Zend_Controller_Action
     private function pages()
     {
         $paths = self::PAGES;
+        // Each year's albums, and the list of the years (#196)
+        $paths[] = '/albumy/lata.html';
+        foreach (Model_Album_Api::getInstance()->getYears() as $row) {
+            $paths[] = '/albumy-' . $row['year'] . '.html';
+        }
         foreach (array('/albumy/popularne', '/wykonawcy/popularni') as $base) {
             foreach (array_keys(Model_PageView_Api::PERIODS) as $period) {
                 $paths[] = Model_PageView_Api::rankingUrl($base, $period);
