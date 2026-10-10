@@ -1,12 +1,15 @@
 <?php
 
-class IndexController extends Zend_Controller_Action {
-    public function init() {
+class IndexController extends Zend_Controller_Action
+{
+    public function init()
+    {
         $this->view->headTitle()->headTitle('Hhbd.pl - Hip-hopowa baza danych', 'SET');
         $this->view->headMeta()->setName('description', 'Baza danych polskiego hip-hopu. U nas znajdziesz wszystkie interesujące informacje na temat albumów, premier, wykonawców i wytwórni.');
     }
 
-    public function indexAction() {
+    public function indexAction()
+    {
         $this->view->news = Model_News_Api::getInstance()->getRecent(9);
         $this->view->newestList = Model_Album_Api::getInstance()->getNewest(7);
         $this->view->announcedList = Model_Album_Api::getInstance()->getAnnounced(5);
@@ -20,14 +23,17 @@ class IndexController extends Zend_Controller_Action {
         $this->view->popularAlbums = Model_Album_Api::getInstance()->getPopular(5);
     }
 
-    public function aboutAction() {
+    public function aboutAction()
+    {
     }
 
-    public function contactAction() {
+    public function contactAction()
+    {
     }
 
     /** What the site measures and shows through Google, and how to change the choice (#162) */
-    public function privacyAction() {
+    public function privacyAction()
+    {
         $this->view->headTitle()->set('Prywatność - Hhbd.pl');
         $this->view->headMeta()->setName('description', 'Jakie dane zbiera Hhbd.pl, po co, jak długo je przechowuje i jak zmienić zgodę na ciasteczka.');
     }
