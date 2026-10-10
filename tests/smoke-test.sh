@@ -384,6 +384,12 @@ run_fixture_tests() {
     test_redirect_301 "An old address's underscore finds a slug written with a dash (#26)" "/n/dj_technik" "/dj-technik-p6.html"
     test_not_found "A song on no album and by no artist is a 404, not a 500 (#37)" "/bez-albumu-s9100.html" "Call to a member function"
     test_page_absent "and the song sitemap leaves it out (#147)" "/sitemap-songs.xml" "-s9100.html<"
+    # Passwords and the comment question (#41): these log in and post, so on the fixtures only
+    test_login "An account from before #41 logs in with its MD5 and the old salt" "legacy@example.com" "legacypass"
+    test_login "and again, with the password hash that login wrote" "legacy@example.com" "legacypass"
+    test_login "A wrong password logs nobody in" "legacy@example.com" "wrongpass" refused
+    test_login "The admin logs in with a password hash" "admin@example.com" "adminpass"
+    test_captcha_once "A comment's question is answered once, and the same answer again is refused"
     test_page "A search with Polish letters finds the name (#151)" "/szukaj.html?q=Sok%C3%B3%C5%82" 'href="/sokol-p10.html"'
     test_page "and so does one without them" "/szukaj.html?q=sokol" 'href="/sokol-p10.html"'
     test_page "and one in capitals" "/szukaj.html?q=SOK%C3%93%C5%81" 'href="/sokol-p10.html"'
@@ -553,6 +559,56 @@ test_asset() {
     return 1
 }
 
+# test_login <name> <email> <password> [refused]: the login form lets the account in, the home
+# page then says who is logged in; with "refused", it lets nobody in
+test_login() {
+    local name="$1" email="$2" password="$3" expect="${4:-in}"
+    local jar status seen
+    jar=$(mktemp "${TMPDIR:-/tmp}/hhbd-smoke-jar.XXXXXX")
+    status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 $CURL_OPTS -c "$jar" -b "$jar" \
+        --data-urlencode "email=$email" --data-urlencode "password=$password" "${BASE_URL}/uzytkownik/logowanie.html" 2>/dev/null)
+    seen=$(curl -s --max-time 10 $CURL_OPTS -b "$jar" "${BASE_URL}/" 2>/dev/null | grep -c "Zalogowany jako")
+    rm -f "$jar"
+    if { [[ "$expect" == in && "$status" == 302 && "$seen" -gt 0 ]]; } || { [[ "$expect" == refused && "$status" == 200 && "$seen" == 0 ]]; }; then
+        echo -e "${GREEN}✓${NC} $name"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - login answered $status, logged in on the home page: $seen"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
+}
+
+# test_captcha_once <name>: a question from the server, a comment with its answer, and the same
+# answer again, which is refused (#41)
+test_captcha_once() {
+    local name="$1" challenge token sum first again
+    local xhr="X-Requested-With: XMLHttpRequest"
+    challenge=$(curl -s --max-time 10 $CURL_OPTS -X POST -H "$xhr" "${BASE_URL}/comments/captcha" 2>/dev/null)
+    token=$(echo "$challenge" | sed -nE 's/.*"token":"([0-9a-f]{32})".*/\1/p')
+    sum=$(echo "$challenge" | sed -nE 's/.*Ile to ([0-9]+) \\?\+ ([0-9]+).*/\1 \2/p' | awk '{print $1 + $2}')
+    comment() {
+        curl -s -o /dev/null -w "%{http_code}" --max-time 10 $CURL_OPTS -X POST -H "$xhr" \
+            --data-urlencode "content=$1" --data-urlencode "author=smoke" --data-urlencode "captcha_token=$token" \
+            --data-urlencode "captcha_answer=$sum" --data-urlencode "com_object_id=535" --data-urlencode "com_object_type=a" \
+            --data-urlencode "form_time=$(( $(date +%s) - 10 ))" --data-urlencode "email-honey-pot=" "${BASE_URL}/comments" 2>/dev/null
+    }
+    first=$(comment "Smoke test: a comment with the question answered")
+    again=$(comment "Smoke test: the same answer again")
+    if [[ -n "$token" && -n "$sum" && "$first" == 200 && "$again" == 422 ]]; then
+        echo -e "${GREEN}✓${NC} $name"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - question '$challenge', the answer answered $first, the replay $again"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
+}
+
 run_tests() {
     echo "Running tests..."
     echo ""
@@ -668,6 +724,8 @@ run_tests() {
     test_page_absent "No page loads jQuery, 1.4.4 or any other (#43)" "/wdowa-superextra-a535.html" "jquery"
     test_page "The site's script runs once the page is parsed" "/" '<script src="/js/s.js?v=[0-9a-f]*" defer>'
     test_page_absent "The comment form carries no inline script" "/wdowa-superextra-a535.html" "limitChars"
+    test_page_absent "The comment form carries no answer, hashed or not (#41)" "/wdowa-superextra-a535.html" "captcha_hash"
+    test_page_status "A comment's question is not made by a GET" "/comments/captcha" 405 "POST only"
     echo ""
 
     # Canonical URL tests

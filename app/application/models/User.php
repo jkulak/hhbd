@@ -7,7 +7,6 @@ class Model_User extends Zend_Db_Table_Abstract
 
   // db table name
   protected $_name = 'hhb_users';
-  static public $passwordSalt = 'this is long enough safety salt!';
 
   /**
    * Singleton instance
@@ -112,9 +111,9 @@ class Model_User extends Zend_Db_Table_Abstract
      $errors['email'][] = "Podaj poprawny adres e-mail.";
     }
 
-    // Password must be at least 6 characters
+    // Password must be at least 6 characters, and at most bcrypt's 72 bytes' worth (#41)
     $validLength->setMin(6);
-    $validLength->setMax(20);
+    $validLength->setMax(72);
     $validLength->setMessage(
         "Wpisz co najmniej %min% znaków.",
         Zend_Validate_StringLength::TOO_SHORT
@@ -132,7 +131,7 @@ class Model_User extends Zend_Db_Table_Abstract
       $data = array (
         'usr_display_name' => $data['display-name'],
         'usr_email' => $data['email'],
-        'usr_password' => md5($data['password'] . self::$passwordSalt),
+        'usr_password' => Model_User_Password::hash($data['password']),
         'usr_added' => date('Y-m-d H:i:s')
         );
         $result = $this->insert($data);
@@ -148,7 +147,7 @@ class Model_User extends Zend_Db_Table_Abstract
   {
     $email = strval($email);
 
-    $result = $this->fetchAll('usr_email = "' . $email . '"');
+    $result = $this->fetchAll($this->_db->quoteInto('usr_email = ?', $email));
     if (count($result) > 0) {
       return new Model_User_Container($result->current());
     }
@@ -159,11 +158,35 @@ class Model_User extends Zend_Db_Table_Abstract
 
   }
 
+  /**
+   * The account of that e-mail and password, as the session keeps it, or null (#41). A login
+   * counts, and a password hashed the old way, or at an old cost, gets a new hash.
+   *
+   * @return object|null usr_id, usr_display_name, usr_is_admin, usr_login_count
+   */
+  public function authenticate($email, $password)
+  {
+    $row = $this->_db->fetchRow(
+      'SELECT usr_id, usr_password, usr_display_name, usr_is_admin, usr_login_count FROM hhb_users WHERE usr_email = ? LIMIT 1',
+      array((string) $email)
+    );
+    if (!$row || !Model_User_Password::verify($password, $row['usr_password'], Model_User_Password::legacySalt())) {
+      return null;
+    }
+    $set = array('usr_last_login' => date('Y-m-d H:i:s'), 'usr_login_count' => $row['usr_login_count'] + 1);
+    if (Model_User_Password::needsRehash($row['usr_password'])) {
+      $set['usr_password'] = Model_User_Password::hash($password);
+    }
+    $this->update($set, array('usr_id = ?' => (int) $row['usr_id']));
+    unset($row['usr_password']);
+    return (object) $row;
+  }
+
   public function findByDisplayName($name)
   {
     $name = strval($name);
 
-    $rows = $this->fetchAll('usr_display_name = "' . $name . '"');
+    $rows = $this->fetchAll($this->_db->quoteInto('usr_display_name = ?', $name));
     return $rows;
   }
 
