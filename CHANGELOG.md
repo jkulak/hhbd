@@ -1,18 +1,30 @@
 # Changelog
 
-Releases use CalVer, `YYYY.MM.N`: the year, the month, and a counter that starts at 0 each
-month (`2026.10.0`, `2026.10.1`, `2026.11.0`). A release is the git tag `vYYYY.MM.N`,
-published as a release — `gh release create vYYYY.MM.N` — which is what deploys it
-(`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Nothing releases on
-its own: releasing is the last step of finishing a change, taken by whoever made it (#175).
+Releases use CalVer, `vYYYY.MM.N`: the year, the month, and a counter that starts at 0 each
+month (`v2026.10.0`, `v2026.10.1`, `v2026.11.0`). Every merge to `main` releases itself (#193):
+`.github/workflows/release.yml` publishes the next tag on the merge commit, with a note made of
+the first sentence of each entry this file gained since the release before, and dispatches the
+deploy (`.github/workflows/deploy.yml`). A release by hand, `gh release create vYYYY.MM.N`, is
+only for what that workflow refuses.
 
-## Unreleased
+From 2026-10-11 the sections go by date, newest first, with no version in the heading: the
+merge names the release. Each change is a bullet whose first sentence stands alone, as it is
+the release's note; changes to the build, the tests, CI or the deploy go under `### Internal`,
+which the note leaves out. The sections before, by version, stay as they were.
 
-### Fixed
-- On a desktop screen the text after a page's heading stood beside it, as on the years, Top 10
-  and the admin's review list: the heading floats for the share buttons on an album's, artist's,
-  song's and label's page, and took everything else beside it too. Whatever follows a heading
-  starts below it now; the share buttons stay (#208).
+## 2026-10-11
+
+- Every merge to `main` now releases and deploys itself, so a finished change reaches hhbd.pl
+  without a release cut by hand (#193). The release's note is the first sentence of each new
+  entry here; a merge whose pull request did not pass is not released.
+- The text after a page's heading starts below it on a desktop screen, as on the years, Top 10
+  and the admin's review list, where it stood beside it (#208). The heading floats for the share
+  buttons on an album's, artist's, song's and label's page, which stay where they are.
+
+### Internal
+- `release.yml` and `scripts/release-notes.py` come from gcloud-ovh-migrate's service template,
+  and `deploy.yml` with them keeps the images' layer cache in the registry, `:buildcache`
+  beside each image, where the next release reads it (#193).
 
 ## 2026.10.18 — 2026-10-11
 
