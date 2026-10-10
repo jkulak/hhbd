@@ -808,6 +808,9 @@ run_tests() {
     test_page_absent "A visitor sees no sources paragraph on the about page (#158)" "/o-nas.html" "not affiliated with, sponsored or endorsed by Discogs"
     test_page "The album sitemap gives each album's canonical URL" "/sitemap-albums.xml" "/wdowa-superextra-a535.html</loc>"
     test_page "The song sitemap gives canonical URLs" "/sitemap-songs.xml" "/pogoda-s7329.html</loc>"
+    test_page "An album's page links its songs at their canonical address (#202)" "/wdowa-superextra-a535.html" 'href="/pogoda-s7329.html"'
+    test_page_absent "never through the artist's slug, which redirects" "/wdowa-superextra-a535.html" 'href="/wdowa-pogoda-s7329.html"'
+    test_redirect_301 "though that old form still leads to the song" "/wdowa-pogoda-s7329.html" "/pogoda-s7329.html"
     test_page "The label sitemap gives canonical URLs" "/sitemap-labels.xml" "/alkopoligamia-l58.html</loc>"
     test_page "The artist sitemap renders" "/sitemap-artists.xml" "/mes-p35.html</loc>"
     test_page "The news sitemap renders" "/sitemap-news.xml" "wideo-n1877.html</loc>"
