@@ -6,7 +6,10 @@ published as a release — `gh release create vYYYY.MM.N` — which is what depl
 (`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Releasing is a
 person's decision; nothing releases on its own.
 
-## Unreleased
+## 2026.10.10 — 2026-10-10
+
+The search finds names with ó in them, and finds them without their Polish letters, as people
+type on a phone (#151). No migration and no `make ovh-install`.
 
 ### Fixed
 - The search finds a name with ó in it, and finds it without its Polish letters too (#151):
