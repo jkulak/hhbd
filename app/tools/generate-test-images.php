@@ -26,6 +26,12 @@ $imageTypes = [
     'news' => ['count' => 3, 'prefix' => 'test-news', 'label' => 'NEWS'],  // News images (#133)
 ];
 $imageSize = 100; // 100x100 pixels
+// Files of another shape, as the fixtures describe them, so the photos backfill records what the
+// pages expect: Eldo's main photo landscape, Stasiak's portrait (#166)
+$shapes = [
+    'test-artist-002.jpg' => [600, 378],
+    'test-artist-003.jpg' => [225, 300],
+];
 
 // Check if GD is available
 if (!extension_loaded('gd')) {
@@ -81,7 +87,8 @@ foreach ($imageTypes as $type => $config) {
         }
 
         // Create image
-        $image = imagecreatetruecolor($imageSize, $imageSize);
+        list($width, $height) = isset($shapes[$filename]) ? $shapes[$filename] : [$imageSize, $imageSize];
+        $image = imagecreatetruecolor($width, $height);
         if ($image === false) {
             echo "  Warning: Could not create image for $filename\n";
             continue;
@@ -97,7 +104,7 @@ foreach ($imageTypes as $type => $config) {
         );
 
         // Fill background
-        imagefilledrectangle($image, 0, 0, $imageSize - 1, $imageSize - 1, $bgColor);
+        imagefilledrectangle($image, 0, 0, $width - 1, $height - 1, $bgColor);
 
         // Add text (number)
         $textColor = imagecolorallocate($image, 255, 255, 255);
@@ -107,15 +114,15 @@ foreach ($imageTypes as $type => $config) {
         $fontSize = 5; // Built-in font size (1-5)
         $textWidth = imagefontwidth($fontSize) * strlen($text);
         $textHeight = imagefontheight($fontSize);
-        $x = ($imageSize - $textWidth) / 2;
-        $y = ($imageSize - $textHeight) / 2;
+        $x = ($width - $textWidth) / 2;
+        $y = ($height - $textHeight) / 2;
 
         imagestring($image, $fontSize, (int)$x, (int)$y, $text, $textColor);
 
         // Add type label at bottom
         $labelWidth = imagefontwidth(2) * strlen($label);
-        $labelX = ($imageSize - $labelWidth) / 2;
-        imagestring($image, 2, (int)$labelX, $imageSize - 15, $label, $textColor);
+        $labelX = ($width - $labelWidth) / 2;
+        imagestring($image, 2, (int)$labelX, $height - 15, $label, $textColor);
 
         // Save as JPEG
         $result = imagejpeg($image, $filepath, 85);
