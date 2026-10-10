@@ -116,4 +116,24 @@ class Jkl_Tools_DateTest extends TestCase
         $this->assertEquals('stycznia', Jkl_Tools_Date::$months[1]);
         $this->assertEquals('grudnia', Jkl_Tools_Date::$months[12]);
     }
+
+    /**
+     * @dataProvider anniversaries
+     */
+    public function testHowManyYearsAgoReadsAsASentenceStarts(int $years, string $expected): void
+    {
+        $this->assertSame($expected, Jkl_Tools_Date::yearsAgo($years));
+    }
+
+    public static function anniversaries(): array
+    {
+        return array(
+            'one'        => array(1, 'rok temu'),
+            'two'        => array(2, '2 lata temu'),
+            'five'       => array(5, '5 lat temu'),
+            'twelve'     => array(12, '12 lat temu'),
+            'twenty'     => array(20, '20 lat temu'),
+            'twenty-two' => array(22, '22 lata temu'),
+        );
+    }
 }

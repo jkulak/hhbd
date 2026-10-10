@@ -27,6 +27,10 @@ its own: releasing is the last step of finishing a change, taken by whoever made
   linked; `/albumy/lata.html` lists the years. Linked from the album list and the home page, and
   in the sitemap of the lists. For searches like "polski rap 2016" (#196).
 
+- The home page shows the albums released on this day in an earlier year, dated to the day,
+  the oldest anniversary first: "20 lat temu: Wdowa - Superextra (2006)". Warsaw's day, not the
+  database's UTC one (#197).
+
 ### Removed
 - `/stat`, the counter a page's script once called, which let anyone add views to any row with
   a GET (#68).

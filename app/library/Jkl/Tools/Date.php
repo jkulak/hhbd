@@ -18,6 +18,16 @@ class Jkl_Tools_Date
         # code...
     }
 
+    /** How long ago, in years, as a sentence starts it (#197): "rok temu", "2 lata temu", "20 lat temu" */
+    public static function yearsAgo($years)
+    {
+        $years = (int) $years;
+        if (1 === $years) {
+            return 'rok temu';
+        }
+        return $years . ' ' . Jkl_Tools_String::plural($years, 'rok', 'lata', 'lat') . ' temu';
+    }
+
     /*
     * A date as a page shows it, to the precision it is known: "15 stycznia 2020",
     * "któregoś maja 2020" (the month) or "2020" (the year). Without a precision it is read from
