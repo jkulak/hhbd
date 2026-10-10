@@ -384,6 +384,14 @@ run_fixture_tests() {
     test_redirect_301 "An old address's underscore finds a slug written with a dash (#26)" "/n/dj_technik" "/dj-technik-p6.html"
     test_not_found "A song on no album and by no artist is a 404, not a 500 (#37)" "/bez-albumu-s9100.html" "Call to a member function"
     test_page_absent "and the song sitemap leaves it out (#147)" "/sitemap-songs.xml" "-s9100.html<"
+    test_page "A search with Polish letters finds the name (#151)" "/szukaj.html?q=Sok%C3%B3%C5%82" 'href="/sokol-p10.html"'
+    test_page "and so does one without them" "/szukaj.html?q=sokol" 'href="/sokol-p10.html"'
+    test_page "and one in capitals" "/szukaj.html?q=SOK%C3%93%C5%81" 'href="/sokol-p10.html"'
+    test_page "and one with ó as o and a combining accent" "/szukaj.html?q=Soko%CC%81%C5%82" 'href="/sokol-p10.html"'
+    test_page "ł typed as l finds Łona" "/szukaj.html?q=lona" 'href="/lona-p19.html"'
+    test_page "An album's title is found without its Polish letters" "/szukaj.html?q=podroz" 'href="/sokol-podroz-zwana-zyciem-a6.html"'
+    test_page "A query in ISO-8859-2 from an old link is read as such" "/szukaj.html?q=Sok%F3%B3" "Szukałeś: Sokół"
+    test_page_absent "and does not match every row" "/szukaj.html?q=Sok%F3%B3" 'href="/pezet-p1.html"'
     test_page "A song's video kept as a Flash address plays in YouTube's player (#149)" "/pogoda-s7329.html" 'src="https://www.youtube-nocookie.com/embed/M7lc1UVf-VE"'
     test_page_absent "and nothing asks for Flash" "/pogoda-s7329.html" "x-shockwave-flash"
     test_page "An artist's meta description is its description's text (#147)" "/mes-p35.html" 'name="description" content="Raper z Krakowa, &quot;Fach&quot;."'
@@ -577,6 +585,8 @@ run_tests() {
     # Search functionality
     echo "--- Search ---"
     test_page_multi "Search (tede)" "/szukaj.html?q=tede" "Mefistotedes" "MercTedes"
+    test_page "A search shows markup in its query as text (#151)" "/szukaj.html?q=%3Cb%3Ex%3C%2Fb%3E" "Szukałeś: &lt;b&gt;x&lt;/b&gt;"
+    test_page_absent "and never as markup" "/szukaj.html?q=%3Cb%3Ex%3C%2Fb%3E" "<b>x</b>"
     echo ""
 
     # Rankings

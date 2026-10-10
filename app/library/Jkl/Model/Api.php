@@ -5,6 +5,13 @@
 */
 abstract class Jkl_Model_Api
 {
+    /**
+     * How a search compares (#151): case and Polish letters do not count, so "wzgorze" finds
+     * "Wzgórze" and "lona" finds "Łona", as people type on a phone. The columns' own
+     * utf8mb4_polish_ci, right for sorting, tells ó from o and ł from l.
+     */
+    public const SEARCH_COLLATION = 'utf8mb4_uca1400_ai_ci';
+
     protected $_db;
 
     public function __construct()

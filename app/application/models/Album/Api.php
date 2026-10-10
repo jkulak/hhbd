@@ -241,7 +241,7 @@ class Model_Album_Api extends Jkl_Model_Api
         $page = intval($page - 1);
         $page = ($page < 1) ? 0 : $page;
         $query = 'SELECT ' . self::LIST_COLUMNS . ' FROM albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
-          'WHERE t3.title LIKE "%' . $like . '%" AND ' . self::HAS_ARTIST . ' ' .
+          'WHERE t3.title LIKE "%' . $like . '%" COLLATE ' . self::SEARCH_COLLATION . ' AND ' . self::HAS_ARTIST . ' ' .
           'ORDER BY t3.viewed DESC' .
           (($limit != null) ? ' LIMIT ' . $limit : '') .
           ' OFFSET ' . ($page * $limit);
@@ -253,7 +253,7 @@ class Model_Album_Api extends Jkl_Model_Api
         $like = Jkl_Db::escape($like);
         $query = "SELECT count(*) as count
               FROM albums AS t1
-              WHERE t1.title LIKE '%$like%'";
+              WHERE t1.title LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION;
         $result = $this->_db->fetchAll($query);
         return intval($result[0]['count']);
     }

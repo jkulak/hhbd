@@ -6,6 +6,20 @@ published as a release — `gh release create vYYYY.MM.N` — which is what depl
 (`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Releasing is a
 person's decision; nothing releases on its own.
 
+## 2026.10.10 — 2026-10-10
+
+The search finds names with ó in them, and finds them without their Polish letters, as people
+type on a phone (#151). No migration and no `make ovh-install`.
+
+### Fixed
+- The search finds a name with ó in it, and finds it without its Polish letters too (#151):
+  `Wzgórze`, `wzgorze` and `WZGÓRZE` find Wzgórze Ya-Pa 3, `lona` finds Łona. The query went
+  through `htmlentities()` before the database saw it, so `Wzgórze` was searched as
+  `Wzg&oacute;rze`, and any letter with an HTML 4 entity (ó, é, ü, `&`, `"`) found nothing.
+  The searches compare in `utf8mb4_uca1400_ai_ci`, which counts neither case nor accents, where
+  the columns' `utf8mb4_polish_ci` tells ó from o. The query is escaped where it is shown, and
+  one in ISO-8859-2 from an old link is read as such instead of matching every row.
+
 ## 2026.10.9 — 2026-10-10
 
 PHP 8.4 from Debian 13's own packages (#37): on a copy of production the same pages answer about
