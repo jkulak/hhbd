@@ -78,6 +78,8 @@ class SongController extends Zend_Controller_Action
         Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
 
         $this->view->Analytics()->page('song', $song->id, $song->albumArtist->name . ' - ' . $song->title);
+
+        Model_PageView_Api::getInstance()->count('song', $song->id, $this->view->IsAdmin());
         $song->autoDescription = $this->_generateDescription($song);
         $this->view->song = $song;
         $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . '/' . $canonicalSlug;

@@ -276,7 +276,7 @@ renaming them across 45 tables would risk more than it would clear up.
 | `updated` | when the row was last **edited**, by a person or by the import | whoever edits; nothing automatic |
 | `updatedby` | who edited it, an `ID` in `users`; `1100` the import | whoever edits; the review panel and `make edit` through the admin's linked row (below) |
 | `status` | `999` published, counted by the site; `0` not published (the only two values production holds). An unpublished album is nowhere for a visitor, its page a 404, and its songs with it where they are on no other; an admin opens its page (#168) | the editor |
-| `viewed` | page views | the application, on every view (`/stat`) |
+| `viewed` | page views since the site began | the application, as it shows the page, once per visit and day, bots and admins aside (#68); `page_views` keeps the same by day |
 
 **One table for who (#132).** `addedby` and `updatedby` name `users`, the old site's accounts,
 which the catalogue's history and the import are in. An admin logs in with an `hhb_users`
@@ -332,6 +332,16 @@ And what it changed that a person had added: the same with `updatedby = 1100 AND
 
 One thing is known lost and cannot be recovered from the database: 58 of the 120 `added`
 values in `artists_photos`, overwritten in one mass update while `added` still had `ON UPDATE`.
+
+## Page views
+
+`page_views` (0038, #68) holds how many times each album, artist, song, label and news page was
+shown, a row per page and day: `entity_type`, `entity_id`, `day`, `views`. The page counts itself
+as it renders (`Model_PageView_Api::count`), adding one to the row's `viewed` and to today's
+row here: a GET from a browser, once per visit, page and day, and not from a bot, a HEAD request
+or an admin. The day is Warsaw's, as the application's timezone has it; the database's
+`CURDATE()` is UTC's and turns a day late. Nothing about who viewed is kept. The popularity
+over a period (#194) sums these rows.
 
 ## Passwords and the comment question
 
