@@ -35,7 +35,7 @@ class LabelController extends Zend_Controller_Action
         $label = Model_Label_Api::getInstance()->find($params['id'], true);
 
         // Build canonical URL and redirect if current URL doesn't match
-        $canonicalSlug = Jkl_Tools_Url::createUrl($label->name . '-l' . $label->id) . '.html';
+        $canonicalSlug = Jkl_Tools_Url::createUrl($label->name) . '-l' . $label->id . '.html';
         Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
 
         $label->releases = Model_Album_Api::getInstance()->getLabelReleases($label->id, null);

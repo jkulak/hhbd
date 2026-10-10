@@ -47,7 +47,7 @@ class SongController extends Zend_Controller_Action
         }
 
         // Build canonical URL and redirect if current URL doesn't match
-        $canonicalSlug = Jkl_Tools_Url::createUrl($song->title . '-s' . $song->id) . '.html';
+        $canonicalSlug = Jkl_Tools_Url::createUrl($song->title) . '-s' . $song->id . '.html';
         Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
 
         $song->autoDescription = $this->_generateDescription($song);

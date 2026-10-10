@@ -66,7 +66,7 @@ class CommentController extends Zend_Controller_Action
             case 'a':
                 $entity = Model_Album_Api::getInstance()->find($this->params['com_object_id']);
                 if ($entity) {
-                    $redirect = Jkl_Tools_Url::createUrl($entity->artist->name . '+-+' . $entity->title . '-a' . $entity->id . '.html');
+                    $redirect = Jkl_Tools_Url::createUrl($entity->artist->name . '+-+' . $entity->title) . '-a' . $entity->id . '.html';
                 }
                 break;
 
@@ -74,7 +74,7 @@ class CommentController extends Zend_Controller_Action
             case 'wykonawca':
                 $entity = Model_Artist_Api::getInstance()->find($this->params['com_object_id']);
                 if ($entity) {
-                    $redirect = Jkl_Tools_Url::createUrl($entity->qualifiedName . '-p' . $entity->id . '.html');
+                    $redirect = Jkl_Tools_Url::createUrl($entity->qualifiedName) . '-p' . $entity->id . '.html';
                 }
                 break;
 
@@ -82,7 +82,7 @@ class CommentController extends Zend_Controller_Action
             case 'wytwornia':
                 $entity = Model_Label_Api::getInstance()->find($this->params['com_object_id']);
                 if ($entity) {
-                    $redirect = Jkl_Tools_Url::createUrl($entity->name . '-l' . $entity->id . '.html');
+                    $redirect = Jkl_Tools_Url::createUrl($entity->name) . '-l' . $entity->id . '.html';
                 }
                 break;
 
@@ -90,7 +90,7 @@ class CommentController extends Zend_Controller_Action
             case 'utwor':
                 $entity = Model_Song_Api::getInstance()->find($this->params['com_object_id']);
                 if ($entity) {
-                    $redirect = Jkl_Tools_Url::createUrl($entity->title . '-s' . $entity->id . '.html');
+                    $redirect = Jkl_Tools_Url::createUrl($entity->title) . '-s' . $entity->id . '.html';
                 }
                 break;
 
@@ -98,7 +98,7 @@ class CommentController extends Zend_Controller_Action
             case 'news':
                 $entity = Model_News_Api::getInstance()->find($this->params['com_object_id']);
                 if ($entity) {
-                    $redirect = Jkl_Tools_Url::createUrl($entity->title . '-n' . $entity->id . '.html');
+                    $redirect = Jkl_Tools_Url::createUrl($entity->title) . '-n' . $entity->id . '.html';
                 }
                 break;
 
