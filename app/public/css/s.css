@@ -804,3 +804,844 @@ ul.flat li {
   width: 100%;
   margin-bottom: 8px;
 }
+/********************************************************************************************/
+/* Top 10                                                                                   */
+/********************************************************************************************/
+.top10-list {
+  display: flex;
+  gap: 20px;
+}
+
+.top10-list > div {
+  flex: 1;
+}
+
+.top10-list li {
+  overflow: hidden;
+  margin-bottom: 15px;
+  min-height: 100px;
+}
+
+/********************************************************************************************/
+/* A song's video (#149): YouTube's player at 16:9, as wide as the column allows            */
+/********************************************************************************************/
+.video {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 16 / 9;
+  margin-bottom: 8px;
+  background: #000;
+}
+
+.video iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* The menu button, for phones only */
+#menu-toggle {
+  display: none;
+}
+
+/********************************************************************************************/
+/* Phones and tablets (#149), below 992 px, where the desktop's page of at least 960 px and */
+/* its margins fit: one column, the main one first; a header bar with the logo, a menu      */
+/* button and the search across the width; nothing wider than the screen; whatever is      */
+/* tapped on its own at least 44 px high; form fields at 16 px, which iOS does not zoom    */
+/* into. From 992 px the page is as it always was.                                         */
+/********************************************************************************************/
+@media (max-width: 991px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    font-size: 16px;
+    line-height: 1.45;
+  }
+
+  #body {
+    padding: 0;
+  }
+
+  /* The footer at the bottom of the screen on a short page */
+  #page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+    box-shadow: none;
+    -moz-box-shadow: none;
+    -webkit-box-shadow: none;
+    -o-box-shadow: none;
+  }
+
+  /* The header: the sprite's band is 100 px high and has the logos under it, so a header that
+     grows with the menu gets the band's colours as a gradient instead */
+  #header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      "logo . toggle"
+      "search search search"
+      "menu menu menu"
+      "login login login";
+    align-items: center;
+    height: auto;
+    padding: 6px 12px 10px;
+    background: linear-gradient(#d0c17e, #ac9d5a);
+    border-bottom: 1px solid #75672c;
+  }
+
+  #header #logo {
+    grid-area: logo;
+    float: none;
+    clear: none;
+    width: 76px;
+    height: 57px;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  #header #logo div {
+    margin: 0;
+    transform: scale(0.6);
+    transform-origin: 0 0;
+  }
+
+  #menu-toggle {
+    grid-area: toggle;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font: bold 16px "trebuchet ms", Georgia, sans-serif;
+    text-shadow: black 0 1px 2px;
+    cursor: pointer;
+  }
+
+  #menu-toggle:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+
+  /* Three bars, a cross when the menu is open */
+  #menu-toggle .bars,
+  #menu-toggle .bars::before,
+  #menu-toggle .bars::after {
+    display: block;
+    width: 18px;
+    height: 2px;
+    background: #fff;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+    transition: transform 0.2s, background-color 0.2s;
+  }
+
+  #menu-toggle .bars {
+    position: relative;
+  }
+
+  #menu-toggle .bars::before,
+  #menu-toggle .bars::after {
+    content: "";
+    position: absolute;
+    left: 0;
+  }
+
+  #menu-toggle .bars::before {
+    top: -6px;
+  }
+
+  #menu-toggle .bars::after {
+    top: 6px;
+  }
+
+  .nav-open #menu-toggle .bars {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .nav-open #menu-toggle .bars::before {
+    transform: translateY(6px) rotate(45deg);
+  }
+
+  .nav-open #menu-toggle .bars::after {
+    transform: translateY(-6px) rotate(-45deg);
+  }
+
+  /* #nav's parts take their own places in the header's grid */
+  #nav {
+    display: contents;
+  }
+
+  #search {
+    grid-area: search;
+    width: auto;
+    height: auto;
+    margin: 8px 0 0;
+    background: none;
+  }
+
+  #search form {
+    display: flex;
+    margin: 0;
+  }
+
+  #search form #q {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    height: 44px;
+    margin: 0;
+    padding: 0 12px;
+    box-sizing: border-box;
+    border: 1px solid #75672c;
+    border-right: 0;
+    border-radius: 6px 0 0 6px;
+    background: #fff;
+    font-size: 16px;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  #search input[type="submit"] {
+    float: none;
+    flex: none;
+    width: 52px;
+    height: 44px;
+    border: 1px solid #75672c;
+    border-radius: 0 6px 6px 0;
+    background: #f3edd5 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 22 22'%3E%3Ccircle cx='9' cy='9' r='6.5' fill='none' stroke='%23392312' stroke-width='2.5'/%3E%3Cpath d='M14 14l6 6' stroke='%23392312' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E") center no-repeat;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  #nav ul {
+    grid-area: menu;
+    height: auto;
+    margin: 10px -12px 0;
+    padding: 0;
+    background: #5c4a1e;
+    border-top: 1px solid #75672c;
+  }
+
+  #nav ul li {
+    float: none;
+    padding: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  #nav ul li a {
+    display: block;
+    padding: 12px 16px;
+    font-size: 17px;
+  }
+
+  #nav ul li a:hover,
+  #nav ul li a:focus {
+    background: #75672c;
+  }
+
+  #login {
+    grid-area: login;
+    float: none;
+    margin: 0 -12px -10px;
+    padding: 14px 16px;
+    background: #5c4a1e;
+    color: #e3d9ab;
+    font-size: 15px;
+  }
+
+  #login a,
+  #login a:hover {
+    color: #fff;
+    font-weight: bold;
+    text-decoration: underline;
+  }
+
+  #login p {
+    margin: 0;
+  }
+
+  /* The menu folds away when a script can open it again; without one it stays open */
+  .js #header:not(.nav-open) #nav ul,
+  .js #header:not(.nav-open) #login {
+    display: none;
+  }
+
+  html:not(.js) #menu-toggle {
+    display: none;
+  }
+
+  /* One column: the main one, then what the desktop shows beside it */
+  #content {
+    flex: 1 0 auto;
+    padding: 12px;
+    border-width: 1px 0;
+    overflow-wrap: break-word;
+  }
+
+  #main,
+  .main,
+  #additional,
+  #aside,
+  #third,
+  .column {
+    float: none;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  #additional,
+  #aside,
+  #third {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px dotted #938548;
+    font-size: 93%;
+  }
+
+  .column > div {
+    margin: 0 0 20px;
+  }
+
+  /* The ads' box, with the ads off, and a side column with nothing else in it */
+  .googleads:not(:has(script, ins, iframe)),
+  #aside:not(:has(> :not(.googleads))),
+  #additional:not(:has(> :not(.googleads))) {
+    display: none;
+  }
+
+  #main h1,
+  .main h1 {
+    float: none;
+    font-size: 24px;
+    line-height: 1.25;
+  }
+
+  h2 {
+    font-size: 20px;
+    line-height: 1.3;
+  }
+
+  .header h2 {
+    float: none;
+  }
+
+  .header span.toggle {
+    float: none;
+    display: inline-block;
+    margin: 4px 0 0;
+  }
+
+  #content img,
+  #content iframe,
+  #content object,
+  #content embed {
+    max-width: 100%;
+  }
+
+  #content img {
+    height: auto;
+  }
+
+  /* An album's cover, an artist's photo, a label's logo: across the width, up to 300 px */
+  #picture,
+  #content #logo {
+    float: none;
+    margin: 0 0 16px;
+    text-align: center;
+  }
+
+  #picture img {
+    width: 100%;
+    max-width: 300px;
+  }
+
+  #picture .caption {
+    width: auto;
+    max-width: 300px;
+    margin: 4px auto 0;
+  }
+
+  #brief {
+    float: none;
+    max-width: none;
+    margin-bottom: 8px;
+  }
+
+  #brief li {
+    margin-bottom: 4px;
+  }
+
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
+
+  .gallery li {
+    display: block;
+    width: auto;
+    margin: 0;
+  }
+
+  .gallery img,
+  .gallery .caption {
+    width: 100%;
+  }
+
+  /* The tracklist: a row a song, its number to the left, the time to the right, the artist and
+     the lyrics' note under the title */
+  #tracklist table,
+  #tracklist tbody {
+    display: block;
+    width: 100%;
+  }
+
+  #tracklist thead {
+    display: none;
+  }
+
+  #tracklist tr {
+    display: grid;
+    grid-template-columns: 1.6em minmax(0, 1fr) auto;
+    grid-template-areas:
+      "no title time"
+      "no artist artist"
+      "no info info";
+    column-gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid #BFAD5E;
+  }
+
+  #tracklist table td {
+    display: block;
+    width: auto;
+    padding: 0;
+    border: 0;
+  }
+
+  #tracklist table td:nth-child(1) {
+    grid-area: no;
+    width: auto;
+    color: #766C45;
+  }
+
+  #tracklist table td:nth-child(2) {
+    grid-area: artist;
+    text-align: left;
+    font-size: 85%;
+    color: #766C45;
+  }
+
+  #tracklist table td:nth-child(3) {
+    grid-area: title;
+  }
+
+  #tracklist table td:nth-child(4) {
+    grid-area: info;
+    text-align: left;
+    font-size: 85%;
+    color: #766C45;
+  }
+
+  #tracklist table td:nth-child(5) {
+    grid-area: time;
+    text-align: right;
+  }
+
+  #tracklist table tr td ul li {
+    font-size: 14px;
+    margin: 2px 0;
+  }
+
+  /* The play icon stays small; its target does not */
+  .play {
+    position: relative;
+  }
+
+  .play::after {
+    content: "";
+    position: absolute;
+    inset: -14px;
+  }
+
+  /* Album lists: the cover to the left, the title over the label and the date */
+  .album-table,
+  .album-table tbody,
+  .artist-table,
+  .artist-table tbody,
+  .label-table,
+  .label-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .album-table thead,
+  .artist-table thead,
+  .label-table thead {
+    display: none;
+  }
+
+  .album-table tr,
+  .artist-table tr,
+  .label-table tr {
+    display: grid;
+    column-gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #BFAD5E;
+  }
+
+  .list table td {
+    display: block;
+    min-width: 0;
+    width: auto;
+    padding: 0;
+    border: 0;
+  }
+
+  .list table td:first-child {
+    width: auto;
+  }
+
+  .album-table tr {
+    grid-template-columns: 56px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "cover title title"
+      "cover label date";
+    align-items: start;
+  }
+
+  .album-table td:nth-child(1) {
+    grid-area: cover;
+  }
+
+  .list .album-table img {
+    width: 56px;
+    height: 56px;
+  }
+
+  .album-table td:nth-child(2) {
+    grid-area: title;
+  }
+
+  .album-table td:nth-child(3) {
+    grid-area: label;
+    font-size: 85%;
+  }
+
+  .album-table td:nth-child(4) {
+    grid-area: date;
+    font-size: 85%;
+    color: #766C45;
+    text-align: right;
+  }
+
+  /* Artists and labels: the name and the count of albums, what else is known under them */
+  .artist-table tr,
+  .label-table tr {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "name count"
+      "more more";
+  }
+
+  .artist-table td:nth-child(1),
+  .label-table td:nth-child(1) {
+    grid-area: name;
+  }
+
+  .artist-table td:nth-child(2),
+  .label-table td:nth-child(2) {
+    grid-area: count;
+    font-size: 85%;
+    color: #766C45;
+  }
+
+  .artist-table td:nth-child(2)::before,
+  .label-table td:nth-child(2)::before {
+    content: "albumów: ";
+  }
+
+  .artist-table td:nth-child(3),
+  .label-table td:nth-child(3) {
+    grid-area: more;
+    font-size: 85%;
+    color: #766C45;
+  }
+
+  /* Album lists with covers (home page, top 10, search) */
+  .albums li img {
+    width: 72px;
+  }
+
+  .albums span {
+    margin-left: 84px;
+  }
+
+  #site-search .albums li img {
+    width: 72px;
+  }
+
+  #site-search .albums span {
+    margin-left: 84px;
+  }
+
+  .albums > ul > li {
+    min-height: 72px;
+    margin-bottom: 12px;
+  }
+
+  #main .top10-list {
+    display: block;
+  }
+
+  .top10-list li {
+    min-height: 0;
+  }
+
+  .box .covers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .covers li {
+    float: none;
+    margin: 0;
+  }
+
+  /* Pagination: buttons a thumb can hit */
+  .pagination {
+    padding: 8px;
+  }
+
+  .pagination table,
+  .pagination tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .pagination tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "pages pages"
+      "prev next"
+      "first last";
+    gap: 4px 8px;
+  }
+
+  .pagination td {
+    display: block;
+    padding: 0;
+  }
+
+  .pagination td:nth-child(1) {
+    grid-area: first;
+  }
+
+  .pagination td:nth-child(2) {
+    grid-area: prev;
+  }
+
+  .pagination td.pages {
+    grid-area: pages;
+  }
+
+  .pagination td:nth-child(4) {
+    grid-area: next;
+    text-align: right;
+  }
+
+  .pagination td:nth-child(5) {
+    grid-area: last;
+    text-align: right;
+  }
+
+  .pagination .pages {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .pagination a,
+  .pagination .active,
+  .pagination .disabled {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0 8px;
+  }
+
+  .pagination .disabled {
+    color: #a99f78;
+  }
+
+  /* Forms across the width */
+  #form,
+  #detail-search {
+    width: auto;
+  }
+
+  #form input[type="text"],
+  #form input[type="password"],
+  #comments form input[type="text"],
+  #detail-search input[type="text"] {
+    display: block;
+    width: 100%;
+    height: 44px;
+    box-sizing: border-box;
+    padding: 0 10px;
+    font-size: 16px;
+  }
+
+  #form label,
+  #comments form label {
+    display: block;
+    margin: 8px 0 4px;
+  }
+
+  #comments form > label {
+    display: none;
+  }
+
+  #comments form textarea {
+    min-height: 120px;
+  }
+
+  #form input[type="submit"],
+  #comments form input[type="submit"],
+  #detail-search input[type="submit"] {
+    float: none;
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    margin: 12px 0 0;
+    border: 0;
+    border-radius: 6px;
+    background: #75672c;
+    color: #fff;
+    font: bold 16px "trebuchet ms", Georgia, sans-serif;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  #detail-search ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 16px;
+    margin: 8px 0 0;
+    overflow: hidden;
+  }
+
+  #detail-search ul li {
+    float: none;
+    margin: 0;
+    line-height: 44px;
+  }
+
+  #no-results {
+    width: auto;
+    margin-top: 24px;
+  }
+
+  /* News */
+  #news-attachment {
+    float: none;
+    display: block;
+    width: 100%;
+    margin: 0 0 12px;
+  }
+
+  #news-container iframe {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  /* The footer: the sprite's band again gives way to its colours */
+  #footer {
+    height: auto;
+    padding: 12px 16px 16px;
+    background: linear-gradient(#d0c17e, #ac9d5a);
+    text-align: center;
+  }
+
+  #footer ul {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0 20px;
+    margin: 0 0 8px;
+  }
+
+  #footer ul li {
+    float: none;
+    margin: 0;
+    padding: 0;
+    line-height: 44px;
+  }
+
+  #disclaimer {
+    float: none;
+    padding: 0;
+  }
+}
+
+/* A tablet, or a phone on its side: the picture beside the facts, the home page in two
+   columns */
+@media (min-width: 600px) and (max-width: 991px) {
+  #content {
+    padding: 16px 24px;
+  }
+
+  #picture,
+  #content #logo {
+    float: left;
+    width: 300px;
+    margin: 0 20px 16px 0;
+  }
+
+  #brief {
+    overflow: hidden;
+  }
+
+  #main .column {
+    float: left;
+    width: 50%;
+    box-sizing: border-box;
+    padding-right: 16px;
+  }
+
+  #main .column + .column {
+    padding: 0 0 0 16px;
+  }
+
+  #main::after {
+    content: "";
+    display: block;
+    clear: both;
+  }
+}

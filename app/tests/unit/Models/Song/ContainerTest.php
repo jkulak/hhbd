@@ -90,4 +90,27 @@ class Model_Song_ContainerTest extends TestCase
             'getAlbumUrl() should not require parameters'
         );
     }
+
+    /**
+     * @dataProvider youTubeAddresses
+     */
+    public function testTheVideoIdComesFromEveryFormOfAddressTheSongsKeep(string $url, ?string $id): void
+    {
+        $this->assertSame($id, Model_Song_Container::youTubeIdOf($url));
+    }
+
+    public static function youTubeAddresses(): array
+    {
+        return array(
+            'the Flash player, as most songs have it' => array('http://www.youtube.com/v/dQw4w9WgXcQ?version=3&f=videos&app=youtube_gdata', 'dQw4w9WgXcQ'),
+            'the Flash player with options'           => array('http://www.youtube.com/v/a-B_c1D2e3F?fs=1&amp;hl=pl_PL', 'a-B_c1D2e3F'),
+            'an embed address'                        => array('https://www.youtube.com/embed/dQw4w9WgXcQ', 'dQw4w9WgXcQ'),
+            'a watch address'                         => array('https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'dQw4w9WgXcQ'),
+            'a watch address with v= further on'      => array('https://www.youtube.com/watch?feature=share&v=dQw4w9WgXcQ', 'dQw4w9WgXcQ'),
+            'a short address'                         => array('https://youtu.be/dQw4w9WgXcQ', 'dQw4w9WgXcQ'),
+            'nothing'                                 => array('', null),
+            'a channel, not a video'                  => array('http://www.youtube.com/user/UrbanRecTv', null),
+            'an id too long'                          => array('https://www.youtube.com/embed/dQw4w9WgXcQx', null),
+        );
+    }
 }

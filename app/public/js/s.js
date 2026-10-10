@@ -134,6 +134,22 @@ $(function () {
         return false;
     });
 
+    // The phone's menu (#149): the button opens and closes it and says which it is; Escape
+    // closes it too, and gives the button its focus back
+    function setMenu(open) {
+        $('#header').toggleClass('nav-open', open);
+        $('#menu-toggle').attr('aria-expanded', open ? 'true' : 'false');
+    }
+    $('#menu-toggle').click(function () {
+        setMenu(!$('#header').hasClass('nav-open'));
+    });
+    $(document).keydown(function (e) {
+        if (e.keyCode == 27 && $('#header').hasClass('nav-open')) {
+            setMenu(false);
+            $('#menu-toggle').focus();
+        }
+    });
+
     // flag videoclip
     $('#rateDown').click(function () {
         $.ajax({

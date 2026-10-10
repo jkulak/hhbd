@@ -6,53 +6,36 @@ published as a release — `gh release create vYYYY.MM.N` — which is what depl
 (`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Releasing is a
 person's decision; nothing releases on its own.
 
-## Unreleased
-
-Search engines may read hhbd.pl again (#147): `robots.txt` had kept every one of them out since
-the code came back in January. Once this is released, adding hhbd.pl to Google Search Console
-and submitting `https://hhbd.pl/sitemap-index.xml` is a step for Kuba, with his account.
-
-### Added
-- `make edit` and `make ovh-edit` set several columns of a row in one operation (#145):
-  `DO="set albums 535" VALUE='{"title": "...", "year": "2010-06-15", "notes": null}'`. One
-  operation in the journal and one undo, where one column at a time took ten of each; a column
-  the row lacks, `id`, `updated` or `updatedby` in the object refuses all of them.
-
-### Fixed
-- `robots.txt` lets search engines in and names the sitemap index; it said `Disallow: /` to all
-  of them since the first commit (#147). The old site said `Allow: /` from 2011 to 2016.
-- The sitemaps can be read (#147). The index parses now: absolute addresses, no stray tag, no
-  text after its end. Every sitemap is `application/xml`, each address its page's canonical
-  one, and the song sitemap lists every song with a page instead of the newest 10,000.
-- The application sees a request that reached the edge over HTTPS as HTTPS: nginx passes the
-  edge's `X-Forwarded-Proto` on (#147). Canonical tags read `https://` only because Cloudflare
-  rewrote them, and the sitemaps said `http://`.
-- A missing album, artist, song, label or news item is a 404 at its own address (#147), where
-  it redirected to `/a.html` and the like first. The error page is a page of the site, titled
-  "Nie ma takiej strony", not a second document inside it titled "Zend Framework Default
-  Application", and it is `noindex`, as are search results and the login and registration
-  pages.
-- Meta descriptions carry no HTML (#147): an artist's had its description's tags, a song's its
-  lyrics' `<br />`, a news item's its whole text, and the cut could split a Polish letter.
-- `make edit DO="set ..." VALUE=` sets an empty string, as it says; the tool dropped the empty
-  argument on the way and refused the call.
-- An admin's edits name them in `updatedby` the way the rest of the history does (#132, migration
-  0033): `updatedby` and `addedby` are `users` IDs, and the review panel and `make edit` wrote the
-  admin's `hhb_users` id instead, which in `users` is someone else. `users.hhb_usr_id` links an
-  admin's account to their `users` row, Kuba's to `fee` and Marcin Kaźmiruk's to `muuody`; the
-  one row the tools had written, artist 2194 from #114, names `fee` now.
-
 ## 2026.10.9 — 2026-10-10
 
 PHP 8.4 from Debian 13's own packages (#37): on a copy of production the same pages answer about
 four times faster, and the web's image is less than half its size. The addresses from before the
 `.html` ones lead to today's pages (#26), news items show their images again (#133), and a
 logged-in admin sees who added a row and when. nginx answers a missing `.php` itself (#34) and
-serves no dotfile (#139). Migrations 0031 and 0032 are on production already, and the compose
-file with the two colours (#124) is installed: no `make ovh-install`. The release's smoke test
-passed on a copy of production with this code.
+serves no dotfile (#139).
+
+hhbd.pl has a layout for phones and tablets (#149), and its videos play again, in YouTube's
+player instead of the Flash one no browser runs. Search engines may read the site again
+(#147): `robots.txt` had kept every one of them out since January, and the sitemaps, the 404s
+and the meta descriptions are fixed to go with it. An admin's edits name the admin the way the
+rest of the history does (#132), and `make ovh-edit` sets several columns at once (#145).
+
+Migrations 0031 to 0033 are on production already, and the compose file with the two colours
+(#124) is installed: no `make ovh-install`. After the release, adding hhbd.pl to Google Search
+Console and submitting `https://hhbd.pl/sitemap-index.xml` is a step for Kuba, with his
+account.
 
 ### Added
+- A layout for phones and tablets (#149). Below 992 px a page is one column, the main one
+  first: a header bar with the logo, a menu button and the search across the width; the
+  tracklist, the album, artist and label lists as rows that fit the screen; pagination,
+  buttons and menu entries at least 44 px high; form fields across the width at 16 px, which
+  iOS does not zoom into. From 600 px a cover or a photo stands beside its facts and the home
+  page has two columns; from 992 px the page is as it always was.
+- `make edit` and `make ovh-edit` set several columns of a row in one operation (#145):
+  `DO="set albums 535" VALUE='{"title": "...", "year": "2010-06-15", "notes": null}'`. One
+  operation in the journal and one undo, where one column at a time took ten of each; a column
+  the row lacks, `id`, `updated` or `updatedby` in the object refuses all of them.
 - A logged-in admin sees who added an album, artist, song or label and when, as one more line
   of the page's details: "Dodano: 12 maja 2009, 14:03 (Kuba)", the import and an unknown author
   by those names. Nobody else sees it.
@@ -65,6 +48,9 @@ passed on a copy of production with this code.
   old addresses, where they belong.
 
 ### Changed
+- The layout loads `css/s.css` and `js/s.js` themselves, at addresses that carry the start of
+  their MD5 (`?v=`), so a release reaches visitors at once: Cloudflare and browsers keep
+  `/css/` and `/js/` for five days (#149).
 - PHP 8.4, from Debian 13's own packages, in every image: the web's, the importer's and CI's
   builder (#37). PHP 7.4 had been out of support since 2022 and its image's
   Debian 11 was fetched from archive.debian.org with no security update ever again; Debian 13
@@ -115,6 +101,9 @@ passed on a copy of production with this code.
   variable.
 
 ### Removed
+- `css/s.min.css` and `js/s.min.js` (#149). The stylesheet was minified once in January from
+  the first commit's `s.css`, so what `s.css` gained since, the photo gallery's captions
+  (#61), never reached the site.
 - The VS Code dev container (#136): nobody uses it. What it did moves to the local stack, as the
   host has no PHP: the development override runs the app on the `builder` stage, so
   `docker compose exec app composer install` fills `app/vendor`; `make test-unit` runs the unit
@@ -123,6 +112,31 @@ passed on a copy of production with this code.
   app's image where the host has none.
 
 ### Fixed
+- A song's video plays again (#149): most songs keep the Flash player's address, which no
+  browser has played for years. The page shows YouTube's player (`youtube-nocookie.com`) by the
+  video's id, across the column at 16:9.
+- `robots.txt` lets search engines in and names the sitemap index; it said `Disallow: /` to all
+  of them since the first commit (#147). The old site said `Allow: /` from 2011 to 2016.
+- The sitemaps can be read (#147). The index parses now: absolute addresses, no stray tag, no
+  text after its end. Every sitemap is `application/xml`, each address its page's canonical
+  one, and the song sitemap lists every song with a page instead of the newest 10,000.
+- The application sees a request that reached the edge over HTTPS as HTTPS: nginx passes the
+  edge's `X-Forwarded-Proto` on (#147). Canonical tags read `https://` only because Cloudflare
+  rewrote them, and the sitemaps said `http://`.
+- A missing album, artist, song, label or news item is a 404 at its own address (#147), where
+  it redirected to `/a.html` and the like first. The error page is a page of the site, titled
+  "Nie ma takiej strony", not a second document inside it titled "Zend Framework Default
+  Application", and it is `noindex`, as are search results and the login and registration
+  pages.
+- Meta descriptions carry no HTML (#147): an artist's had its description's tags, a song's its
+  lyrics' `<br />`, a news item's its whole text, and the cut could split a Polish letter.
+- `make edit DO="set ..." VALUE=` sets an empty string, as it says; the tool dropped the empty
+  argument on the way and refused the call.
+- An admin's edits name them in `updatedby` the way the rest of the history does (#132, migration
+  0033): `updatedby` and `addedby` are `users` IDs, and the review panel and `make edit` wrote the
+  admin's `hhb_users` id instead, which in `users` is someone else. `users.hhb_usr_id` links an
+  admin's account to their `users` row, Kuba's to `fee` and Marcin Kaźmiruk's to `muuody`; the
+  one row the tools had written, artist 2194 from #114, names `fee` now.
 - A news item shows its image again (#133). The page built the address from a path the
   configuration never had, so it was the bare file name, which loaded nothing; it is
   `/content/news/` now, the file name encoded, as old names hold spaces, Polish letters and a
