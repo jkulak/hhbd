@@ -102,6 +102,27 @@ class Model_Song_Container
         }
     }
 
+    /** The video's YouTube id, for the player (#149), or null when the song has no video */
+    public function getYouTubeId()
+    {
+        return isset($this->youTubeUrl) ? self::youTubeIdOf($this->youTubeUrl) : null;
+    }
+
+    /**
+     * The id in a YouTube address, in any form the songs keep: /v/ID, the Flash player's that no
+     * browser plays any more, on most of them; /embed/ID; watch?v=ID; youtu.be/ID. Null for
+     * anything else.
+     */
+    public static function youTubeIdOf($url)
+    {
+        $id = '([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])';
+        if (preg_match('~youtube(?:-nocookie)?\.com/(?:v/|embed/|watch\?(?:[^#]*?&(?:amp;)?)?v=)' . $id . '~', (string) $url, $m)
+            || preg_match('~youtu\.be/' . $id . '~', (string) $url, $m)) {
+            return $m[1];
+        }
+        return null;
+    }
+
     public function url()
     {
         return Jkl_Tools_Url::createUrl($this->title);

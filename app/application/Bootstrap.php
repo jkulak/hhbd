@@ -88,6 +88,9 @@ class Bootstrap extends Zend_Application_Bootstrap_Bootstrap
     $view->doctype('HTML5');
     // $view->headMeta()->appendHttpEquiv('Content-Type', 'text/html;charset=utf-8');
     $view->headMeta()->setCharset('utf-8');    
+    // As wide as the screen it is on, not a desktop page shrunk to a third (#149)
+    $view->headMeta()->setName('viewport', 'width=device-width, initial-scale=1');
+    $view->headMeta()->setName('theme-color', '#d0c17e');
     $view->headMeta()->setName('robots', 'index,follow');
     $view->headMeta()->setName('author', 'Jakub Kułak, www.webascrazy.net');
     $view->headTitle()->setSeparator(' - ');

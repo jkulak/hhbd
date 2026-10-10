@@ -384,6 +384,8 @@ run_fixture_tests() {
     test_redirect_301 "An old address's underscore finds a slug written with a dash (#26)" "/n/dj_technik" "/dj-technik-p6.html"
     test_not_found "A song on no album and by no artist is a 404, not a 500 (#37)" "/bez-albumu-s9100.html" "Call to a member function"
     test_page_absent "and the song sitemap leaves it out (#147)" "/sitemap-songs.xml" "-s9100.html<"
+    test_page "A song's video kept as a Flash address plays in YouTube's player (#149)" "/pogoda-s7329.html" 'src="https://www.youtube-nocookie.com/embed/M7lc1UVf-VE"'
+    test_page_absent "and nothing asks for Flash" "/pogoda-s7329.html" "x-shockwave-flash"
     test_page "An artist's meta description is its description's text (#147)" "/mes-p35.html" 'name="description" content="Raper z Krakowa, &quot;Fach&quot;."'
     test_page "A song's is its lyrics' lines with a comma between" "/pogoda-s7329.html" 'name="description" content="Tekst i teledysk utworu Wdowa - Pogoda. Słońce świeci jasno nad miastem..., A my na ławce"'
     test_page "A news item's is its text without the tags" "/onar-jak-na-pierwszej-plycie-wideo-n1877.html" 'name="description" content="Onar wraca z nowym singlem promującym jego najnowszy album. Artysta prezentuje świeży materiał, który nawiązuje do jego wcześniejszej twórczości."'
@@ -519,6 +521,30 @@ test_sitemap() {
     return 1
 }
 
+# md5_of: the MD5 of stdin, with md5sum (Linux) or md5 (macOS)
+md5_of() {
+    if command -v md5sum >/dev/null 2>&1; then md5sum | cut -d' ' -f1; else md5 -q; fi
+}
+
+# test_asset <name> <path>: the home page links the file at an address ending in the start of
+# its MD5, so a changed file is a new address that no cache holds (#149)
+test_asset() {
+    local name="$1" path="$2"
+    local address hash
+    address=$(curl -s --max-time 10 $CURL_OPTS "${BASE_URL}/" 2>/dev/null | grep -o "${path}?v=[0-9a-f]*" | head -1)
+    hash=$(curl -s --max-time 10 $CURL_OPTS "${BASE_URL}${path}" 2>/dev/null | md5_of | cut -c1-8)
+    if [[ -n "$hash" && "$address" == "${path}?v=${hash}" ]]; then
+        echo -e "${GREEN}✓${NC} $name"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - linked as '$address', the file's MD5 starts '$hash'"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
+}
+
 run_tests() {
     echo "Running tests..."
     echo ""
@@ -619,6 +645,16 @@ run_tests() {
     test_page_absent "An artist's meta description holds no HTML" "/mes-p35.html" '&lt;p'
     test_page_absent "A song's meta description holds none of its lyrics' line breaks" "/pogoda-s7329.html" '&lt;br'
     test_page_absent "A news item's meta description holds no HTML" "/onar-jak-na-pierwszej-plycie-wideo-n1877.html" 'name="description" content="[^"]*&lt;'
+    echo ""
+
+    # Phones (#149)
+    echo "--- Phones ---"
+    test_page "A page is as wide as the screen it is on" "/" 'name="viewport" content="width=device-width, initial-scale=1"'
+    test_page "The header has the phone's menu button" "/" 'id="menu-toggle" aria-controls="nav" aria-expanded="false"'
+    test_asset "The stylesheet's address carries its hash" "/css/s.css"
+    test_asset "The script's address carries its hash" "/js/s.js"
+    test_page_absent "The stylesheet minified once in January is gone" "/" "s.min.css"
+    test_page "The album list's table has its class for the phone's layout" "/albumy.html" 'class="album-table"'
     echo ""
 
     # Canonical URL tests

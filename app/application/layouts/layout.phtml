@@ -4,14 +4,16 @@
 <head>
 <?php echo $this->headMeta(); ?>
 <?php echo $this->headTitle(); ?>
-<?php $this->headLink()->prependStylesheet($this->baseUrl() . '/css/s.min.css'); ?>
+<?php // Before the stylesheet: the phone's menu folds away only where a script can open it (#149) ?>
+<script>document.documentElement.className += ' js';</script>
+<?php $this->headLink()->prependStylesheet($this->Asset('/css/s.css')); ?>
 <?php echo $this->headLink(); ?>
 <?php if (isset($this->headIncludes['jquery'])) {
     $this->headScript()->appendFile($this->baseUrl() . $this->headIncludes['jquery']['path']);
 } ?>
 <?php $this->headScript()->appendFile($this->baseUrl() . '/js/jquery.tipsy.js') ?>
 <?php echo $this->headScript(); ?>
-<script src="/js/s.min.js" type="text/javascript" charset="utf-8"></script>
+<script src="<?php echo $this->Asset('/js/s.js') ?>" type="text/javascript" charset="utf-8"></script>
 <link href="/favicon.ico?" rel="shortcut icon" type="image/x-icon" />
 
 <link rel="search" type="application/opensearchdescription+xml" title="Hhbd.pl" href="/opensearch.xml">
@@ -43,6 +45,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           <div>Przejdź do strony głównej Hhbd.pl</div>
         </a>
       </div>
+      <button type="button" id="menu-toggle" aria-controls="nav" aria-expanded="false"><span class="bars" aria-hidden="true"></span>Menu</button>
 <?php echo $this->partial('_nav.phtml') ?>
   </div> <!-- header -->
 
