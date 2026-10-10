@@ -52,6 +52,11 @@ class Model_Import_ContractTest extends TestCase
                     'credits' => array(array('ref' => 'artist:rumak', 'role' => 'producer', 'feat_type' => null)))),
                 'hhbd_id' => null, 'external_ids' => array('discogs:master' => '1098710', 'barcode:gtin14' => '00190295868383'),
             )),
+            'a self-release, with no label (#168)' => array(array(
+                'kind' => 'release', 'ref' => 'release:discogs:master:2000001', 'title' => 'Nielegal',
+                'artists' => array(array('ref' => 'artist:taco-hemingway', 'role' => 'main', 'position' => 1)),
+                'release_date' => '2016-03-18', 'release_date_precision' => 'day', 'label' => null, 'self_released' => true,
+            )),
             'a cover for an album hhbd has' => array(array(
                 'kind' => 'image', 'target' => array('entity' => 'album', 'ref' => 'hhbd:album:966'), 'role' => 'cover',
                 'file' => $file + array('source' => 'discogs', 'source_url' => null, 'licence' => 'restricted', 'needs_upgrade' => true),
@@ -83,6 +88,7 @@ class Model_Import_ContractTest extends TestCase
             'a release with no artists' => array(array('kind' => 'release', 'ref' => 'release:x', 'title' => 'X', 'artists' => array()), '$.artists: fewer than 1 items'),
             'an unknown kind of id' => array(array('kind' => 'label', 'ref' => 'label:x', 'name' => 'X', 'external_ids' => array('spotify:artist' => '1')), '$.external_ids.spotify:artist (name): does not match ^(discogs:(master|release|artist|label)|musicbrainz:(release_group|release|recording|artist|label)|wikidata:item|deezer:(album|artist)|itunes:(collection|artist)|plwiki:pageid|barcode:gtin14|isrc:isrc)$'),
             'a date with zero parts' => array(array('kind' => 'release', 'ref' => 'release:x', 'title' => 'X', 'artists' => array(array('ref' => 'artist:a', 'role' => 'main', 'position' => 1)), 'release_date' => '2016-11-00'), '$.release_date: not a date'),
+            'a self-release with a label (#168)' => array(array('kind' => 'release', 'ref' => 'release:x', 'title' => 'X', 'artists' => array(array('ref' => 'artist:a', 'role' => 'main', 'position' => 1)), 'self_released' => true, 'label' => array('ref' => 'label:y')), '$.label: expected null, got object'),
             'a cover image without its file' => array(array('kind' => 'image', 'target' => array('entity' => 'album', 'ref' => 'hhbd:album:1'), 'role' => 'cover'), '$: file is missing'),
             'a GIF' => array(array('kind' => 'image', 'target' => array('entity' => 'album', 'ref' => 'hhbd:album:1'), 'role' => 'cover', 'file' => array('path' => 'files/a.gif', 'width' => 1, 'height' => 1, 'sha256' => str_repeat('a', 64), 'mime' => 'image/gif')), '$.file.mime: "image/gif" is not one of ["image/jpeg","image/png","image/webp"]'),
         );

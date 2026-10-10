@@ -6,8 +6,9 @@
 #   - merging a namesake into the artist it is moves every reference, drops the ones the kept
 #     artist has already, deletes the duplicate, keeps its old URL as a redirect, and records
 #     what it moved so it can be undone; no column anywhere still names the duplicate
-#   - "keep apart", "change the qualifier", "accept the cover", "pick this date" and "pick this
-#     type" each do what they say and close the item with the admin and the time
+#   - "keep apart", "change the qualifier", "accept the cover", "pick this date", "pick this
+#     type" and "publish it as it is" each do what they say and close the item with the admin
+#     and the time
 #   - a value that is no date is refused and leaves the item open
 #   - the list counts what is still open
 #   - an admin sees on a page who added its row and when: a person, the import, nobody known
@@ -124,6 +125,12 @@ check "a date picked, whole with its precision" "302 picked 10 1 - 2013-05-17 da
 check "a type picked" "302 picked 10 1 - ep" "$(settle 4 pick 'ep' '') $(item 4) $(sql "SELECT release_type FROM albums WHERE id = 2")"
 check "a release only one catalogue knew, checked" "302 accepted 10 1 -" "$(settle 5 accept '' '') $(item 5)"
 check "a settled item cannot be settled again" "302 merged 10 1 ten sam, inna wytwórnia" "$(settle 1 keep '' '') $(item 1)"
+
+echo "> an album an import left unpublished, published as it is (#168)"
+check "a visitor gets a 404 for it first" "404" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL/mes-tasma-robocza-a779.html")"
+check "publishing it closes the item and shows the album, recorded as the admin's" "302 published 10 1 - 999 $admin_row" \
+    "$(settle 8 publish '' '') $(item 8) $(sql "SELECT CONCAT_WS(' ', status, updatedby) FROM albums WHERE id = 779")"
+check "now a visitor opens it" "200" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL/mes-tasma-robocza-a779.html")"
 
 echo "> the list"
 check "nothing open is left" "0" "$(curl -s --max-time 10 -b "$T/jar" "$URL/admin/do-przejrzenia.html" | grep -o 'Wszystkie</a>: [0-9]*' | grep -o '[0-9]*$')"
