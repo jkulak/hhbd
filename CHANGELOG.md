@@ -6,6 +6,14 @@ published as a release — `gh release create vYYYY.MM.N` — which is what depl
 (`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Nothing releases on
 its own: releasing is the last step of finishing a change, taken by whoever made it (#175).
 
+## Unreleased
+
+### Fixed
+- On a desktop screen the text after a page's heading stood beside it, as on the years, Top 10
+  and the admin's review list: the heading floats for the share buttons on an album's, artist's,
+  song's and label's page, and took everything else beside it too. Whatever follows a heading
+  starts below it now; the share buttons stay (#208).
+
 ## 2026.10.18 — 2026-10-11
 
 For search engines and for visitors: page views are counted again, by day (#68), so the home
