@@ -545,6 +545,7 @@ class Model_Import_Importer extends Jkl_Model_Api
         $core = array(
             'release_type'           => $this->value($doc, 'release_type', 'album'),
             'labelid'                => !empty($doc['label']) ? $this->resolve($doc['label']['ref'], 'label') : null,
+            'self_released'          => !empty($doc['self_released']) ? 1 : 0,
             'year'                   => $this->value($doc, 'release_date'),
             'release_date_precision' => $this->value($doc, 'release_date_precision', 'day'),
             'announced'              => !empty($doc['announced']) ? 1 : 0,
@@ -564,20 +565,31 @@ class Model_Import_Importer extends Jkl_Model_Api
         $created = null === $id;
         if ($created) {
             $columns = array_merge($core, $facts);
+            // Unpublished until settlePublication() has seen its tracklist too (#168).
             $this->_db->query(
                 'INSERT INTO albums (title, urlname, premier, artistabout, ' . implode(', ', array_keys($columns)) . ", addedby, added, status)
-                 VALUES (?, ?, '', ''" . str_repeat(', ?', count($columns)) . ', ?, NOW(), 999)',
+                 VALUES (?, ?, '', ''" . str_repeat(', ?', count($columns)) . ', ?, NOW(), 0)',
                 array_merge(array($title, $this->slug($title)), array_values($columns), array($this->userId))
             );
             $id = (int) $this->_db->lastInsertId();
             $this->touch('core', 'facts', $facts);
         } else {
+            $this->refineDate($id, $core['year'], $core['release_date_precision']);
             // Only what a person may have left empty: a type, a precision or a legal flag always
             // holds a value, and a default nobody chose cannot be told from a choice.
             $this->fill('albums', $id, $title, 'core', array_intersect_key($core, array_flip(array(
                 'labelid', 'year', 'epfor', 'catalog_cd', 'catalog_lp', 'catalog_mc', 'catalog_digital',
             ))));
             $this->fill('albums', $id, $title, 'facts', $facts);
+            // A self-release is no label, so it fills in only where hhbd names none (#168).
+            if (1 === $core['self_released']) {
+                $label = $this->_db->fetchAll('SELECT labelid FROM albums WHERE id = ?', array($id));
+                if (null === $label[0]['labelid']) {
+                    $this->fill('albums', $id, $title, 'core', array('self_released' => 1), array('self_released' => '0'));
+                } else {
+                    $this->warnings[] = sprintf('album %d has label %d, the batch says it is self-released; hhbd keeps its label', $id, $label[0]['labelid']);
+                }
+            }
         }
         $this->addIds('album', $id, $doc);
 
@@ -603,7 +615,96 @@ class Model_Import_Importer extends Jkl_Model_Api
                 'values' => $this->value($doubt, 'values'),
             )));
         }
+        $this->settlePublication($id, $created);
         return array('album', $id, $created);
+    }
+
+    /**
+     * A date the album lacks, or one more precise than hhbd's and inside it, goes in with its
+     * precision: a day in the month or the year hhbd knows refines it, as an album needs its day
+     * to be published (#168). A date that disagrees is left to fill(), which keeps hhbd's.
+     */
+    private function refineDate($id, $date, $precision)
+    {
+        if (empty($date)) {
+            return;
+        }
+        $row = $this->_db->fetchAll('SELECT year, release_date_precision FROM albums WHERE id = ?', array($id));
+        $has = $row[0]['year'];
+        $hasPrecision = $row[0]['release_date_precision'];
+        $order = array('year' => 1, 'month' => 2, 'day' => 3);
+        if (!empty($has)) {
+            if ($order[$precision] <= $order[$hasPrecision]) {
+                return;
+            }
+            $known = 'year' === $hasPrecision ? 4 : 7;
+            if (substr($has, 0, $known) !== substr($date, 0, $known)) {
+                return;
+            }
+        }
+        $this->update('albums', $id, 'core', array('year' => $date, 'release_date_precision' => $precision));
+    }
+
+    /**
+     * Shows an album an import made once it has what a visitor is shown, and holds back one that
+     * lacks a part, with a review item naming the parts (#168): a label or a self-release, a
+     * date to the day, a tracklist. A later batch that brings the rest publishes it and closes
+     * the item. An album hhbd had before any import, or one an admin published as it was, keeps
+     * its status whatever it lacks.
+     */
+    private function settlePublication($id, $created)
+    {
+        $lacks = Model_Album_Api::getInstance()->lacksOf($id);
+        $row = $this->_db->fetchAll('SELECT status, addedby FROM albums WHERE id = ?', array($id));
+        $published = Model_Album_Api::PUBLISHED === (int) $row[0]['status'];
+        $open = null;
+        foreach ($this->reviews->openFor('album', $id) as $item) {
+            if ('incomplete' === $item->reason) {
+                $open = $item;
+            }
+        }
+
+        if (empty($lacks)) {
+            if (!$published) {
+                $this->setStatus($id, Model_Album_Api::PUBLISHED, $created);
+            }
+            if (null !== $open) {
+                $this->reviews->close($open->id, Model_Review_Api::COMPLETED, 'An import brought what it lacked.', $this->userId);
+                $this->warnings[] = sprintf('album %d has all it lacked now, and is published', $id);
+            }
+            return;
+        }
+
+        $detail = array('text' => 'brak: ' . implode(', ', $lacks));
+        if (null !== $open) {
+            if ($open->getText() !== $detail['text']) {
+                $this->reviews->setDetail($open->id, $detail);
+            }
+            return;
+        }
+        $made = $created || (int) $row[0]['addedby'] === (int) $this->userId;
+        if (!$made || ($published && $this->reviews->publishedByAdmin($id))) {
+            return;
+        }
+        if ($published) {
+            $this->setStatus($id, 0, $created);
+        }
+        $this->review('album', $id, 'incomplete', $detail);
+    }
+
+    /**
+     * Publishes or holds back an album, saying the import did it (#63, #168), unless the import
+     * has just made it: a new row has not been edited.
+     */
+    private function setStatus($id, $status, $created)
+    {
+        if ($created) {
+            $this->_db->query('UPDATE albums SET status = ? WHERE id = ?', array($status, $id));
+            return;
+        }
+        $this->_db->query('UPDATE albums SET status = ?, updatedby = ?, updated = NOW() WHERE id = ?', array($status, $this->userId, $id));
+        // Not a group of the source's fields, so no provenance; the report says updated.
+        $this->touched['status'] = true;
     }
 
     /** Opens an item for a person to settle (#103), and says so in the report */

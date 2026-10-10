@@ -429,6 +429,7 @@ run_fixture_tests() {
     test_page_absent "under his name alone" "/sklad-solara-p66.html" "(SBM Label)"
     test_page "An album from the site's first months, published by 0036, is shown (#168)" "/eldo-pierwszy-rok-a81.html" "<h1>"
     test_page "and listed on its artist's page" "/eldo-p2.html" "Pierwszy Rok"
+    test_page "A self-release shows \"wydanie własne\" where a label would be (#168)" "/woyza-wlasnym-sumptem-a780.html" "wydanie własne"
     # An unpublished album and the song only it has (#168): nowhere for a visitor
     test_not_found "An unpublished album is a 404 to a visitor (#168)" "/mes-tasma-robocza-a779.html" "Taśma Robocza"
     test_page_absent "and its artist's page does not list it" "/mes-p35.html" "Taśma Robocza"
@@ -448,7 +449,8 @@ run_fixture_tests() {
     test_page_multi "And an album's disputed date with the sources' values" "/eldo-podmiejski-gwar-a50.html" "Źródła nie zgadzają się co do daty" "Data: 2013-05-17"
     test_page_multi "And a stand-in cover" "/wdowa-superextra-a535.html" "Okładka zastępcza" "Ta okładka zostaje"
     test_page_multi "An admin opens an unpublished album, told nobody else sees it (#168)" "/mes-tasma-robocza-a779.html" "Album nieopublikowany" "<h1>" "Taśma Robocza" 'name="robots" content="noindex,nofollow"'
-    test_page_multi "The list counts the open items by reason" "/admin/do-przejrzenia.html" 'data-reason="namesake">1<' 'data-reason="single_source">1<' "Solar (raper z Poznania)"
+    test_page_multi "and what it lacks, with the way to publish it as it is" "/mes-tasma-robocza-a779.html" "Niekompletny, nieopublikowany" "brak: wytwórnia, data dzienna" "Opublikuj mimo braków"
+    test_page_multi "The list counts the open items by reason" "/admin/do-przejrzenia.html" 'data-reason="namesake">1<' 'data-reason="single_source">1<' 'data-reason="incomplete">1<' "Solar (raper z Poznania)"
     CURL_OPTS="$visitor_opts"
     rm -f "$jar"
     echo ""

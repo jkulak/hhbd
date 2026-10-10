@@ -79,3 +79,14 @@ INSERT INTO `songs` (`id`, `title`, `urlname`, `lyrics`, `addedby`, `status`, `v
 (9101, 'Szkic Numer Jeden', 'szkic-numer-jeden', '', 1100, 999, 0);
 INSERT INTO `album_lookup` (`songid`, `albumid`, `disc`, `track`, `status`) VALUES (9101, 779, 1, 1, 999);
 INSERT INTO `artist_lookup` (`songid`, `artistid`, `status`) VALUES (9101, 35, 999);
+
+-- What it lacks, for the admin (#168), and a self-release with all it needs: published, with
+-- "wydanie własne" where a label would be.
+INSERT INTO `review_items` (`id`, `entity_type`, `entity_id`, `reason`, `detail`, `run_id`, `created`) VALUES
+(8, 'album', 779, 'incomplete', '{"text": "brak: wytwórnia, data dzienna"}', 1, '2026-10-10 12:00:00');
+INSERT INTO `albums` (`id`, `title`, `urlname`, `labelid`, `self_released`, `year`, `release_date_precision`, `legal`, `cover`, `premier`, `artistabout`, `addedby`, `status`, `viewed`) VALUES
+(780, 'Własnym Sumptem', 'wlasnym-sumptem', NULL, 1, '2016-03-18', 'day', 'y', '', '', '', 1100, 999, 0);
+INSERT INTO `album_artist_lookup` (`albumid`, `artistid`, `role`, `position`, `status`) VALUES (780, 68, 'main', 1, 999);
+INSERT INTO `songs` (`id`, `title`, `urlname`, `lyrics`, `addedby`, `status`, `viewed`) VALUES
+(9102, 'Domowa Produkcja', 'domowa-produkcja', '', 1100, 999, 0);
+INSERT INTO `album_lookup` (`songid`, `albumid`, `disc`, `track`, `status`) VALUES (9102, 780, 1, 1, 999);

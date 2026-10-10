@@ -163,8 +163,8 @@ echo "> the import in addedby"
 check "users has the import as 1100, with no password" "import, no password" "$(sql "SELECT CONCAT(login, IF(pass IS NULL, ', no password', ', a password')) FROM users WHERE ID = 1100")"
 sql "UPDATE artists SET addedby = 1100 WHERE id = 35"
 sql "UPDATE labels SET addedby = 1100 WHERE id = 58"
-# Album 779, the fixtures' unpublished one, is the import's too (#168).
-check "the README's query lists what the import added" "artist 35 label 58 album 779" "$(sql "SELECT 'album' AS type, id, title AS name, added FROM albums WHERE addedby = 1100 UNION ALL SELECT 'artist', id, name, added FROM artists WHERE addedby = 1100 UNION ALL SELECT 'label', id, name, added FROM labels WHERE addedby = 1100 ORDER BY added, type, id" | awk -F'\t' '{ printf "%s%s %s", sep, $1, $2; sep = " " }')"
+# Albums 779 and 780, the fixtures' unpublished one and self-release, are the import's too (#168).
+check "the README's query lists what the import added" "artist 35 label 58 album 779 album 780" "$(sql "SELECT 'album' AS type, id, title AS name, added FROM albums WHERE addedby = 1100 UNION ALL SELECT 'artist', id, name, added FROM artists WHERE addedby = 1100 UNION ALL SELECT 'label', id, name, added FROM labels WHERE addedby = 1100 ORDER BY added, type, id" | awk -F'\t' '{ printf "%s%s %s", sep, $1, $2; sep = " " }')"
 
 echo "> one artist-city table"
 pairs() { sql "SELECT GROUP_CONCAT(CONCAT(cityid, ':', artistid, ':', status) ORDER BY cityid, artistid, status SEPARATOR ' ') FROM \`$1\`"; }
