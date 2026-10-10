@@ -724,6 +724,7 @@ run_tests() {
     test_asset "The script's address carries its hash" "/js/s.js"
     test_page_absent "The stylesheet minified once in January is gone" "/" "s.min.css"
     test_page "The album list's table has its class for the phone's layout" "/albumy.html" 'class="album-table"'
+    test_page "A track's artists are in a box of limited width (#156)" "/wdowa-superextra-a535.html" '<span class="artists">'
     test_page_absent "No page loads jQuery, 1.4.4 or any other (#43)" "/wdowa-superextra-a535.html" "jquery"
     test_page "The site's script runs once the page is parsed" "/" '<script src="/js/s.js?v=[0-9a-f]*" defer>'
     test_page_absent "The comment form carries no inline script" "/wdowa-superextra-a535.html" "limitChars"

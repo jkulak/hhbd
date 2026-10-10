@@ -6,6 +6,13 @@ published as a release — `gh release create vYYYY.MM.N` — which is what depl
 (`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Releasing is a
 person's decision; nothing releases on its own.
 
+## Unreleased
+
+### Fixed
+- A compilation's tracklist has its titles on the left again (#156). The artists' column, right
+  next to them, took the width of its longest line, three names on Flirtini's "Heartbreaks &
+  Promises Vol. 3", and pushed the titles to the middle; a list longer than 10em now wraps.
+
 ## 2026.10.10 — 2026-10-10
 
 The search finds names with ó in them, and finds them without their Polish letters, as people
