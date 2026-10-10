@@ -376,9 +376,11 @@
     }
 
     // Every page with ads on: each unit asks AdSense for its ad (#172), the line AdSense's own code
-    // has inline after it; adsbygoogle.js, loaded async in <head>, takes the queue when it comes
+    // has inline after it; adsbygoogle.js, loaded async in <head>, takes the queue when it comes.
+    // Only the units nobody has filled: when AdSense ran first, its own page-level formats are
+    // already in the page as filled units, and one request too many is a TagError (#179).
     function ads() {
-        $$('ins.adsbygoogle').forEach(function () {
+        $$('ins.adsbygoogle:not([data-adsbygoogle-status])').forEach(function () {
             (window.adsbygoogle = window.adsbygoogle || []).push({});
         });
     }
