@@ -64,3 +64,8 @@ INSERT INTO `review_items` (`id`, `entity_type`, `entity_id`, `reason`, `detail`
 -- The admin's password, adminpass, as password_hash() makes it (#41), which needs 0034's wider
 -- column; the tests log in with it.
 UPDATE `hhb_users` SET `usr_password` = '$2y$12$sxdWRc7n3UH1A8DiXi7iyutjX4TF22J4e/Tlgy99UZ5bQeSDDUZia' WHERE `usr_id` = 10;
+
+-- Main photos that are not square (#166): Eldo's landscape, as production's is, and Stasiak's
+-- portrait; the page keeps their proportions with the longer side at 300 px.
+UPDATE `artists_photos` SET `width` = 600, `height` = 378 WHERE `artistid` = 2 AND `main` = 'y';
+UPDATE `artists_photos` SET `width` = 225, `height` = 300 WHERE `artistid` = 3 AND `main` = 'y';

@@ -40,6 +40,11 @@ Google's tags wait for consent (#162). The production compose file now carries
   source, credit and licence; the listen links stay for everyone.
 
 ### Fixed
+- An album's cover and an artist's main photo keep their proportions (#166). Every one was
+  shown at 300×300, so a file that is not square was squeezed: Eldo's 600×378 photo, the
+  270 px high cover of "Buc", and since the 2016 import 86 main photos and 184 covers like
+  them. The longer side is 300 px now, the other follows; a picture taller than wide stands
+  300 px high.
 - News excerpts are cut after a whole word, never split a Polish letter, and end in "..." only
   when they were cut (#163). The excerpt counted bytes, cut one character before the first space
   after the limit ("odpowiad..."), could stop inside a letter ("si" and a broken character on the home page),
