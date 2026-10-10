@@ -465,6 +465,7 @@ run_fixture_tests() {
     test_page_absent "nor its artist's page" "/mes-p35.html" "Szkic Numer Jeden"
     # What an import left to settle (#103): nothing for a visitor, a panel for the fixtures' admin.
     test_page_absent "A visitor sees no review panel" "/solar-raper-z-poznania-p65.html" "Do przejrzenia"
+    test_page_absent "nor a page's views, which are an admin's (#214)" "/wdowa-superextra-a535.html" "Wyświetlenia:"
     local jar visitor_opts="$CURL_OPTS"
     jar=$(mktemp)
     curl -s -o /dev/null --max-time 10 $CURL_OPTS -c "$jar" --data-urlencode "email=admin@example.com" --data-urlencode "password=adminpass" "$BASE_URL/uzytkownik/logowanie.html"
@@ -475,6 +476,11 @@ run_fixture_tests() {
     test_page_multi "An admin opens an unpublished album, told nobody else sees it (#168)" "/mes-tasma-robocza-a779.html" "Album nieopublikowany" "<h1>" "Taśma Robocza" 'name="robots" content="noindex,nofollow"'
     test_page_multi "and what it lacks, with the way to publish it as it is" "/mes-tasma-robocza-a779.html" "Niekompletny, nieopublikowany" "brak: wytwórnia, data dzienna" "Opublikuj mimo braków"
     test_page_multi "The list counts the open items by reason" "/admin/do-przejrzenia.html" 'data-reason="namesake">1<' 'data-reason="single_source">1<' 'data-reason="incomplete">1<' "Solar (raper z Poznania)"
+    test_page_multi "An admin sees an album's views and a link to its report in Google Analytics (#214)" "/wdowa-superextra-a535.html" "Wyświetlenia:" "od początku" "p518385528/reports/explorer?params=" "filterTerm%3D%252Fwdowa-superextra-a535.html"
+    test_page_multi "and so on an artist's, a song's, a label's and a news item's page" "/mes-p35.html" "Wyświetlenia:"
+    test_page "on a song's" "/pogoda-s7329.html" "Wyświetlenia:"
+    test_page "on a label's" "/alkopoligamia-l58.html" "Wyświetlenia:"
+    test_page "on a news item's" "/onar-jak-na-pierwszej-plycie-wideo-n1877.html" "Wyświetlenia:"
     # The admin completes the held-back album on its page, with the form's own token (#199)
     local panel_token
     panel_token=$(curl -s --max-time 10 $CURL_OPTS "${BASE_URL}/mes-tasma-robocza-a779.html" | grep -o 'name="token" value="[0-9a-f]*"' | head -1 | cut -d'"' -f4)
