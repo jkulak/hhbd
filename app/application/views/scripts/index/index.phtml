@@ -34,6 +34,7 @@
     <div id="latest" class="albums">
       <h2>Ostatnio wydane albumy</h2>
       <?php echo $this->partial('album/_list.phtml', array('items' => $this->newestList->items)) ?>
+      <a href="/albumy/lata.html">Albumy rok po roku</a>
       <a class="br" href="<?php echo $this->url(array(), 'albums') ?>">Pokaż wszystkie albumy</a>
     </div>
 

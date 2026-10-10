@@ -19,6 +19,7 @@ class AlbumController extends Zend_Controller_Action
         list($this->view->popularAlbums) = Model_Album_Api::getInstance()->popularSince(Model_PageView_Api::since('tydzien', date('Y-m-d')), 10);
         $this->view->bestAlbums = Model_Album_Api::getInstance()->getBest(10);
         $this->view->albums = Model_Album_Api::getInstance()->getNewest(12, $page);
+        $this->view->years = array_column(Model_Album_Api::getInstance()->getYears(), 'albums', 'year');
         $albumCount =  Model_Album_Api::getInstance()->getAlbumCount();
 
         // pagination
@@ -70,6 +71,43 @@ class AlbumController extends Zend_Controller_Action
         }
         $this->view->headMeta()->setName('description', 'Najchętniej oglądane polskie albumy hip-hopowe ' . Model_PageView_Api::PERIODS[$period] . ': ' . implode(', ', $names) . '.');
         $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . Model_PageView_Api::rankingUrl('/albumy/popularne', $period);
+    }
+
+    /** A year's published albums (#196), at /albumy-2016.html: for "polski rap 2016" and its like */
+    public function yearAction()
+    {
+        $year = (int) $this->getRequest()->getParam('year');
+        $albums = $year >= 1900 ? Model_Album_Api::getInstance()->getByYear($year) : new Jkl_List();
+        if (empty($albums->items)) {
+            throw new Zend_Controller_Action_Exception('No albums of ' . $year, 404);
+        }
+        $years = array_column(Model_Album_Api::getInstance()->getYears(), 'albums', 'year');
+        $this->view->year = $year;
+        $this->view->albums = $albums;
+        $this->view->popularAlbums = Model_Album_Api::getInstance()->getPopularOfYear($year, 10);
+        $this->view->previous = isset($years[$year - 1]) ? $year - 1 : null;
+        $this->view->next = isset($years[$year + 1]) ? $year + 1 : null;
+        $this->view->years = $years;
+
+        $count = count($albums->items);
+        $this->view->title = 'Polski hip-hop ' . $year . ': albumy i premiery roku';
+        $this->view->headTitle()->set('Polski rap ' . $year . ' - wszystkie albumy i premiery - Hhbd.pl');
+        $names = array();
+        foreach (array_slice($this->view->popularAlbums->items, 0, 5) as $album) {
+            $names[] = $album->artistNames . ' - ' . $album->title;
+        }
+        $this->view->headMeta()->setName('description', 'Polskie albumy hip-hopowe wydane w ' . $year . ' roku, ' . $count . ' ' . Jkl_Tools_String::plural($count, 'płyta', 'płyty', 'płyt') . ', m.in. ' . implode(', ', $names) . '.');
+        $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . '/albumy-' . $year . '.html';
+    }
+
+    /** The years with albums (#196), each linked to its page */
+    public function yearsAction()
+    {
+        $this->view->years = Model_Album_Api::getInstance()->getYears();
+        $this->view->title = 'Polski hip-hop rok po roku';
+        $this->view->headTitle()->set('Polski rap rok po roku - albumy z każdego roku - Hhbd.pl');
+        $this->view->headMeta()->setName('description', 'Polskie albumy hip-hopowe według roku wydania: ' . implode(', ', array_slice(array_column($this->view->years, 'year'), 0, 12)) . ' i wcześniej.');
+        $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . '/albumy/lata.html';
     }
 
     public function announcedAction()
