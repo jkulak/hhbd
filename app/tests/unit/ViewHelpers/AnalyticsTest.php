@@ -61,6 +61,27 @@ class Zend_View_Helper_AnalyticsTest extends TestCase
         $this->assertStringContainsString('<meta name="google-adsense-account" content="ca-pub-6149271850793027">', $script);
     }
 
+    public function testTheSideColumnsAdIsAdSensesAsynchronousUnitInItsOldSlot(): void
+    {
+        $unit = Zend_View_Helper_Analytics::unit(Zend_View_Helper_Analytics::ADSENSE_CLIENT, Zend_View_Helper_Analytics::RECTANGLE_SLOT);
+
+        $this->assertSame('<ins class="adsbygoogle" style="display:inline-block;width:300px;height:250px" data-ad-client="ca-pub-6149271850793027" data-ad-slot="1220656090"></ins>', $unit);
+        $this->assertStringNotContainsString('<script', $unit);
+    }
+
+    public function testTheSideColumnHasAnAdOnlyWhereAdsAreOn(): void
+    {
+        try {
+            Zend_Registry::set('Config_App', array('showAds' => 0));
+            $this->assertSame('', (new Zend_View_Helper_Analytics())->ad());
+
+            Zend_Registry::set('Config_App', array('showAds' => 1));
+            $this->assertStringContainsString('data-ad-slot="1220656090"', (new Zend_View_Helper_Analytics())->ad());
+        } finally {
+            Zend_Registry::_unsetInstance();
+        }
+    }
+
     /**
      * @dataProvider measurementIds
      */
