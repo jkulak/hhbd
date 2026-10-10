@@ -1,3 +1,4 @@
+<?php echo $this->StructuredData()->album($this->album) ?>
 <div id="main">
     <h1><?php echo $this->partial('album/_artists.phtml', array('album' => $this->album)) ?> - <?php echo $this->album->title ?><?php echo $this->partial('album/_markers.phtml', array('album' => $this->album)) ?></h1>
   <?php if ($this->IsAdmin()): ?><?php echo $this->partial('review/_panel.phtml', array('items' => $this->reviewItems, 'messages' => $this->reviewMessages, 'back' => strtok($_SERVER['REQUEST_URI'], '?'), 'unpublished' => $this->unpublished)) ?><?php endif ?>
