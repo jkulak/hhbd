@@ -184,6 +184,10 @@ Search engines are welcome since #147 (`app/public/robots.txt` kept them all out
 
 Below 992 px the layout is the phones' and tablets' (#149): one column, a header bar with a menu button (`#menu-toggle`, which `s.js` opens; without a script the menu stays open), tables restacked as grid rows by the classes `album-table`, `artist-table` and `label-table`. From 992 px it is the desktop's, unchanged. A new page is checked at 320, 375, 768 and 1280 px for anything wider than the screen.
 
+### Analytics, ads and consent
+
+`$this->Analytics()` (`views/helpers/Analytics.php`) prints Google's tags in the layout's head (#161, #162): Consent Mode v2 with everything denied until AdSense's certified consent message says otherwise, GA4 when `GA_MEASUREMENT_ID` is set, AdSense's script when `SHOW_ADS` is on. A controller tells it what its page is, `->page('album', $id, $name)`, and what it found, `->set('search_results', $n)`; `s.js` sends what people do (`track()`); `/prywatnosc.html` says all of it to visitors. There is no Tag Manager: the tags and their parameters are in the code.
+
 ### Configuration
 
 **application.ini sections:**
@@ -194,6 +198,7 @@ Below 992 px the layout is the phones' and tablets' (#149): one column, a header
 - Database: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
 - Mail: `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_EMAIL`, `MAIL_FROM_NAME`
 - Passwords: `LEGACY_PASSWORD_SALT`, the salt of the MD5 passwords from before #41, which an account logs in with once before it gets a bcrypt hash (production's in `deploy/ovh/hhbd.enc.env`; the fixtures' is the default in `compose.yaml`)
+- Analytics: `GA_MEASUREMENT_ID`, GA4's measurement id, set in production's compose file only, so nothing local or in CI is measured (#161)
 - Feature flags: `SHOW_ADS` (true/false)
 
 ### Backoffice

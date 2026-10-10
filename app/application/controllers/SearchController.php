@@ -126,6 +126,11 @@ class SearchController extends Zend_Controller_Action
         $this->view->totalSongCount = $totalSongCount;
         $this->view->totalLabelCount = $totalLabelCount;
 
+        // The search and what it found, for analytics (#161)
+        $this->view->Analytics()->page('search')
+            ->set('search_term', $searchQuery)
+            ->set('search_results', $totalArtistCount + $totalAlbumCount + $totalSongCount + $totalLabelCount);
+
         $this->view->recentSearches = Model_Search_Api::getInstance()->getRecent();
         $this->view->mostPopularSearches = Model_Search_Api::getInstance()->getMostPopular();
 

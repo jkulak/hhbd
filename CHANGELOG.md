@@ -8,6 +8,30 @@ person's decision; nothing releases on its own.
 
 ## Unreleased
 
+Google Analytics 4 is in the code, with what each page is and what people do on it (#161), and
+Google's tags wait for consent (#162). The production compose file now carries
+`GA_MEASUREMENT_ID`: `make ovh-install` before the release.
+
+### Added
+- Google Analytics 4 through the Google tag, in the layout, production only (`GA_MEASUREMENT_ID`;
+  none locally and in CI) (#161). Every page view says what the page is (`content_group`: album,
+  artist, song, label, news, a list, search, home, 404, …) and on an entity's page which one
+  (`entity_id`, `entity_name`); a search carries its term and how much it found; a logged-in user
+  has `logged_in` as a user property, and an admin's visits are `traffic_type=internal`, for a
+  data filter. Events: `login`, `sign_up`, `post_comment`, `edit_lyrics`, `flag_video`,
+  `play_video` and `watch_video` (YouTube's player with its JS API on, read by `postMessage`).
+  Scrolls, outbound clicks, site search and downloads come from GA4's enhanced measurement.
+- Consent Mode v2: every Google tag starts with analytics and ads storage denied, so nothing is
+  stored before a choice (#162). The choice comes from AdSense's certified consent message, once
+  it is published in AdSense; "Ustawienia prywatności" in the footer opens it again.
+- A privacy page, `/prywatnosc.html`, saying what is measured and shown, by whom, for how long,
+  and how to change the choice (#162).
+
+### Removed
+- Universal Analytics (`UA-3311418-1`), which Google stopped processing in 2023, and Google Tag
+  Manager (`GTM-MGJ9HQ`), whose two tags, GA4 and AdSense's auto ads, the layout loads itself
+  now (#161).
+
 ### Changed
 - A visitor no longer sees where a page's data came from (#158): "Data provided by Discogs." on
   album and artist pages, the author and licence under every artist photo, and the about page's

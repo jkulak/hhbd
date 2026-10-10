@@ -98,6 +98,7 @@ class AlbumController extends Zend_Controller_Action
         $canonicalSlug = Jkl_Tools_Url::createUrl($album->artist->name . '+-+' . $album->title) . '-a' . $album->id . '.html';
         Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
 
+        $this->view->Analytics()->page('album', $album->id, $album->artistNames . ' - ' . $album->title);
         $album->autoDescription = $this->_generateDescription($album);
         $this->view->album = $album;
         // What an import left to settle about it, for an admin's eyes only (#103).

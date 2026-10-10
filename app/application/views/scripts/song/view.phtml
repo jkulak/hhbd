@@ -65,7 +65,8 @@
   <div id="clip" class="pane">
     <h2>Teledysk <?php echo $this->song->albumArtist->name ?> - <?php echo $this->song->title ?></h2>
     <div class="video">
-      <iframe src="https://www.youtube-nocookie.com/embed/<?php echo $videoId ?><?php if ($this->autoPlay): ?>?autoplay=1<?php endif ?>" title="Teledysk <?php echo $this->escape($this->song->albumArtist->name . ' - ' . $this->song->title) ?>" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      <?php // enablejsapi: the player reports its state, which the site's script counts (#161) ?>
+      <iframe src="https://www.youtube-nocookie.com/embed/<?php echo $videoId ?>?enablejsapi=1<?php if ($this->autoPlay): ?>&amp;autoplay=1<?php endif ?>" title="Teledysk <?php echo $this->escape($this->song->albumArtist->name . ' - ' . $this->song->title) ?>" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
     </div>
     <div id="rateClip">
       <p class="js-visible">To nie jest teledysk do utworu "<?php echo $this->song->title ?>"? <a href="#" id="rateDown">Zgłoś to!</a> (zgłoszeń: <span id="downCount"><?php echo $this->song->youTubeUrlFlag ?></span>)</p>
