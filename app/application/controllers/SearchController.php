@@ -16,7 +16,11 @@ class SearchController extends Zend_Controller_Action
 
     public function indexAction()
     {
-        $searchQuery = htmlentities((!empty($this->params['q'])) ? $this->params['q'] : 'niczego?', ENT_COMPAT, "UTF-8");
+        $searchQuery = self::queryOf(isset($this->params['q']) ? $this->params['q'] : '');
+        if ('' === $searchQuery) {
+            $searchQuery = 'niczego?';
+        }
+        $terms = self::termsOf($searchQuery);
         $type = (!empty($this->params['tp'])) ? $this->params['tp'] : null;
 
         if (isset($type)) {
@@ -30,8 +34,8 @@ class SearchController extends Zend_Controller_Action
 
         // search artists (names and nicknames)
         if (!isset($type) or $type == 'wykonawca') {
-            $artists = Model_Artist_Api::getInstance()->getLike($searchQuery, $limit, $page);
-            $nicknames = Model_Artist_Api::getInstance()->getNicknamesLike($searchQuery, $limit, $page);
+            $artists = Model_Artist_Api::getInstance()->getLike($terms, $limit, $page);
+            $nicknames = Model_Artist_Api::getInstance()->getNicknamesLike($terms, $limit, $page);
             // One entry per artist, found by name or by nickname; by id, since two artists may
             // share a name (#102), and those two show their qualifiers.
             $byId = array();
@@ -46,27 +50,27 @@ class SearchController extends Zend_Controller_Action
 
         // search album titles
         if (!isset($type) or $type == 'album') {
-            $resultAlbums = Model_Album_Api::getInstance()->getLike($searchQuery, $limit, $page);
+            $resultAlbums = Model_Album_Api::getInstance()->getLike($terms, $limit, $page);
             $this->view->resultAlbums = $resultAlbums;
         }
 
         // search song names
         if (!isset($type) or $type == 'utwor') {
             $limit = (!empty($type) ? 24 : 4);
-            $resultSongs = Model_Song_Api::getInstance()->getLike($searchQuery, $limit, $page);
+            $resultSongs = Model_Song_Api::getInstance()->getLike($terms, $limit, $page);
             $this->view->resultSongs = $resultSongs;
         }
 
         // search label names
         if (!isset($type) or $type == 'wytwornia') {
-            $resultLabels = Model_Label_Api::getInstance()->getLike($searchQuery, $limit, $page);
+            $resultLabels = Model_Label_Api::getInstance()->getLike($terms, $limit, $page);
             $this->view->resultLabels = $resultLabels;
         }
 
-        $totalArtistCount = Model_Artist_Api::getInstance()->getLikeCount($searchQuery);
-        $totalAlbumCount = Model_Album_Api::getInstance()->getLikeCount($searchQuery);
-        $totalSongCount = Model_Song_Api::getInstance()->getLikeCount($searchQuery);
-        $totalLabelCount = Model_Label_Api::getInstance()->getLikeCount($searchQuery);
+        $totalArtistCount = Model_Artist_Api::getInstance()->getLikeCount($terms);
+        $totalAlbumCount = Model_Album_Api::getInstance()->getLikeCount($terms);
+        $totalSongCount = Model_Song_Api::getInstance()->getLikeCount($terms);
+        $totalLabelCount = Model_Label_Api::getInstance()->getLikeCount($terms);
 
         // need to bulid paginator per each type
         if (isset($type)) {
@@ -132,5 +136,33 @@ class SearchController extends Zend_Controller_Action
         $this->view->headMeta()->setName('keywords', $searchQuery . ',wyniki,wyszukiwania,polski hip-hop,albumy,wykonawcy,wytwórnie,utwory,teksty,teledyski');
         $this->view->headTitle()->headTitle('Wyniki wyszukiwania ' .  $searchQuery . ' na największej stronie o polskim hip-hopie!', 'PREPEND');
         $this->view->headMeta()->setName('description', 'Wyniki wyszukiwania "' .  $searchQuery . '" w www.hhbd.pl');
+    }
+
+    /**
+     * The query as typed, for the database (#151): it went through htmlentities() before, so
+     * "Wzgórze" was searched as "Wzg&oacute;rze" and found nothing. The views escape it where
+     * they show it. One that is not UTF-8 comes from an old link in ISO-8859-2 ("Wzg%F3rze"),
+     * which htmlentities() turned into nothing, and nothing matched every row. Whitespace runs
+     * are one space, and 100 characters are plenty for a name.
+     */
+    public static function queryOf($raw)
+    {
+        $query = is_string($raw) ? $raw : '';
+        if (!mb_check_encoding($query, 'UTF-8')) {
+            $query = mb_convert_encoding($query, 'UTF-8', 'ISO-8859-2');
+        }
+        $query = trim((string) preg_replace('/[\s\x{00A0}]+/u', ' ', $query));
+        return mb_substr($query, 0, 100, 'UTF-8');
+    }
+
+    /**
+     * What the database is asked for: the query without combining marks. "ó" typed as "o" and
+     * a combining acute, as some systems send it, is two characters to LIKE, which the accent
+     * does not let match; the collation ignores accents anyway (#151).
+     */
+    public static function termsOf($query)
+    {
+        $terms = (string) preg_replace('/\p{Mn}+/u', '', $query);
+        return '' === $terms ? $query : $terms;
     }
 }

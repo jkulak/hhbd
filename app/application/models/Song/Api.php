@@ -270,7 +270,7 @@ class Model_Song_Api extends Jkl_Model_Api
 
         $query = "SELECT *, t1.id as song_id
               FROM songs t1
-              WHERE t1.title LIKE '%$like%'
+              WHERE t1.title LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION . "
               ORDER BY t1.viewed DESC" .
                   (($limit != null) ? ' LIMIT ' . $limit : '') .
                   ' OFFSET ' . ($page * $limit);
@@ -282,7 +282,7 @@ class Model_Song_Api extends Jkl_Model_Api
         $like = Jkl_Db::escape($like);
         $query = "SELECT count(*) as count
               FROM songs AS t1
-              WHERE t1.title LIKE '%$like%'";
+              WHERE t1.title LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION;
         $result = $this->_db->fetchAll($query);
         return intval($result[0]['count']);
     }
