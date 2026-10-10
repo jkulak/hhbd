@@ -302,7 +302,8 @@
         });
     }
 
-    // Song page: "this is not the video of this song"
+    // Song page: "this is not the video of this song", the song by its id and the page's token,
+    // counted once per visit (#178)
     function flagVideo() {
         var link = $('#rateDown');
         var count = $('#downCount');
@@ -311,15 +312,23 @@
         }
         link.addEventListener('click', function (event) {
             event.preventDefault();
-            post('/api/songs/flag-video', new URLSearchParams()).then(function (data) {
+            if (link.getAttribute('aria-disabled') === 'true') {
+                return;
+            }
+            var body = new URLSearchParams({ song: link.dataset.song || '', token: link.dataset.token || '' });
+            post('/api/songs/flag-video', body).then(function (data) {
                 if (data.error) {
-                    alert('Problem ze zgłoszeniem, spróbuj za jakiś czas.');
+                    alert(data.error);
                     return;
                 }
-                if (count) {
-                    count.textContent = (parseInt(count.textContent, 10) || 0) + 1;
+                if (count && typeof data.count === 'number') {
+                    count.textContent = data.count;
                 }
-                track('flag_video');
+                link.textContent = 'Zgłoszone, dzięki!';
+                link.setAttribute('aria-disabled', 'true');
+                if (data.counted) {
+                    track('flag_video');
+                }
             }).catch(function () {
                 alert('Problem ze zgłoszeniem, spróbuj za jakiś czas.');
             });

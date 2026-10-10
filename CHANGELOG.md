@@ -6,6 +6,15 @@ published as a release — `gh release create vYYYY.MM.N` — which is what depl
 (`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Nothing releases on
 its own: releasing is the last step of finishing a change, taken by whoever made it (#175).
 
+## Unreleased
+
+### Security
+- "To nie jest teledysk do tego utworu" counted any GET, from anywhere, and took the song from
+  the `Referer`, so a loop of `curl -e` could push any song's count up, and a request without
+  one updated song 0. It takes a POST from the song's page now, with the song's id and the
+  session's token (another site cannot send one), counts once per visit and song, and refuses
+  the rest with 405, 403 or 400, changing nothing (#178).
+
 ## 2026.10.16 — 2026-10-10
 
 An album an import makes is published only with a label or as a self-release, a date to the day

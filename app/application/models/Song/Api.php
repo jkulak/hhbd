@@ -409,14 +409,33 @@ class Model_Song_Api extends Jkl_Model_Api
         return $artists;
     }
 
+    /** A song's id as a request carries it, a whole number from 1, or null for anything else (#178) */
+    public static function idOf($value)
+    {
+        if (is_int($value)) {
+            return $value > 0 ? $value : null;
+        }
+        if (!is_string($value) || 1 !== preg_match('/^[1-9][0-9]{0,9}$/', $value)) {
+            return null;
+        }
+        return (int) $value;
+    }
+
     /**
-     * Increases youtube_url_flag number for given song id
+     * Counts one "this is not the video of this song" for song $id
+     *
+     * @return int how many the song has now
      */
     public function flagVideo($id)
     {
-        $id = intval($id);
-        $query = 'UPDATE songs SET `youtube_url_flag`=`youtube_url_flag`+1 WHERE id="' . $id . '"';
-        // echo $query;
-        $this->_db->query($query);
+        $this->_db->query('UPDATE songs SET youtube_url_flag = youtube_url_flag + 1 WHERE id = ?', array((int) $id));
+        return $this->videoFlags($id);
+    }
+
+    /** How many times song $id was reported not to have its own video */
+    public function videoFlags($id)
+    {
+        $rows = $this->_db->fetchAll('SELECT youtube_url_flag FROM songs WHERE id = ?', array((int) $id));
+        return empty($rows) ? 0 : (int) $rows[0]['youtube_url_flag'];
     }
 }

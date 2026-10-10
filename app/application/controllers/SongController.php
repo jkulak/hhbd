@@ -21,15 +21,42 @@ class SongController extends Zend_Controller_Action
     {
     }
 
+    /**
+     * "This is not the video of this song" (#178): a POST from the song's page, with the song's
+     * id and the session's token, counted once per session and song. It took any GET before, and
+     * the song from the Referer, so anyone could push any song's count up from anywhere. JSON
+     * for the script: there is no view, and looking for one answered 500 (#43).
+     */
     public function flagVideoAction()
     {
-        $reg = "/^([\w\d\.:]+).*-s(\d+).*/";
-        $id = preg_replace($reg, "$2", $_SERVER['HTTP_REFERER']);
-
-        // save flag info
-        Model_Song_Api::getInstance()->flagVideo($id);
-        // JSON for the script: there is no view, and looking for one answered 500 (#43)
-        $this->_helper->json(array('success' => true));
+        $request = $this->getRequest();
+        if (!$request->isPost()) {
+            $this->getResponse()->setHttpResponseCode(405)->setHeader('Allow', 'POST');
+            $this->_helper->json(array('error' => 'POST only'));
+            return;
+        }
+        if (!Jkl_Csrf::isValid($request->getPost('token'))) {
+            $this->getResponse()->setHttpResponseCode(403);
+            $this->_helper->json(array('error' => 'Strona wygasła, odśwież ją i zgłoś jeszcze raz.'));
+            return;
+        }
+        $songs = Model_Song_Api::getInstance();
+        $id = Model_Song_Api::idOf($request->getPost('song'));
+        if (null === $id || !$songs->exists($id)) {
+            $this->getResponse()->setHttpResponseCode(400);
+            $this->_helper->json(array('error' => 'Nie ma takiego utworu.'));
+            return;
+        }
+        $session = new Zend_Session_Namespace('flaggedVideos');
+        $flagged = is_array($session->songs) ? $session->songs : array();
+        if (in_array($id, $flagged, true)) {
+            $this->_helper->json(array('success' => true, 'counted' => false, 'count' => $songs->videoFlags($id)));
+            return;
+        }
+        $count = $songs->flagVideo($id);
+        $flagged[] = $id;
+        $session->songs = $flagged;
+        $this->_helper->json(array('success' => true, 'counted' => true, 'count' => $count));
     }
 
     public function viewAction()

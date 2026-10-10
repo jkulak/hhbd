@@ -430,6 +430,13 @@ run_fixture_tests() {
     test_page "An album from the site's first months, published by 0036, is shown (#168)" "/eldo-pierwszy-rok-a81.html" "<h1>"
     test_page "and listed on its artist's page" "/eldo-p2.html" "Pierwszy Rok"
     test_page "A self-release shows \"wydanie własne\" where a label would be (#168)" "/woyza-wlasnym-sumptem-a780.html" "wydanie własne"
+    # A report that counts, once per visit (#178); only here, as it changes the song
+    local report_jar report_token
+    report_jar=$(mktemp "${TMPDIR:-/tmp}/hhbd-smoke-report.XXXXXX")
+    report_token=$(curl -s --max-time 10 $CURL_OPTS -c "$report_jar" -b "$report_jar" "${BASE_URL}/pogoda-s7329.html" | grep -o 'data-token="[0-9a-f]*"' | cut -d'"' -f2)
+    test_flag_video "The song page's report counts, by the song's id and the page's token (#178)" 200 '"counted":true' "$report_jar" "token=$report_token&song=7329"
+    test_flag_video "and a second from the same visit does not" 200 '"counted":false' "$report_jar" "token=$report_token&song=7329"
+    rm -f "$report_jar"
     # An unpublished album and the song only it has (#168): nowhere for a visitor
     test_not_found "An unpublished album is a 404 to a visitor (#168)" "/mes-tasma-robocza-a779.html" "Taśma Robocza"
     test_page_absent "and its artist's page does not list it" "/mes-p35.html" "Taśma Robocza"
@@ -545,6 +552,29 @@ test_header() {
         return 0
     fi
     local error="$name - $path: a header matching '$pattern' is $([[ "$expect" == present ]] && echo missing || echo there)"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
+}
+
+# flag_video <jar> <data>: a POST to the video report as the song page's script sends it, with
+# the session in the cookie jar; prints the status and the JSON body on one line
+flag_video() {
+    curl -s --max-time 10 $CURL_OPTS -b "$1" -c "$1" -X POST --data "$2" -H "X-Requested-With: XMLHttpRequest" \
+        -w ' %{http_code}' "${BASE_URL}/api/songs/flag-video" 2>/dev/null | awk '{ status = $NF; $NF = ""; print status, $0 }'
+}
+
+# test_flag_video <name> <expected status> <expected text in the body> <jar> <data>
+test_flag_video() {
+    local name="$1" status="$2" expected="$3" got
+    got=$(flag_video "$4" "$5")
+    if [[ "${got%% *}" == "$status" && "$got" == *"$expected"* ]]; then
+        echo -e "${GREEN}✓${NC} $name"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - got '$got' (expected $status with '$expected')"
     echo -e "${RED}✗${NC} $error"
     ERRORS+=("$error")
     ((FAILED++))
@@ -833,6 +863,19 @@ run_tests() {
     echo ""
 
     # Google's tags (#161, #162): consent first, everything denied; nothing of the old tags
+    # The video report takes a POST from the song's page alone, and refuses the rest unchanged (#178)
+    echo "--- Video report ---"
+    local flag_jar flag_token
+    flag_jar=$(mktemp "${TMPDIR:-/tmp}/hhbd-smoke-flag.XXXXXX")
+    test_page_status "A GET to the video report is refused" "/api/songs/flag-video" 405 "POST only"
+    test_flag_video "and so is a POST without the page's token" 403 "error" "$flag_jar" "song=7329"
+    curl -s -o /dev/null --max-time 10 $CURL_OPTS -c "$flag_jar" -b "$flag_jar" "${BASE_URL}/pogoda-s7329.html"
+    flag_token=$(curl -s --max-time 10 $CURL_OPTS -c "$flag_jar" -b "$flag_jar" "${BASE_URL}/pogoda-s7329.html" | grep -o 'data-token="[0-9a-f]*"' | cut -d'"' -f2)
+    test_flag_video "and one with the token but no song" 400 "error" "$flag_jar" "token=$flag_token"
+    test_flag_video "and one naming no song hhbd shows" 400 "error" "$flag_jar" "token=$flag_token&song=999999999"
+    rm -f "$flag_jar"
+    echo ""
+
     echo "--- Analytics and consent ---"
     test_page "Google's tags start with every consent denied (#162)" "/" "gtag('consent', 'default', {ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'denied'"
     test_page_absent "Universal Analytics, dead since 2023, is gone (#161)" "/" "UA-3311418"
