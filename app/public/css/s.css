@@ -1681,3 +1681,15 @@ ul.flat li {
     clear: both;
   }
 }
+
+/* The periods a ranking is over (#194): one line of links, the one shown in bold */
+.periods {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.periods li {
+  display: inline-block;
+  margin: 0 12px 4px 0;
+}

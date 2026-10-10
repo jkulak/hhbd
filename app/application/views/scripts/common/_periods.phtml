@@ -1,0 +1,17 @@
+<?php
+/**
+ * The periods a ranking can be over (#194), each a link to its own address but the one shown.
+ *
+ * Takes: base ('/albumy/popularne'), current (the period shown, '' for all time; null for none).
+ */
+$labels = array('tydzien' => 'ostatnie 7 dni', 'miesiac' => 'ostatnie 30 dni', 'rok' => 'w tym roku', '' => 'wszech czasów');
+?>
+<ul class="periods">
+<?php foreach ($labels as $period => $label): ?>
+  <?php if ($period === $this->current): ?>
+  <li><strong><?php echo $label ?></strong></li>
+  <?php else: ?>
+  <li><a href="<?php echo Model_PageView_Api::rankingUrl($this->base, $period) ?>"><?php echo $label ?></a></li>
+  <?php endif ?>
+<?php endforeach ?>
+</ul>
