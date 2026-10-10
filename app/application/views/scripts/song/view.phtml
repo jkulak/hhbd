@@ -59,25 +59,19 @@
 	  </ul>
 	</div>
 
-  <!-- tutaj edycja url do teledysku -->
-	<?php if (isset($this->song->youTubeUrl)): ?>
-	<div id="clip" class="pane">
-	  <h2>Teledysk <?php echo $this->song->albumArtist->name ?> - <?php echo $this->song->title ?>
-	  </h2>
-    <object width="480" height="390">
-      <param name="movie" value="<?php echo $this->song->youTubeUrl ?>"></param>
-      <param name="allowFullScreen" value="true"></param>
-      <param name="allowscriptaccess" value="always"></param>
-      <embed src="<?php echo $this->song->youTubeUrl ?><?php if ($this->autoPlay): ?>&amp;autoplay=1<?php endif ?>" type="application/x-shockwave-flash" allowscriptaccess="always" allowfullscreen="true" width="480" height="390">
-      </embed>
-    </object>
+  <?php // YouTube's own player, for any form of address the song keeps: the Flash one most of
+        // them name plays nowhere any more (#149) ?>
+  <?php if (null !== ($videoId = $this->song->getYouTubeId())): ?>
+  <div id="clip" class="pane">
+    <h2>Teledysk <?php echo $this->song->albumArtist->name ?> - <?php echo $this->song->title ?></h2>
+    <div class="video">
+      <iframe src="https://www.youtube-nocookie.com/embed/<?php echo $videoId ?><?php if ($this->autoPlay): ?>?autoplay=1<?php endif ?>" title="Teledysk <?php echo $this->escape($this->song->albumArtist->name . ' - ' . $this->song->title) ?>" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    </div>
     <div id="rateClip">
       <p class="js-visible">To nie jest teledysk do utworu "<?php echo $this->song->title ?>"? <a href="#" id="rateDown">Zgłoś to!</a> (zgłoszeń: <span id="downCount"><?php echo $this->song->youTubeUrlFlag ?></span>)</p>
     </div>
-
-    <!-- <iframe title="YouTube video player" class="youtube-player" type="text/html" width="480" height="390" src="<?php echo $this->song->youTubeUrl ?>?rel=0" frameborder="0"></iframe> -->
   </div>
-   	<?php endif ?>
+  <?php endif ?>
 
   <div id="samples" class="pane">
     <h2>Wykorzystane sample</h2>
