@@ -6,7 +6,12 @@ published as a release — `gh release create vYYYY.MM.N` — which is what depl
 (`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Nothing releases on
 its own: releasing is the last step of finishing a change, taken by whoever made it (#175).
 
-## Unreleased
+## 2026.10.13 — 2026-10-10
+
+Pages with an ad stop logging AdSense's `TagError` (#179), and finishing a change now means
+releasing it and checking it on hhbd.pl (#175).
+
+No migration, and nothing for `make ovh-install`.
 
 ### Changed
 - A change is finished when it runs on hhbd.pl: whoever makes it merges it, puts its migrations
