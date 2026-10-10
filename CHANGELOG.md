@@ -23,6 +23,14 @@ which the note leaves out. The sections before, by version, stay as they were.
   and `deploy.yml` with them keeps the images' layer cache in the registry, `:buildcache`
   beside each image, where the next release reads it (#193).
 
+## Unreleased
+
+### Fixed
+- On a desktop screen the text after a page's heading stood beside it, as on the years, Top 10
+  and the admin's review list: the heading floats for the share buttons on an album's, artist's,
+  song's and label's page, and took everything else beside it too. Whatever follows a heading
+  starts below it now; the share buttons stay (#208).
+
 ## 2026.10.18 — 2026-10-11
 
 For search engines and for visitors: page views are counted again, by day (#68), so the home

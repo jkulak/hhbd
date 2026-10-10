@@ -179,6 +179,13 @@ ul.list {
   float: left;
 }
 
+/* The heading floats for the share buttons (#share) to stand beside it on an album's, artist's,
+   song's or label's page; anything else after a heading starts below it, not beside it (#208) */
+#main h1 + :not(#share),
+.main h1 + :not(#share) {
+  clear: both;
+}
+
 #share {
   float: right;
   
