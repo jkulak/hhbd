@@ -6,11 +6,19 @@ published as a release — `gh release create vYYYY.MM.N` — which is what depl
 (`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Releasing is a
 person's decision; nothing releases on its own.
 
-## Unreleased
+## 2026.10.11 — 2026-10-10
 
-Google Analytics 4 is in the code, with what each page is and what people do on it (#161), and
-Google's tags wait for consent (#162). The production compose file now carries
-`GA_MEASUREMENT_ID`: `make ovh-install` before the release.
+Google Analytics 4 is in the code, with what each page is and what people do on it, Google's
+tags wait for the visitor's consent, and hhbd.pl shows AdSense it belongs to the account
+(#161, #162, #169). A visitor no longer sees where a page's data came from; an admin does, at the
+top of the page (#158). Covers and photos keep their proportions (#166), an artist named in
+Cyrillic has a page (#155), and news excerpts and a compilation's tracklist read right again
+(#163, #156).
+
+No migration. The production compose file now carries `GA_MEASUREMENT_ID`: `make ovh-install`
+before the release, or the release's smoke test misses GA4 and the release is taken back. The
+property's settings (14-month retention, the custom dimensions, key events) are set through the
+Admin API.
 
 ### Added
 - Google Analytics 4 through the Google tag, in the layout, production only (`GA_MEASUREMENT_ID`;
