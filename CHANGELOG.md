@@ -19,6 +19,12 @@ its own: releasing is the last step of finishing a change, taken by whoever made
 - `/stat`, the counter a page's script once called, which let anyone add views to any row with
   a GET (#68).
 
+### Fixed
+- Every link to a song led with its artist's slug, `/<artist>-<song>-sN.html`, which the song's
+  page answered with a 301 to its canonical `/<song>-sN.html`: a redirect for each song link a
+  crawler followed. Songs are linked at their canonical address; the old form still redirects
+  (#202).
+
 ## 2026.10.17 — 2026-10-10
 
 A video report comes from the song's page alone, once per visit, and nothing else counts (#178).
