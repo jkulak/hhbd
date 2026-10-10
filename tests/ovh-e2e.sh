@@ -39,7 +39,7 @@ T=$(mktemp -d "${TMPDIR:-/tmp}/hhbd-stacktest.XXXXXX")
 pass=0
 fail=0
 
-export IMAGE_TAG=$TAG DB_PASSWORD=throwaway DB_ROOT_PASSWORD=throwaway-root LEGACY_PASSWORD_SALT=fixtures-legacy-salt
+export IMAGE_TAG=$TAG DB_PASSWORD=throwaway DB_ROOT_PASSWORD=throwaway-root LEGACY_PASSWORD_SALT=fixtures-legacy-salt GA_MEASUREMENT_ID=
 compose() { docker compose -p "$PROJECT" -f deploy/ovh/compose.yaml "$@"; }
 
 if docker network inspect edge >/dev/null 2>&1; then

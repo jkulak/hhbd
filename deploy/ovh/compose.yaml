@@ -51,6 +51,8 @@ x-app: &app
     DB_PASSWORD: ${DB_PASSWORD:?}
     # The salt of the MD5 passwords from before #41, until no account has one (hhbd.enc.env)
     LEGACY_PASSWORD_SALT: ${LEGACY_PASSWORD_SALT:?}
+    # Google Analytics 4 (#161): not a secret; a stack test sets it empty, so it sends nothing
+    GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID-G-200N6YNR76}
     SHOW_ADS: "true"
   healthcheck:
     # PHP-FPM answers its status page over FastCGI.

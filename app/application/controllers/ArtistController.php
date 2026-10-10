@@ -53,6 +53,7 @@ class ArtistController extends Zend_Controller_Action
         $canonicalSlug = Jkl_Tools_Url::createUrl($artist->qualifiedName) . '-p' . $artist->id . '.html';
         Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
 
+        $this->view->Analytics()->page('artist', $artist->id, $artist->qualifiedName);
         $artist->addAlbums(Model_Album_Api::getInstance()->getArtistsAlbums($artist->id, array(), false, 'year'));
 
         if (!empty($artist->projects->items)) {

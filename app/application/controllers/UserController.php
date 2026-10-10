@@ -69,6 +69,8 @@ class UserController extends Zend_Controller_Action
                 $errors['login'][] = "Podaj adres e-mail i hasło i spróbuj jeszcze raz.";
             } else {
                 if ($this->_loginUser($email, $password)) {
+                    // The login goes to analytics with the page it redirects to (#161)
+                    $this->view->Analytics()->remember('login');
                     $url = $this->getRequest()->getPost('url', $this->getRequest()->getParam('url', '/'));
                     if (empty($url)) {
                         $url = '/';
@@ -117,6 +119,7 @@ class UserController extends Zend_Controller_Action
 
             // after registration, login user automatically
             $this->_loginUser($this->_request->getPost('email'), $this->_request->getPost('password'));
+            $this->view->Analytics()->event('sign_up', array('method' => 'email'));
         } else {
             $this->view->errors = $result;
             // $this->view->firstName = $this->_request->getPost('first-name');

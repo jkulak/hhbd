@@ -21,6 +21,15 @@
         <reverse>o-nas.html</reverse>
       </about>
       
+      <privacy>
+        <route>prywatnosc.html</route>
+        <defaults>
+          <controller>index</controller>
+          <action>privacy</action>
+        </defaults>
+        <reverse>prywatnosc.html</reverse>
+      </privacy>
+
       <contact>
         <route>kontakt.html</route>
         <defaults>

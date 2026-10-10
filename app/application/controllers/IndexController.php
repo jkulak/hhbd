@@ -25,4 +25,10 @@ class IndexController extends Zend_Controller_Action {
 
     public function contactAction() {
     }
+
+    /** What the site measures and shows through Google, and how to change the choice (#162) */
+    public function privacyAction() {
+        $this->view->headTitle()->set('Prywatność - Hhbd.pl');
+        $this->view->headMeta()->setName('description', 'Jakie dane zbiera Hhbd.pl, po co, jak długo je przechowuje i jak zmienić zgodę na ciasteczka.');
+    }
 }
