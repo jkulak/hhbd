@@ -6,7 +6,13 @@ published as a release — `gh release create vYYYY.MM.N` — which is what depl
 (`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Nothing releases on
 its own: releasing is the last step of finishing a change, taken by whoever made it (#175).
 
-## Unreleased
+## 2026.10.15 — 2026-10-10
+
+An unpublished album is hidden from visitors, as `status` always said it should be, and the
+site's first 77 albums, which had `status` 0 only by an accident of 2004, are published first so
+nothing visible goes (#168).
+
+Migration 0036: `make ovh-migrate` before the release, or the 77 albums disappear with it.
 
 ### Changed
 - An unpublished album (`status` 0) is nowhere for a visitor: not in the lists, the search, the
