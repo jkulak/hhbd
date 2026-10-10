@@ -441,8 +441,8 @@ run_fixture_tests() {
     # time's (#194): two visits, as a browser, each its own session
     local browser="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36"
     for _ in 1 2; do
-        curl -s -o /dev/null --max-time 10 -A "$browser" "${BASE_URL}/woyza-wlasnym-sumptem-a780.html"
-        curl -s -o /dev/null --max-time 10 -A "$browser" "${BASE_URL}/woyza-p68.html"
+        curl -s -o /dev/null --max-time 10 $CURL_OPTS -A "$browser" "${BASE_URL}/woyza-wlasnym-sumptem-a780.html"
+        curl -s -o /dev/null --max-time 10 $CURL_OPTS -A "$browser" "${BASE_URL}/woyza-p68.html"
     done
     test_first_link "The album viewed this week leads the week's ranking (#194)" "/albumy/popularne-tydzien.html" "-a[0-9]+\.html" "/woyza-wlasnym-sumptem-a780.html"
     test_first_link "and this year's" "/albumy/popularne-rok.html" "-a[0-9]+\.html" "/woyza-wlasnym-sumptem-a780.html"
