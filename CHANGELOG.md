@@ -6,7 +6,11 @@ published as a release — `gh release create vYYYY.MM.N` — which is what depl
 (`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Nothing releases on
 its own: releasing is the last step of finishing a change, taken by whoever made it (#175).
 
-## Unreleased
+## 2026.10.17 — 2026-10-10
+
+A video report comes from the song's page alone, once per visit, and nothing else counts (#178).
+
+No migration, and nothing for `make ovh-install`.
 
 ### Security
 - "To nie jest teledysk do tego utworu" counted any GET, from anywhere, and took the song from
