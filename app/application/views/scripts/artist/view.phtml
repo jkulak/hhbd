@@ -1,3 +1,4 @@
+<?php echo $this->StructuredData()->artist($this->artist) ?>
 <div id="main">
     <h1><?php echo $this->artist->qualifiedName ?></h1>
   <?php if ($this->IsAdmin()): ?><?php echo $this->partial('review/_panel.phtml', array('items' => $this->reviewItems, 'messages' => $this->reviewMessages, 'back' => strtok($_SERVER['REQUEST_URI'], '?'))) ?><?php endif ?>

@@ -581,6 +581,24 @@ test_flag_video() {
     return 1
 }
 
+# test_json_ld <name> <path> <jq filter>: the page's JSON-LD parses, and the filter, run on it,
+# prints true (#195)
+test_json_ld() {
+    local name="$1" path="$2" filter="$3" got
+    got=$(curl -s --max-time 10 $CURL_OPTS "${BASE_URL}${path}" 2>/dev/null \
+        | sed -n 's|.*<script type="application/ld+json">\(.*\)</script>.*|\1|p' | head -1 | jq -r "$filter" 2>&1)
+    if [[ "$got" == "true" ]]; then
+        echo -e "${GREEN}✓${NC} $name"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - $path: '$filter' gave '${got:0:200}'"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
+}
+
 # test_sitemap <name> <path> <urlset|sitemapindex>: XML a search engine reads (#147): served as
 # application/xml, nothing after the root element closes, every entry closed and with one <loc>,
 # and every <loc> an absolute address on this site: https:// ones on production
@@ -863,6 +881,18 @@ run_tests() {
     echo ""
 
     # Google's tags (#161, #162): consent first, everything denied; nothing of the old tags
+    # What a page is, for search engines (#195): read-only, so production too
+    echo "--- Structured data ---"
+    test_json_ld "An album's page describes the album, its artist, label and tracks" "/wdowa-superextra-a535.html" \
+        '[.["@graph"][] | select(.["@type"] == "MusicAlbum")][0] | .name == "Superextra" and .byArtist[0].name == "Wdowa" and .recordLabel.name == "Alkopoligamia" and .numTracks > 0 and (.track.itemListElement[0].item.url | test("^https?://.+-s[0-9]+\\.html$"))'
+    test_json_ld "and the path to it" "/wdowa-superextra-a535.html" \
+        '[.["@graph"][] | select(.["@type"] == "BreadcrumbList")][0].itemListElement | map(.name) == ["Hhbd.pl", "Albumy", "Wdowa", "Superextra"]'
+    test_json_ld "An artist's page describes the artist and its albums" "/mes-p35.html" \
+        '[.["@graph"][] | select(.["@type"] == "MusicGroup")][0] | .name == "Mes" and (.album | length) > 0'
+    test_json_ld "A song's page describes the song and its album" "/pogoda-s7329.html" \
+        '[.["@graph"][] | select(.["@type"] == "MusicRecording")][0] | .name == "Pogoda" and .inAlbum.name == "Superextra"'
+    echo ""
+
     # The video report takes a POST from the song's page alone, and refuses the rest unchanged (#178)
     echo "--- Video report ---"
     local flag_jar flag_token
