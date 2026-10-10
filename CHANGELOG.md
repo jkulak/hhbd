@@ -6,7 +6,12 @@ published as a release — `gh release create vYYYY.MM.N` — which is what depl
 (`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Releasing is a
 person's decision; nothing releases on its own.
 
-## Unreleased
+## 2026.10.12 — 2026-10-10
+
+The side column's ad stops holding pages up: it is AdSense's asynchronous unit, in the same slot,
+instead of its 2010 code (#172).
+
+No migration, and nothing for `make ovh-install`: the change is the app's alone.
 
 ### Changed
 - The side column's ad, `hhbd_rectangle` (slot `1220656090`, 300×250), is AdSense's
