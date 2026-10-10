@@ -11,6 +11,11 @@ concurrency:
   group: smoke-tests-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+# packages: read for the layer cache each release leaves in the registry (#206)
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   smoke-tests:
     name: smoke-tests (${{ matrix.part }})
@@ -28,26 +33,34 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       # Docker Hub counts anonymous pulls per address, and GitHub's runners share theirs with every
       # other build, which used up the limit and failed ours with 429 (#135). Logged in, the pulls
       # count against the account. Skipped where the token is not given, as on a fork's PR.
       - name: Log in to Docker Hub
         if: env.HAS_DOCKERHUB_TOKEN == 'true'
-        uses: docker/login-action@v3
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      # The layers come from the release before, kept beside each image in the registry
+      # (deploy.yml writes them): a pull request reads them and writes none, as an Actions cache
+      # it wrote would be read by its own later pushes alone (#206). A cache it cannot read, as
+      # on a fork's pull request, only makes the build slower.
+      - name: Log in to the registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Each image keeps its cache under its own scope: in one shared scope, each build's
-      # export replaced the one before it, and the app's image was built from scratch on
-      # every run. Only the site half writes the cache; the tools half reads the same.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e  # v4.3.0
+
       - name: Build app image with cache (builder target)
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
         with:
           context: .
           file: Dockerfile-php
@@ -55,22 +68,20 @@ jobs:
           tags: |
             ${{ env.COMPOSE_PROJECT_NAME }}-app:latest
           load: true
-          cache-from: type=gha,scope=smoke-app
-          cache-to: ${{ matrix.part == 'site' && 'type=gha,mode=max,scope=smoke-app' || '' }}
+          cache-from: type=registry,ref=ghcr.io/jkulak/hhbd-app:buildcache
 
       - name: Build nginx image with cache
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
         with:
           context: .
           file: Dockerfile-nginx
           tags: |
             ${{ env.COMPOSE_PROJECT_NAME }}-nginx:latest
           load: true
-          cache-from: type=gha,scope=smoke-nginx
-          cache-to: ${{ matrix.part == 'site' && 'type=gha,mode=max,scope=smoke-nginx' || '' }}
+          cache-from: type=registry,ref=ghcr.io/jkulak/hhbd-nginx:buildcache
 
       - name: Build importer image with cache
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
         with:
           context: .
           file: Dockerfile-php
@@ -78,8 +89,7 @@ jobs:
           tags: |
             ${{ env.COMPOSE_PROJECT_NAME }}-importer:latest
           load: true
-          cache-from: type=gha,scope=smoke-importer
-          cache-to: ${{ matrix.part == 'site' && 'type=gha,mode=max,scope=smoke-importer' || '' }}
+          cache-from: type=registry,ref=ghcr.io/jkulak/hhbd-importer:buildcache
 
       - name: Start Docker Compose services
         run: |
@@ -124,13 +134,6 @@ jobs:
           # As production's existing covers and photos get described (#60, #61), so the pages
           # read the tables; the test checks the dry run and a second run on the way.
           ./tests/backfill-test.sh
-
-      - name: Verify APPLICATION_ENV
-        if: matrix.part == 'site'
-        run: |
-          echo "=== Checking APPLICATION_ENV ==="
-          docker compose exec -T app bash -c 'echo "Shell: APPLICATION_ENV=$APPLICATION_ENV"'
-          docker compose exec -T app php -r 'echo "PHP: APPLICATION_ENV=" . getenv("APPLICATION_ENV") . "\n";'
 
       - name: Run smoke tests
         if: matrix.part == 'site'

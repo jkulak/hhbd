@@ -10,13 +10,16 @@
 #   # A host the name does not point at yet, e.g. a new origin before the DNS moves:
 #   SMOKE_CURL_OPTS="--connect-to hhbd.pl:443:<host>:443 --insecure" ./tests/smoke-test.sh https://hhbd.pl
 #
-#   # Production, as a release checks it: only what holds on production's data
+#   # Production, the whole of it that holds on production's data
 #   SMOKE_TARGET=production ./tests/smoke-test.sh https://hhbd.pl
+#
+#   # Production, as a release is checked before it is kept: a few seconds (#206)
+#   SMOKE_TARGET=release ./tests/smoke-test.sh https://hhbd.pl
 #
 # Most checks hold on the test fixtures and on production alike: the fixtures copy the rows the
 # checks look at (Mes, Superextra, Pogoda, Alkopoligamia, news 1877). The fixture checks look at
 # cases only the fixtures hold (an album on no label, a two-disc album, Discogs provenance, ...)
-# and run unless SMOKE_TARGET=production, which deploy/ovh/smoke.sh sets.
+# and run only on the fixtures. deploy/ovh/smoke.sh sets SMOKE_TARGET=release.
 #
 
 BASE_URL="${1:-http://localhost:8080}"
@@ -62,7 +65,7 @@ test_page() {
         local content
         content=$(curl -s --max-time 10 $CURL_OPTS "$url" 2>/dev/null)
 
-        if echo "$content" | grep -qi -- "$expected"; then
+        if grep -qi -- "$expected" <<<"$content"; then
             echo -e "${GREEN}✓${NC} $name"
             ((PASSED++))
             return 0
@@ -121,7 +124,7 @@ test_page_absent() {
         return 1
     fi
     content=$(curl -s --max-time 10 $CURL_OPTS "$url" 2>/dev/null)
-    if echo "$content" | grep -qi -- "$unexpected"; then
+    if grep -qi -- "$unexpected" <<<"$content"; then
         local error="$name - Content present: '$unexpected'"
         echo -e "${RED}✗${NC} $error"
         ERRORS+=("$error")
@@ -173,7 +176,7 @@ test_page_multi() {
         content=$(curl -s --max-time 10 $CURL_OPTS "$url" 2>/dev/null)
 
         for exp in "${expected[@]}"; do
-            if ! echo "$content" | grep -qi "$exp"; then
+            if ! grep -qi "$exp" <<<"$content"; then
                 local error="$name - Content missing: '$exp'"
                 echo -e "${RED}✗${NC} $error"
                 ERRORS+=("$error")
@@ -286,10 +289,10 @@ test_canonical_tag() {
         local content
         content=$(curl -s --max-time 10 $CURL_OPTS "$url" 2>/dev/null)
         
-        if echo "$content" | grep -qi '<link rel="canonical"'; then
+        if grep -qi '<link rel="canonical"' <<<"$content"; then
             # Optionally check if canonical URL matches expected
             if [[ -n "$expected_canonical" ]]; then
-                if echo "$content" | grep -qi "href=\"[^\"]*$expected_canonical\""; then
+                if grep -qi "href=\"[^\"]*$expected_canonical\"" <<<"$content"; then
                     echo -e "${GREEN}✓${NC} $name"
                     ((PASSED++))
                     return 0
@@ -530,7 +533,7 @@ test_not_found() {
         return 1
     fi
     content=$(curl -s --max-time 10 $CURL_OPTS "$url" 2>/dev/null)
-    if echo "$content" | grep -qi -- "$unexpected"; then
+    if grep -qi -- "$unexpected" <<<"$content"; then
         local error="$name - Content present: '$unexpected'"
         echo -e "${RED}✗${NC} $error"
         ERRORS+=("$error")
@@ -550,7 +553,7 @@ test_page_status() {
     local status content
     status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 $CURL_OPTS "$url" 2>/dev/null || echo "000")
     content=$(curl -s --max-time 10 $CURL_OPTS "$url" 2>/dev/null)
-    if [[ "$status" == "$expected_status" ]] && echo "$content" | grep -qi -- "$expected"; then
+    if [[ "$status" == "$expected_status" ]] && grep -qi -- "$expected" <<<"$content"; then
         echo -e "${GREEN}✓${NC} $name"
         ((PASSED++))
         return 0
@@ -797,9 +800,9 @@ test_admin_page() {
     page=$(as_admin "$path")
     for text in "$@"; do
         if [[ "$text" == '!'* ]]; then
-            echo "$page" | grep -qiF -- "${text#!}" && missing="$missing present:'${text#!}'"
+            grep -qiF -- "${text#!}" <<<"$page" && missing="$missing present:'${text#!}'"
         else
-            echo "$page" | grep -qiF -- "$text" || missing="$missing missing:'$text'"
+            grep -qiF -- "$text" <<<"$page" || missing="$missing missing:'$text'"
         fi
     done
     if [[ -z "$missing" ]]; then
@@ -1084,12 +1087,39 @@ run_production_tests() {
     echo ""
 }
 
+# What a release is checked for on the host before it is kept (#206): the pages a visitor
+# reaches first, each kind once, and what only production holds: its https addresses, its GA4
+# id, its AdSense account, its assets at the addresses the pages link. Everything else, every
+# sitemap in full and the fixtures' cases, the pull request has run already: on the fixtures,
+# and on the production stack behind a stand-in edge.
+run_release_tests() {
+    echo "--- Release ---"
+    test_page "The home page" "/" "Tego dnia\|Ostatnio wydane albumy"
+    test_page "An album's page" "/wdowa-superextra-a535.html" "<h1>"
+    test_page "An artist's page" "/mes-p35.html" "<h1>"
+    test_page "A song's page" "/pogoda-s7329.html" "<h1>"
+    test_page "A label's page" "/alkopoligamia-l58.html" "<h1>"
+    test_page "A news item" "/onar-jak-na-pierwszej-plycie-wideo-n1877.html" "<h1>"
+    test_page "The search" "/szukaj.html?q=peja" 'href="/peja-p'
+    test_page "This week's ranking" "/albumy/popularne-tydzien.html" "<h1>Najpopularniejsze albumy z ostatnich 7 dni</h1>"
+    test_page "A year's albums" "/albumy-2016.html" "<h1>Polski hip-hop 2016"
+    test_not_found "A page that is not there is a 404" "/nie-ma-takiego-albumu-a999999999.html" "Superextra"
+    test_page "An album's canonical address is the https one" "/wdowa-superextra-a535.html" "rel=\"canonical\" href=\"${BASE_URL}/wdowa-superextra-a535.html\""
+    test_page "The sitemap index names its sitemaps at that origin" "/sitemap-index.xml" "<loc>${BASE_URL}/sitemap-albums.xml</loc>"
+    test_page "robots.txt names the sitemap index" "/robots.txt" "^Sitemap: https://hhbd.pl/sitemap-index.xml$"
+    test_page "ads.txt names hhbd's AdSense account" "/ads.txt" "google.com, pub-6149271850793027, DIRECT, f08c47fec0942fa0"
+    test_asset "The stylesheet, at the address the pages link, is the one they name" "/css/s.css"
+    test_asset "and the script" "/js/s.js"
+    echo ""
+    run_production_tests
+}
+
 # Main
 wait_for_service
-run_tests
 case "$SMOKE_TARGET" in
-    fixtures) run_fixture_tests ;;
-    production) run_production_tests; echo "--- Fixture cases: skipped, SMOKE_TARGET=production ---"; echo "" ;;
-    *) echo "SMOKE_TARGET is fixtures or production, not '$SMOKE_TARGET'" >&2; exit 2 ;;
+    fixtures) run_tests; run_fixture_tests ;;
+    production) run_tests; run_production_tests; echo "--- Fixture cases: skipped, SMOKE_TARGET=production ---"; echo "" ;;
+    release) run_release_tests ;;
+    *) echo "SMOKE_TARGET is fixtures, production or release, not '$SMOKE_TARGET'" >&2; exit 2 ;;
 esac
 print_summary
