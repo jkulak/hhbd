@@ -275,7 +275,7 @@ renaming them across 45 tables would risk more than it would clear up.
 | `addedby` | who added it: an `ID` in the old `users` table; `0` means unknown, `1100` the import | whoever inserts; the archived backoffice did, the importer does |
 | `updated` | when the row was last **edited**, by a person or by the import | whoever edits; nothing automatic |
 | `updatedby` | who edited it, an `ID` in `users`; `1100` the import | whoever edits; the review panel and `make edit` through the admin's linked row (below) |
-| `status` | `999` published, counted by the site; `0` not published (the only two values production holds) | the editor |
+| `status` | `999` published, counted by the site; `0` not published (the only two values production holds). An unpublished album is nowhere for a visitor, its page a 404, and its songs with it where they are on no other; an admin opens its page (#168) | the editor |
 | `viewed` | page views | the application, on every view (`/stat`) |
 
 **One table for who (#132).** `addedby` and `updatedby` name `users`, the old site's accounts,

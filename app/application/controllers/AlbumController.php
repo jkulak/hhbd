@@ -92,6 +92,11 @@ class AlbumController extends Zend_Controller_Action
         if (!Model_Album_Api::getInstance()->exists($params['id'])) {
             throw new Zend_Controller_Action_Exception('No album ' . (int) $params['id'], 404);
         }
+        // An unpublished album waits for an admin: nobody else learns it is there (#168).
+        $published = Model_Album_Api::getInstance()->isPublished($params['id']);
+        if (!$published && !$this->view->IsAdmin()) {
+            throw new Zend_Controller_Action_Exception('Album ' . (int) $params['id'] . ' is not published', 404);
+        }
         $album = Model_Album_Api::getInstance()->find($params['id'], true);
 
         // Build canonical URL and redirect if current URL doesn't match
@@ -106,6 +111,10 @@ class AlbumController extends Zend_Controller_Action
             $this->getResponse()->setHeader('Cache-Control', 'private, no-store', true);
             $this->view->reviewItems = Model_Review_Api::getInstance()->openFor('album', (int) $album->id);
             $this->view->reviewMessages = $this->_helper->flashMessenger->getMessages();
+            $this->view->unpublished = !$published;
+            if (!$published) {
+                $this->view->headMeta()->setName('robots', 'noindex,nofollow');
+            }
         }
         $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . '/' . $canonicalSlug;
         $this->view->artistsAlbums = Model_Album_Api::getInstance()->getArtistsAlbums($album->artist->id, array($album->id), 10);
