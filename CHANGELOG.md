@@ -6,6 +6,19 @@ published as a release — `gh release create vYYYY.MM.N` — which is what depl
 (`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Nothing releases on
 its own: releasing is the last step of finishing a change, taken by whoever made it (#175).
 
+## Unreleased
+
+### Added
+- Page views are counted again, on the server as an album's, artist's, song's, label's or news
+  page is shown: the total in `viewed`, and the day's in `page_views` (migration 0038), for
+  popularity over a week, a month or a year. A view counts once per visit, page and day; bots,
+  link previews, scripts, HEAD requests and admins count for nothing. Nothing had called the
+  old counter since before this repository's history, so the popular lists stood still (#68).
+
+### Removed
+- `/stat`, the counter a page's script once called, which let anyone add views to any row with
+  a GET (#68).
+
 ## 2026.10.17 — 2026-10-10
 
 A video report comes from the song's page alone, once per visit, and nothing else counts (#178).

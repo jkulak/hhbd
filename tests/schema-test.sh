@@ -107,23 +107,35 @@ echo "> inserting a catalog row without a time"
 sql "INSERT INTO cities (name) VALUES ('schema-test city')"
 check "cities: added is the time of the insert" "1" "$(sql "SELECT added IS NOT NULL AND ABS(TIMESTAMPDIFF(SECOND, added, NOW())) <= 60 FROM cities WHERE name = 'schema-test city'")"
 
-echo "> a page view through the site"
-view() { # view <type> <table> <id>: what /stat does on a page view, and what it must not touch
-    local type=$1 table=$2 id=$3 cols before after
+echo "> a page view through the site (#68)"
+BROWSER="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36"
+# The site's day is Warsaw's; the database's CURDATE() is UTC's, a day behind after 22:00.
+TODAY=$(TZ=Europe/Warsaw date +%F)
+viewed() { sql "SELECT CONCAT_WS(' ', (SELECT viewed FROM \`$2\` WHERE id = $3), IFNULL((SELECT views FROM page_views WHERE entity_type = '$1' AND entity_id = $3 AND day = '$TODAY'), 0))"; }
+view() { # view <type> <table> <id> <path>: a browser opens the page; what it counts, and what it must not touch
+    local type=$1 table=$2 id=$3 path=$4 cols before after counted jar
     cols="added"; [ "$table" = news ] || cols="added, updated"
+    jar="$T/jar-$type"
     # Known values, so "unchanged" means something even where the fixtures leave them NULL.
     sql "UPDATE \`$table\` SET added = '2002-02-02 02:02:02'$([ "$table" = news ] || echo ", updated = '2003-03-03 03:03:03'") WHERE id = $id"
-    before=$(sql "SELECT CONCAT_WS('|', $cols), viewed FROM \`$table\` WHERE id = $id")
-    curl -s -o /dev/null --max-time 10 "$URL/stat?type=$type&id=$id"
-    after=$(sql "SELECT CONCAT_WS('|', $cols), viewed FROM \`$table\` WHERE id = $id")
-    check "$table $id: a view leaves $cols as they were" "${before%%$'\t'*}" "${after%%$'\t'*}"
-    check "$table $id: and counts the view" "$(( ${before##*$'\t'} + 1 ))" "${after##*$'\t'}"
+    before=$(sql "SELECT CONCAT_WS('|', $cols) FROM \`$table\` WHERE id = $id")
+    counted=$(viewed "$type" "$table" "$id")
+    curl -s -o /dev/null --max-time 10 -A "$BROWSER" -c "$jar" -b "$jar" "$URL$path"
+    after=$(sql "SELECT CONCAT_WS('|', $cols) FROM \`$table\` WHERE id = $id")
+    check "$table $id: a view leaves $cols as they were" "$before" "$after"
+    check "$table $id: and counts it, in the total and in the day's" "$(echo "$counted" | awk '{ print $1 + 1, $2 + 1 }')" "$(viewed "$type" "$table" "$id")"
+    counted=$(viewed "$type" "$table" "$id")
+    curl -s -o /dev/null --max-time 10 -A "$BROWSER" -c "$jar" -b "$jar" "$URL$path"
+    curl -s -o /dev/null --max-time 10 -A "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" "$URL$path"
+    curl -s -o /dev/null --max-time 10 -I -A "$BROWSER" "$URL$path"
+    check "$table $id: the same visit again, a crawler and a HEAD count nothing" "$counted" "$(viewed "$type" "$table" "$id")"
 }
-view album albums 535
-view artist artists 35
-view song songs 7329
-view label labels 58
-view news news 1877
+view album albums 535 /wdowa-superextra-a535.html
+view artist artists 35 /mes-p35.html
+view song songs 7329 /pogoda-s7329.html
+view label labels 58 /alkopoligamia-l58.html
+view news news 1877 /onar-jak-na-pierwszej-plycie-wideo-n1877.html
+check "nothing answers at /stat, which let anyone add views" "404" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL/stat?type=album&id=535")"
 
 echo "> external ids"
 sql "INSERT INTO external_ids (entity_type, entity_id, source, kind, value) VALUES ('album', 535, 'discogs', 'master', '1234567')"
@@ -265,7 +277,7 @@ else
 fi
 
 echo "> utf8mb4 with the Polish collation"
-check "every table is utf8mb4_polish_ci, but the byte-compared ones and the runner's own" "utf8mb4_bin 10, utf8mb4_general_ci 1, utf8mb4_polish_ci 45" "$(sql "SELECT GROUP_CONCAT(CONCAT(c, ' ', n) ORDER BY c SEPARATOR ', ') FROM (SELECT table_collation c, COUNT(*) n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' GROUP BY table_collation) x")"
+check "every table is utf8mb4_polish_ci, but the byte-compared ones and the runner's own" "utf8mb4_bin 11, utf8mb4_general_ci 1, utf8mb4_polish_ci 45" "$(sql "SELECT GROUP_CONCAT(CONCAT(c, ' ', n) ORDER BY c SEPARATOR ', ') FROM (SELECT table_collation c, COUNT(*) n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' GROUP BY table_collation) x")"
 check "no column is left in utf8mb3" "0" "$(count "character_set_name = 'utf8mb3'")"
 if sql "INSERT INTO artists (name, urlname, type, status, trivia, website) VALUES ('Zabson', 'zabson-2', 'm', 999, '', '')" >"$T/out" 2>&1; then
     ok "Zabson is a name of its own next to Żabson"
