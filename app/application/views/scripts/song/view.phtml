@@ -69,7 +69,7 @@
       <iframe src="https://www.youtube-nocookie.com/embed/<?php echo $videoId ?>?enablejsapi=1<?php if ($this->autoPlay): ?>&amp;autoplay=1<?php endif ?>" title="Teledysk <?php echo $this->escape($this->song->albumArtist->name . ' - ' . $this->song->title) ?>" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
     </div>
     <div id="rateClip">
-      <p class="js-visible">To nie jest teledysk do utworu "<?php echo $this->song->title ?>"? <a href="#" id="rateDown">Zgłoś to!</a> (zgłoszeń: <span id="downCount"><?php echo $this->song->youTubeUrlFlag ?></span>)</p>
+      <p class="js-visible">To nie jest teledysk do utworu "<?php echo $this->song->title ?>"? <a href="#" id="rateDown" data-song="<?php echo (int) $this->song->id ?>" data-token="<?php echo $this->escape(Jkl_Csrf::token()) ?>">Zgłoś to!</a> (zgłoszeń: <span id="downCount"><?php echo $this->song->youTubeUrlFlag ?></span>)</p>
     </div>
   </div>
   <?php endif ?>
