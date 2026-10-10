@@ -1,43 +1,43 @@
 <div id="site-search" class="main">
-  <h1>Szukałeś: <?php echo $this->searchQuery ?></h1>
+  <h1>Szukałeś: <?php echo $this->escape($this->searchQuery) ?></h1>
   <div class="pane" id="detail-search">
     <form action="<?php echo $this->url(array(), 'search') ?>">
       <label for="q" class="hidden">Szukaj:&nbsp;</label>
-      <input id="q" name="q" type="text" value="<?php echo $this->searchQuery ?>" />
-      <input type="hidden" name="tp" value="<?php echo $this->type ?>" id="tp" />
+      <input id="q" name="q" type="text" value="<?php echo $this->escape($this->searchQuery) ?>" />
+      <input type="hidden" name="tp" value="<?php echo $this->escape($this->type) ?>" id="tp" />
       <input type="submit" value="szukaj" />
     </form>
       <ul>
         <li><?php if (isset($this->type)): ?>
-          <a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->searchQuery ?>">Wszystko</a>
+          <a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->escape(urlencode($this->searchQuery)) ?>">Wszystko</a>
           <?php else: ?>
             Wszystko
           <?php endif ?>
         </li>
         <li>
           <?php if ($this->type!='wykonawca'): ?>
-            <a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->searchQuery ?>&amp;tp=wykonawca">Wykonawcy</a>
+            <a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->escape(urlencode($this->searchQuery)) ?>&amp;tp=wykonawca">Wykonawcy</a>
           <?php else: ?>
               Wykonawcy
           <?php endif ?>
         </li>
         <li>
           <?php if ($this->type!='album'): ?>
-            <a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->searchQuery ?>&amp;tp=album">Albumy</a>
+            <a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->escape(urlencode($this->searchQuery)) ?>&amp;tp=album">Albumy</a>
           <?php else: ?>
               Albumy
           <?php endif ?>
         </li>
         <li>
           <?php if ($this->type!='utwor'): ?>
-            <a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->searchQuery ?>&amp;tp=utwor">Utwory</a>
+            <a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->escape(urlencode($this->searchQuery)) ?>&amp;tp=utwor">Utwory</a>
           <?php else: ?>
               Utwory
           <?php endif ?>
         </li>
         <li>
           <?php if ($this->type!='wytwornia'): ?>
-            <a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->searchQuery ?>&amp;tp=wytwornia">Wytwórnie</a>
+            <a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->escape(urlencode($this->searchQuery)) ?>&amp;tp=wytwornia">Wytwórnie</a>
           <?php else: ?>
               Wytwórnie
           <?php endif ?>
@@ -50,7 +50,7 @@
     <h2>Wykonawcy</h2>
     <?php echo $this->partial('artist/_list.phtml', array('artists' => $this->resultArtists->items)) ?>
     <?php if (empty($this->type) and ($this->totalArtistCount > sizeof($this->resultArtists->items))): ?>
-      <span class="right"><a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->searchQuery ?>&amp;tp=wykonawca">Pokaż <?php echo ($this->totalArtistCount-4) ?> więcej wykonawców</a></span>
+      <span class="right"><a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->escape(urlencode($this->searchQuery)) ?>&amp;tp=wykonawca">Pokaż <?php echo ($this->totalArtistCount-4) ?> więcej wykonawców</a></span>
     <?php endif ?>
   </div>
 <?php elseif($this->type == 'wykonawca'): ?>
@@ -62,7 +62,7 @@
     <h2>Albumy</h2>
     <?php echo $this->partial('album/_list.phtml', array('items' => $this->resultAlbums->items, 'showCovers' => false)) ?>
     <?php if (empty($this->type) and ($this->totalAlbumCount > sizeof($this->resultAlbums->items))): ?>
-      <span class="right"><a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->searchQuery ?>&amp;tp=album">Pokaż <?php echo ($this->totalAlbumCount - 4) ?> więcej albumów</a></span>
+      <span class="right"><a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->escape(urlencode($this->searchQuery)) ?>&amp;tp=album">Pokaż <?php echo ($this->totalAlbumCount - 4) ?> więcej albumów</a></span>
     <?php endif ?>
   </div>
 <?php elseif($this->type == 'album'): ?>
@@ -74,7 +74,7 @@
     <h2>Utwory</h2>
     <?php echo $this->partial('song/_list.phtml', array('songs' => $this->resultSongs)) ?>
     <?php if (empty($this->type) and ($this->totalSongCount > sizeof($this->resultSongs->items))): ?>
-      <span class="right"><a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->searchQuery ?>&amp;tp=utwor">Pokaż <?php echo ($this->totalSongCount - 4) ?> więcej utworów</a></span>
+      <span class="right"><a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->escape(urlencode($this->searchQuery)) ?>&amp;tp=utwor">Pokaż <?php echo ($this->totalSongCount - 4) ?> więcej utworów</a></span>
     <?php endif ?>
   </div>
 <?php elseif($this->type == 'utwor'): ?>
@@ -86,7 +86,7 @@
     <h2>Wytwórnie</h2>
     <?php echo $this->partial('label/_list.phtml', array('labels' => $this->resultLabels)) ?>
     <?php if (empty($this->type) and ($this->totalLabelCount > sizeof($this->resultLabels->items))): ?>
-      <span class="right"><a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->searchQuery ?>&amp;tp=wytwornia">Pokaż <?php echo ($this->totalLabelCount - 4) ?> więcej wytwórni</a></span>
+      <span class="right"><a href="<?php echo $this->url(array(), 'search') ?>?q=<?php echo $this->escape(urlencode($this->searchQuery)) ?>&amp;tp=wytwornia">Pokaż <?php echo ($this->totalLabelCount - 4) ?> więcej wytwórni</a></span>
     <?php endif ?>
   </div>
 <?php elseif($this->type == 'wytwornia'): ?>
