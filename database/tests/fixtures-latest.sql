@@ -69,3 +69,13 @@ UPDATE `hhb_users` SET `usr_password` = '$2y$12$sxdWRc7n3UH1A8DiXi7iyutjX4TF22J4
 -- portrait; the page keeps their proportions with the longer side at 300 px.
 UPDATE `artists_photos` SET `width` = 600, `height` = 378 WHERE `artistid` = 2 AND `main` = 'y';
 UPDATE `artists_photos` SET `width` = 225, `height` = 300 WHERE `artistid` = 3 AND `main` = 'y';
+
+-- An album an import added but did not publish (#168): Mes's, with a year alone and no label,
+-- and a song nowhere else. A visitor finds neither, nor their pages; an admin opens the album.
+INSERT INTO `albums` (`id`, `title`, `urlname`, `labelid`, `year`, `release_date_precision`, `legal`, `cover`, `premier`, `artistabout`, `addedby`, `status`, `viewed`) VALUES
+(779, 'Taśma Robocza', 'tasma-robocza', NULL, '2016-01-01', 'year', 'y', '', '', '', 1100, 0, 0);
+INSERT INTO `album_artist_lookup` (`albumid`, `artistid`, `role`, `position`, `status`) VALUES (779, 35, 'main', 1, 999);
+INSERT INTO `songs` (`id`, `title`, `urlname`, `lyrics`, `addedby`, `status`, `viewed`) VALUES
+(9101, 'Szkic Numer Jeden', 'szkic-numer-jeden', '', 1100, 999, 0);
+INSERT INTO `album_lookup` (`songid`, `albumid`, `disc`, `track`, `status`) VALUES (9101, 779, 1, 1, 999);
+INSERT INTO `artist_lookup` (`songid`, `artistid`, `status`) VALUES (9101, 35, 999);

@@ -275,7 +275,7 @@ class Model_Artist_Api extends Jkl_Model_Api
         $limit = intval($limit);
         $query = "SELECT t4.`id` AS art_id, t4.`name`, t4.`disambiguation`, count(*) AS albumCount
      FROM albums t1, album_artist_lookup t2, band_lookup t3, artists t4
-     WHERE (t3.`bandid`=t2.`artistid` AND t3.`artistid`=t4.`id` AND t1.`id`=t2.`albumid`)
+     WHERE (t3.`bandid`=t2.`artistid` AND t3.`artistid`=t4.`id` AND t1.`id`=t2.`albumid` AND t1.`status`=" . Model_Album_Api::PUBLISHED . ")
      GROUP BY t4.id
      ORDER BY albumCount DESC" .
         (($limit != null) ? ' LIMIT ' . $limit : '');
@@ -289,7 +289,7 @@ class Model_Artist_Api extends Jkl_Model_Api
 
         $query = "SELECT t3.`id` AS art_id, t3.`name`, t3.`disambiguation`, count(*) AS albumCount
      FROM albums t1, album_artist_lookup t2, artists t3
-     WHERE (t3.`id`=t2.`artistid` AND t1.`id`=t2.`albumid` AND t3.`id`<>190)
+     WHERE (t3.`id`=t2.`artistid` AND t1.`id`=t2.`albumid` AND t3.`id`<>190 AND t1.`status`=" . Model_Album_Api::PUBLISHED . ")
      GROUP BY t3.id
      ORDER BY albumCount DESC" .
         (($limit != null) ? ' LIMIT ' . $limit : '');

@@ -19,6 +19,15 @@ class Model_Song_Api extends Jkl_Model_Api
 
     public const MINIMUM_LYRICS_LENGTH = 20;
 
+    /**
+     * A song a visitor is shown is on a published album with an artist: one on no such album
+     * has nothing to show it with (#37), and one on unpublished albums only waits with them
+     * for an admin (#168). Follows a song id column, as "t1.id " . SHOWN.
+     */
+    private const SHOWN = 'IN (SELECT l.songid FROM album_lookup l JOIN albums al ON al.id = l.albumid
+                               WHERE al.status = ' . Model_Album_Api::PUBLISHED . '
+                                 AND EXISTS (SELECT 1 FROM album_artist_lookup c JOIN artists a ON a.id = c.artistid WHERE c.albumid = l.albumid))';
+
     // private $_artistTypes = array(
     //   'add' => Model_Song_Container::LYRICS_ACTION_ADD,
     //   'edit' => Model_Song_Container::LYRICS_ACTION_EDIT,
@@ -90,10 +99,10 @@ class Model_Song_Api extends Jkl_Model_Api
         return $list;
     }
 
-    /** Whether there is a song $id, for its page to ask before it builds it (#147) */
+    /** Whether song $id has a page a visitor may open, for the page to ask before it builds it (#147, #168) */
     public function exists($id)
     {
-        return $this->has('songs', $id);
+        return !empty($this->_db->fetchAll('SELECT 1 FROM songs t1 WHERE t1.id = ? AND t1.id ' . self::SHOWN, array((int) $id)));
     }
 
     public function find($id, $full = false)
@@ -230,7 +239,7 @@ class Model_Song_Api extends Jkl_Model_Api
         // The ids first, sorted without the lyrics, then the rows by id (#69).
         $ids = array_column($this->_db->fetchAll(
             'SELECT t1.id FROM songs t1 JOIN artist_lookup t2 ON t2.songid = t1.id
-              WHERE t2.artistid = ' . $id . '
+              WHERE t2.artistid = ' . $id . ' AND t1.id ' . self::SHOWN . '
               ORDER BY t1.viewed DESC' . (($limit) ? ' LIMIT ' . $limit : '')
         ), 'id');
         return $this->_getList($this->_byIds('SELECT *, t1.id as song_id FROM songs t1', $ids));
@@ -242,7 +251,7 @@ class Model_Song_Api extends Jkl_Model_Api
         // The most viewed ids first, from the index on viewed, then each song with one album
         // and one of its artists. Grouping every song's join to pick those read the whole
         // catalogue through a temporary table on disk on each call (#69).
-        $ids = array_column($this->_db->fetchAll('SELECT id FROM songs ORDER BY viewed DESC' . (($limit) ? ' LIMIT ' . $limit : '')), 'id');
+        $ids = array_column($this->_db->fetchAll('SELECT t1.id FROM songs t1 WHERE t1.id ' . self::SHOWN . ' ORDER BY t1.viewed DESC' . (($limit) ? ' LIMIT ' . $limit : '')), 'id');
         $query = 'SELECT *, t1.id as song_id, t1.title as song_title, t1.viewed as song_views, t3.id as alb_id, t3.cover as alb_cover, t3.title as alb_title, t5.id as art_id, t5.name as art_name, t5.disambiguation as art_disambiguation, ' .
                   '(SELECT COUNT(*) FROM hhb_comments WHERE com_object_id = t1.id AND com_object_type = "s") as comment_count ' .
                   'FROM songs t1 ' .
@@ -270,7 +279,7 @@ class Model_Song_Api extends Jkl_Model_Api
 
         $query = "SELECT *, t1.id as song_id
               FROM songs t1
-              WHERE t1.title LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION . "
+              WHERE t1.title LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION . " AND t1.id " . self::SHOWN . "
               ORDER BY t1.viewed DESC" .
                   (($limit != null) ? ' LIMIT ' . $limit : '') .
                   ' OFFSET ' . ($page * $limit);
@@ -282,7 +291,7 @@ class Model_Song_Api extends Jkl_Model_Api
         $like = Jkl_Db::escape($like);
         $query = "SELECT count(*) as count
               FROM songs AS t1
-              WHERE t1.title LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION;
+              WHERE t1.title LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION . " AND t1.id " . self::SHOWN;
         $result = $this->_db->fetchAll($query);
         return intval($result[0]['count']);
     }
@@ -332,15 +341,14 @@ class Model_Song_Api extends Jkl_Model_Api
     * used for: sitemaps
     **/
     /**
-     * The songs that have a page, newest first, for the sitemap (#147). A song on no album with
-     * an artist answers 404 (#37), so it is no address to hand a search engine.
+     * The songs that have a page, newest first, for the sitemap (#147). A song not shown (SHOWN)
+     * answers 404, so it is no address to hand a search engine.
      */
     public function getSitemap($limit)
     {
         $query = 'SELECT *, t1.id AS song_id, t1.title AS sng_title
               FROM songs t1
-              WHERE t1.id IN (SELECT l.songid FROM album_lookup l
-                               WHERE EXISTS (SELECT 1 FROM album_artist_lookup c JOIN artists a ON a.id = c.artistid WHERE c.albumid = l.albumid))
+              WHERE t1.id ' . self::SHOWN . '
               ORDER BY t1.added DESC
               LIMIT ' . intval($limit);
         return $this->_getList($query);
@@ -351,6 +359,7 @@ class Model_Song_Api extends Jkl_Model_Api
         $limit = intval($limit);
         $query = "SELECT *, t1.id AS song_id, t1.title AS sng_title
               FROM songs t1
+              WHERE t1.id " . self::SHOWN . "
               ORDER BY t1.added DESC" .
                   (($limit != null) ? ' LIMIT ' . $limit : '');
         return $this->_getList($query);
