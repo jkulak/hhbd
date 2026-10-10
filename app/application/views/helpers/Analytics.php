@@ -139,6 +139,8 @@ class Zend_View_Helper_Analytics extends Zend_View_Helper_Abstract
             $lines[] = '<script async src="https://www.googletagmanager.com/gtag/js?id=' . rawurlencode($measurementId) . '"></script>';
         }
         if (null !== $adsenseClient) {
+            // The tag AdSense reads to tell the site belongs to the account, besides ads.txt (#169)
+            $lines[] = '<meta name="google-adsense-account" content="' . htmlspecialchars($adsenseClient, ENT_QUOTES, 'UTF-8') . '">';
             $lines[] = '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' . rawurlencode($adsenseClient) . '" crossorigin="anonymous"></script>';
         }
         return implode("\n", $lines) . "\n";

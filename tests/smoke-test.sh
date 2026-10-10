@@ -770,6 +770,8 @@ run_tests() {
     test_page_absent "and so is Tag Manager" "/" "GTM-MGJ9HQ"
     test_page "The footer opens the privacy settings" "/" 'id="privacy-settings">Ustawienia prywatności</a>'
     test_page "The privacy page says what is measured" "/prywatnosc.html" "Google Analytics 4"
+    test_page "ads.txt names hhbd's AdSense account (#169)" "/ads.txt" "google.com, pub-6149271850793027, DIRECT, f08c47fec0942fa0"
+    test_page "and every page says it belongs to that account" "/" '<meta name="google-adsense-account" content="ca-pub-6149271850793027">'
     echo ""
 
     # Phones (#149)
