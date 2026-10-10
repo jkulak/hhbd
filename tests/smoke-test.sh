@@ -419,6 +419,8 @@ run_fixture_tests() {
     test_page_multi "An artist sharing a name has a page, title and slug with the qualifier" "/solar-sbm-label-p64.html" "<h1>Solar (SBM Label)</h1>" 'og:title" content="Solar (SBM Label)"'
     test_page_multi "And so has the other artist of that name" "/solar-raper-z-poznania-p65.html" "<h1>Solar (raper z Poznania)</h1>" 'og:title" content="Solar (raper z Poznania)"'
     test_redirect_301 "A namesake's slug without the qualifier redirects to the one with it" "/solar-p64.html" "/solar-sbm-label-p64.html"
+    test_page "A landscape main photo carries its size and is not marked portrait (#166)" "/eldo-p2.html" 'width="600" height="378" alt="Zdjęcie Eldo" title="Eldo" class="image"'
+    test_page "A portrait main photo is marked so, to stand 300 px high" "/stasiak-p3.html" 'class="image portrait"'
     test_page "An artist named in Cyrillic has a page, under a transcribed slug (#155)" "/igroki-ulic-p67.html" "<h1>Игроки Улиц</h1>"
     test_redirect_301 "and the address the empty slug made of it before leads there" "/x-p67.html" "/igroki-ulic-p67.html"
     test_redirect_301 "A name with an umlaut keeps the letter's base in its slug" "/w-yza-p68.html" "/woyza-p68.html"
@@ -658,6 +660,23 @@ test_admin_page() {
     return 1
 }
 
+# test_stylesheet <name> <present> [absent]: s.css, its whitespace folded to single spaces,
+# holds the first text and not the second
+test_stylesheet() {
+    local name="$1" present="$2" absent="${3:-}" css
+    css=$(curl -s --max-time 10 $CURL_OPTS "${BASE_URL}/css/s.css" 2>/dev/null | tr -s ' \n\t' '   ')
+    if [[ "$css" == *"$present"* && ( -z "$absent" || "$css" != *"$absent"* ) ]]; then
+        echo -e "${GREEN}✓${NC} $name"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - s.css lacks '$present' or holds '$absent'"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
+}
+
 run_tests() {
     echo "Running tests..."
     echo ""
@@ -781,6 +800,7 @@ run_tests() {
     test_page_absent "The stylesheet minified once in January is gone" "/" "s.min.css"
     test_page "The album list's table has its class for the phone's layout" "/albumy.html" 'class="album-table"'
     test_page "A track's artists are in a box of limited width (#156)" "/wdowa-superextra-a535.html" '<span class="artists">'
+    test_stylesheet "A cover or main photo keeps its proportions, its height no longer fixed (#166)" "#picture img { width: 300px; height: auto; }" "#picture img { width: 300px; height: 300px; }"
     test_page_absent "No page loads jQuery, 1.4.4 or any other (#43)" "/wdowa-superextra-a535.html" "jquery"
     test_page "The site's script runs once the page is parsed" "/" '<script src="/js/s.js?v=[0-9a-f]*" defer>'
     test_page_absent "The comment form carries no inline script" "/wdowa-superextra-a535.html" "limitChars"
