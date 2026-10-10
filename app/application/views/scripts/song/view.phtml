@@ -1,3 +1,4 @@
+<?php echo $this->StructuredData()->song($this->song) ?>
 <div id="main">
   <h1><?php echo $this->partial('artist/_link.phtml', array('artist' => $this->song->albumArtist)) ?> -
       <?php echo $this->song->title ?><?php if (!empty($this->song->lyrics)): ?>

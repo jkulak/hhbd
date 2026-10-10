@@ -609,6 +609,24 @@ test_first_link() {
     return 1
 }
 
+# test_json_ld <name> <path> <jq filter>: the page's JSON-LD parses, and the filter, run on it,
+# prints true (#195)
+test_json_ld() {
+    local name="$1" path="$2" filter="$3" got
+    got=$(curl -s --max-time 10 $CURL_OPTS "${BASE_URL}${path}" 2>/dev/null \
+        | sed -n 's|.*<script type="application/ld+json">\(.*\)</script>.*|\1|p' | head -1 | jq -r "$filter" 2>&1)
+    if [[ "$got" == "true" ]]; then
+        echo -e "${GREEN}✓${NC} $name"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - $path: '$filter' gave '${got:0:200}'"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
+}
+
 # test_sitemap <name> <path> <urlset|sitemapindex>: XML a search engine reads (#147): served as
 # application/xml, nothing after the root element closes, every entry closed and with one <loc>,
 # and every <loc> an absolute address on this site: https:// ones on production
@@ -895,7 +913,18 @@ run_tests() {
     test_page_absent "A news item's meta description holds no HTML" "/onar-jak-na-pierwszej-plycie-wideo-n1877.html" 'name="description" content="[^"]*&lt;'
     echo ""
 
-    # Google's tags (#161, #162): consent first, everything denied; nothing of the old tags
+    # What a page is, for search engines (#195): read-only, so production too
+    echo "--- Structured data ---"
+    test_json_ld "An album's page describes the album, its artist, label and tracks" "/wdowa-superextra-a535.html" \
+        '[.["@graph"][] | select(.["@type"] == "MusicAlbum")][0] | .name == "Superextra" and .byArtist[0].name == "Wdowa" and .recordLabel.name == "Alkopoligamia" and .numTracks > 0 and (.track.itemListElement[0].item.url | test("^https?://[^/]+/[^/]+-s[0-9]+\\.html$"))'
+    test_json_ld "and the path to it" "/wdowa-superextra-a535.html" \
+        '[.["@graph"][] | select(.["@type"] == "BreadcrumbList")][0].itemListElement | map(.name) == ["Hhbd.pl", "Albumy", "Wdowa", "Superextra"]'
+    test_json_ld "An artist's page describes the artist and its albums" "/mes-p35.html" \
+        '[.["@graph"][] | select(.["@type"] == "MusicGroup")][0] | .name == "Mes" and (.album | length) > 0'
+    test_json_ld "A song's page describes the song and its album" "/pogoda-s7329.html" \
+        '[.["@graph"][] | select(.["@type"] == "MusicRecording")][0] | .name == "Pogoda" and .inAlbum.name == "Superextra"'
+    echo ""
+
     # Popularity over a period (#194)
     echo "--- Rankings ---"
     test_page_multi "The albums of the last 7 days" "/albumy/popularne-tydzien.html" "<h1>Najpopularniejsze albumy z ostatnich 7 dni</h1>" 'href="/albumy/popularne-miesiac.html"' 'rel="canonical" href="'"${BASE_URL}"'/albumy/popularne-tydzien.html"'
@@ -921,6 +950,7 @@ run_tests() {
     rm -f "$flag_jar"
     echo ""
 
+    # Google's tags (#161, #162): consent first, everything denied; nothing of the old tags
     echo "--- Analytics and consent ---"
     test_page "Google's tags start with every consent denied (#162)" "/" "gtag('consent', 'default', {ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'denied'"
     test_page_absent "Universal Analytics, dead since 2023, is gone (#161)" "/" "UA-3311418"
