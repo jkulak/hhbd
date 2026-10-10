@@ -8,7 +8,8 @@
 #     what it moved so it can be undone; no column anywhere still names the duplicate
 #   - "keep apart", "change the qualifier", "accept the cover", "pick this date", "pick this
 #     type" and "publish it as it is" each do what they say and close the item with the admin
-#     and the time
+#     and the time; completing an unpublished album's day and label goes through the edit
+#     journal, publishes it once nothing is missing, and says what is left until then
 #   - a value that is no date is refused and leaves the item open
 #   - the list counts what is still open
 #   - an admin sees on a page who added its row and when: a person, the import, nobody known
@@ -125,6 +126,28 @@ check "a date picked, whole with its precision" "302 picked 10 1 - 2013-05-17 da
 check "a type picked" "302 picked 10 1 - ep" "$(settle 4 pick 'ep' '') $(item 4) $(sql "SELECT release_type FROM albums WHERE id = 2")"
 check "a release only one catalogue knew, checked" "302 accepted 10 1 -" "$(settle 5 accept '' '') $(item 5)"
 check "a settled item cannot be settled again" "302 merged 10 1 ten sam, inna wytwórnia" "$(settle 1 keep '' '') $(item 1)"
+
+echo "> an album an import left unpublished, completed on its page (#199)"
+sql "INSERT INTO albums (id, title, urlname, labelid, year, release_date_precision, legal, cover, premier, artistabout, addedby, status) VALUES (782, 'Bez Daty', 'bez-daty', NULL, '2017-01-01', 'year', 'y', '', '', '', 1100, 0); INSERT INTO album_artist_lookup (albumid, artistid, role, position, status) VALUES (782, 35, 'main', 1, 999); INSERT INTO album_lookup (songid, albumid, disc, track, status) VALUES (9101, 782, 1, 1, 999); INSERT INTO review_items (id, entity_type, entity_id, reason, detail) VALUES (9, 'album', 782, 'incomplete', '{\"text\": \"brak: wytwórnia, data dzienna\"}')"
+complete() { # complete <item> <date> <label> <self>: the album page's form, as the admin
+    curl -s -o /dev/null -w '%{http_code}' --max-time 20 -b "$T/jar" -c "$T/jar" \
+        --data-urlencode "token=$token" --data-urlencode "id=$1" --data-urlencode "do=complete" \
+        --data-urlencode "date=$2" --data-urlencode "label=$3" --data-urlencode "self=$4" \
+        --data-urlencode "note=" --data-urlencode "back=/admin/do-przejrzenia.html" "$URL/admin/do-przejrzenia/rozstrzygnij.html"
+}
+album782() { sql "SELECT CONCAT_WS(' ', status, IFNULL(labelid, '-'), self_released, year, release_date_precision) FROM albums WHERE id = 782"; }
+check "the album's page gives the admin the form, with the labels to pick from" "3" \
+    "$(curl -s --max-time 10 -b "$T/jar" "$URL/mes-bez-daty-a782.html" | grep -cE 'name="date"|name="label" list=|<option value="Alkopoligamia">')"
+check "a label and a self-release at once are refused, nothing changed" "302 open 0 - 0 2017-01-01 year" \
+    "$(complete 9 '' 'Alkopoligamia' 1) $(sql "SELECT IFNULL(resolution, 'open') FROM review_items WHERE id = 9") $(album782)"
+check "a label it does not have is refused" "302 0 - 0" "$(complete 9 '' 'Nie Ma Takiej' '') $(album782 | cut -d' ' -f1-3)"
+check "the label alone is written, and the item says the day is still missing" "302 open brak: data dzienna 0 58 0" \
+    "$(complete 9 '' 'Alkopoligamia' '') $(sql "SELECT CONCAT_WS(' ', IFNULL(resolution, 'open'), JSON_VALUE(detail, '$.text')) FROM review_items WHERE id = 9") $(album782 | cut -d' ' -f1-3)"
+check "the day, in another year than it had, completes it: published, the item closed by the admin" "302 completed 10 1 999 58 0 2016-11-03 day" \
+    "$(complete 9 '2016-11-03' '' '') $(sql "SELECT CONCAT_WS(' ', resolution, resolved_by, resolved IS NOT NULL) FROM review_items WHERE id = 9") $(album782)"
+check "every change went through the edit journal, from the panel, with its reason" "3 panel review item 9: uzupełnione na stronie albumu" \
+    "$(sql "SELECT CONCAT_WS(' ', COUNT(*), MIN(path), MIN(why)) FROM edit_operations WHERE JSON_VALUE(args, '$.id') = '782' OR JSON_VALUE(args, '$.id') = 782")"
+check "and a visitor opens it" "200" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL/mes-bez-daty-a782.html")"
 
 echo "> an album an import left unpublished, published as it is (#168)"
 check "a visitor gets a 404 for it first" "404" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL/mes-tasma-robocza-a779.html")"
