@@ -539,7 +539,7 @@
         </tr>
         <?php foreach ($this->recentActivity['recentComments'] as $comment): ?>
         <tr>
-          <td><?php echo $this->escape(mb_substr($comment['com_content'], 0, 100)) . (mb_strlen($comment['com_content']) > 100 ? '...' : ''); ?></td>
+          <td><?php echo $this->escape(Jkl_Tools_String::excerpt($comment['com_content'], 100)); ?></td>
           <td>
             <a href="<?php echo $this->url(array('id' => $comment['usr_id'], 'seo' => Jkl_Tools_Url::createUrl($comment['usr_display_name'])), 'user'); ?>">
               <?php echo $this->escape($comment['usr_display_name']); ?>

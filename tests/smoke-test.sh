@@ -388,6 +388,7 @@ run_fixture_tests() {
     test_redirect_301 "An old address's underscore finds a slug written with a dash (#26)" "/n/dj_technik" "/dj-technik-p6.html"
     test_not_found "A song on no album and by no artist is a 404, not a 500 (#37)" "/bez-albumu-s9100.html" "Call to a member function"
     test_page_absent "and the song sitemap leaves it out (#147)" "/sitemap-songs.xml" "-s9100.html<"
+    test_page_absent "A news excerpt that was not cut gets no dots (#163)" "/" 'doczekać!\.\.\.'
     # Passwords and the comment question (#41): these log in and post, so on the fixtures only
     test_login "An account from before #41 logs in with its MD5 and the old salt" "legacy@example.com" "legacypass"
     test_login "and again, with the password hash that login wrote" "legacy@example.com" "legacypass"
@@ -663,6 +664,7 @@ run_tests() {
     # Core pages
     echo "--- Listing Pages ---"
     test_page "Homepage" "/" "Pezet"
+    test_page_absent "The home page's news excerpts split no letter (#163)" "/" "�"
     # The table, not a title: production's top album was a 2017 placeholder until #54 removed it.
     test_page "Album List" "/albumy.html" "Lista albumów hip-hopowych"
     test_page "Premieres" "/premiery.html" "Stasiak"

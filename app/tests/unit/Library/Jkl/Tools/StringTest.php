@@ -65,12 +65,13 @@ class Jkl_Tools_StringTest extends TestCase
 
     public function trimStrProvider(): array
     {
+        // #163: characters, a cut after a whole word, "..." only when something was cut
         return [
-            'short string with dots' => [
+            'a short text keeps its end, without dots' => [
                 'hello',
                 10,
                 true,
-                'hello...'
+                'hello'
             ],
             'short string without dots' => [
                 'hello',
@@ -78,35 +79,53 @@ class Jkl_Tools_StringTest extends TestCase
                 false,
                 'hello'
             ],
-            'long string truncated with dots' => [
+            'a long text is cut after the last word that fits, dots included in the length' => [
                 'this is a very long string that needs truncation',
                 10,
                 true,
-                'this is a ver...'  // Cuts at first space AFTER position 10
+                'this is...'
             ],
-            'long string truncated without dots' => [
+            'without dots the whole length is for words' => [
                 'this is a very long string that needs truncation',
                 10,
                 false,
-                'this is a ver'  // Cuts at first space AFTER position 10
+                'this is a'
             ],
-            'string with no space after cutoff' => [
+            'a word ending right at the limit is kept' => [
                 'exactly ten',
                 10,
                 true,
-                'exactly te...'  // No space found after position 10, cuts at -1
+                'exactly...'
             ],
-            'string shorter than limit with dots' => [
+            'a text shorter than the limit gets no dots' => [
                 'short',
                 20,
                 true,
-                'short...'
+                'short'
             ],
             'string equal to limit' => [
                 'exactly ten',
                 11,
                 false,
-                'exactly ten'  // Length is exactly 11, so no truncation
+                'exactly ten'
+            ],
+            'a Polish word is not cut short by a letter' => [
+                'Za wyprodukowanie utworu odpowiada PLN.Beatz',
+                30,
+                true,
+                'Za wyprodukowanie utworu...'
+            ],
+            'nor a Polish letter in two' => [
+                'Mamy dla Was przedsmak tego co wykluwa się w Gdyni',
+                41,
+                true,
+                'Mamy dla Was przedsmak tego co wykluwa...'
+            ],
+            'punctuation before the cut goes, the dots stand for it' => [
+                'Fani nie mogą się doczekać! Album wyjdzie wiosną.',
+                30,
+                true,
+                'Fani nie mogą się doczekać...'
             ],
         ];
     }
@@ -147,5 +166,27 @@ class Jkl_Tools_StringTest extends TestCase
         $description = Jkl_Tools_String::metaDescription(str_repeat('ż', 200), 20);
 
         $this->assertSame(str_repeat('ż', 17) . '...', $description);
+    }
+
+    public function testANewsExcerptIsPlainTextWithASpaceWhereALineEnded(): void
+    {
+        $this->assertSame(
+            'Bit do utworu wyprodukował PLN.Beatz. źródło: facebook.com/RadomKeKe',
+            Jkl_Tools_String::excerpt('<p>Bit do utworu wyprodukował PLN.Beatz.<br />źródło: facebook.com/RadomKeKe</p>', 200)
+        );
+    }
+
+    public function testAnExcerptEndsWithAWholeWordAndNeverSplitsALetter(): void
+    {
+        $excerpt = Jkl_Tools_String::excerpt(str_repeat('Leh nie osiadł na laurach tylko zbiera świeży materiał. ', 10), 200);
+
+        $this->assertLessThanOrEqual(200, mb_strlen($excerpt, 'UTF-8'));
+        $this->assertSame(1, preg_match('//u', $excerpt), 'valid UTF-8');
+        $this->assertMatchesRegularExpression('/ (Leh|nie|osiadł|na|laurach|tylko|zbiera|świeży|materiał)\.\.\.$/u', $excerpt);
+    }
+
+    public function testAnExcerptOfAShortTextHasNoDots(): void
+    {
+        $this->assertSame('Fani nie mogą się doczekać!', Jkl_Tools_String::excerpt('Fani nie mogą się doczekać!', 200));
     }
 }
