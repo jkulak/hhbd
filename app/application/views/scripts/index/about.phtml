@@ -1,5 +1,6 @@
 <div id="main">
-  
+  <?php if ($this->IsAdmin()): ?><?php echo $this->partial('common/_sources.phtml', array('about' => true)) ?><?php endif ?>
+
   <div class="pane">
     <h2>Informacje podstawowe</h2>
     <p>HHBD to skrót od Hip-Hopowa Baza Danych. Jeżeli chcesz się z nami skontaktować, kliknij w <a href="<?php echo $this->url(array(), 'contact'); ?>">kontakt</a>.</p>
@@ -24,11 +25,6 @@
   <div class="pane">
     <h2>Reklamy</h2>
     <p>Jeżeli masz propozycje - <a href="<?php echo $this->url(array(), 'contact'); ?>">kontaktuj się z nami</a>.</p>
-  </div>
-
-  <div class="pane">
-    <h2>Źródła danych</h2>
-    <p>Część danych o albumach i wykonawcach pochodzi z Discogs, MusicBrainz, Wikidata i polskiej Wikipedii; przy każdej informacji zapisujemy, skąd ją wzięliśmy. Hhbd.pl nie jest powiązany z Discogs ani przez Discogs sponsorowany czy rekomendowany. <em>This site is not affiliated with, sponsored or endorsed by Discogs.</em></p>
   </div>
 
   <div class="pane">

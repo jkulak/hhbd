@@ -1,6 +1,7 @@
 <div id="main">
     <h1><?php echo $this->partial('album/_artists.phtml', array('album' => $this->album)) ?> - <?php echo $this->album->title ?><?php echo $this->partial('album/_markers.phtml', array('album' => $this->album)) ?></h1>
   <?php if ($this->IsAdmin()): ?><?php echo $this->partial('review/_panel.phtml', array('items' => $this->reviewItems, 'messages' => $this->reviewMessages, 'back' => strtok($_SERVER['REQUEST_URI'], '?'))) ?><?php endif ?>
+  <?php if ($this->IsAdmin()): ?><?php echo $this->partial('common/_sources.phtml', array('provenance' => $this->provenance, 'externalIds' => $this->externalIds, 'discogsKinds' => array('release', 'master'))) ?><?php endif ?>
   <?php echo $this->partial('common/_share.phtml', array('currentUrl' => $this->currentUrl, 'title' => $this->title)) ?>
 	<div id="picture">
 	  <img src="<?php echo $this->album->cover ?>"<?php if ($this->album->coverWidth): ?> width="<?php echo $this->album->coverWidth ?>" height="<?php echo $this->album->coverHeight ?>"<?php endif ?> alt="Okładka albumu <?php echo $this->album->title ?>" title="<?php echo $this->album->title . ' - ' . $this->album->artistNames ?>" class="image" />
@@ -139,8 +140,6 @@
   	 <?php if (!empty($this->album->description)): ?><p><?php echo $this->album->description ?></p><?php endif ?>
     <p class="<?php if (!empty($this->album->description)): ?>js-hidden <?php endif ?>auto"><?php echo $this->album->autoDescription ?></p>
   </div>
-
-  <?php echo $this->partial('common/_credits.phtml', array('provenance' => $this->provenance, 'externalIds' => $this->externalIds, 'discogsKinds' => array('release', 'master'))) ?>
 
   <div class="pane" id="comments">
      <div class="header"><h2>Wasze komentarze <span class="hidden">na temat <?php echo $this->album->title ?></span></h2></div>

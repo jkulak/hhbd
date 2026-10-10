@@ -1,0 +1,43 @@
+<?php
+/**
+ * Where this page's data came from, for an admin only, at the top of the page (#158): the
+ * Discogs line its API terms ask for (#62), every photo's author and licence (#61), and on the
+ * about page the sources and Discogs's not-affiliated notice. A visitor sees none of it, by
+ * decision of 2026-10-10; the database keeps all of it. Nothing to show, no box.
+ *
+ * Takes, each optional: provenance (Model_Provenance_List), externalIds and discogsKinds (for
+ * the Discogs page the line links to), photos (Model_Image_Container[], the main one first),
+ * about (true on the about page).
+ */
+$lines = array();
+if (null !== $this->provenance && $this->provenance->requiresDiscogsCredit()) {
+    $discogs = Model_ExternalId_Api::pageUrl($this->externalIds, 'discogs', (array) $this->discogsKinds);
+    $lines[] = null !== $discogs
+        ? '<a href="' . $this->escape($discogs) . '">Data provided by Discogs.</a>'
+        : 'Data provided by Discogs.';
+}
+$captions = array();
+foreach ((array) $this->photos as $i => $photo) {
+    if (null !== ($caption = $photo->getCaption())) {
+        $captions[] = (0 === $i ? 'Zdjęcie główne: ' : 'Zdjęcie ' . ($i + 1) . ': ') . $caption;
+    }
+}
+?>
+<?php if (!empty($lines) || !empty($captions) || $this->about): ?>
+<section class="admin-box admin-sources">
+  <h2>Źródła <small>(widzi to tylko admin)</small></h2>
+  <?php foreach ($lines as $line): ?>
+    <p class="credits"><?php echo $line ?></p>
+  <?php endforeach ?>
+  <?php if (!empty($captions)): ?>
+    <ul class="photo-credits">
+      <?php foreach ($captions as $caption): ?>
+        <li><?php echo $caption ?></li>
+      <?php endforeach ?>
+    </ul>
+  <?php endif ?>
+  <?php if ($this->about): ?>
+    <p>Część danych o albumach i wykonawcach pochodzi z Discogs, MusicBrainz, Wikidata i polskiej Wikipedii; przy każdej informacji zapisujemy, skąd ją wzięliśmy. Hhbd.pl nie jest powiązany z Discogs ani przez Discogs sponsorowany czy rekomendowany. <em>This site is not affiliated with, sponsored or endorsed by Discogs.</em></p>
+  <?php endif ?>
+</section>
+<?php endif ?>
