@@ -116,6 +116,25 @@ opens no second item.
 | a release's `review`, `{"reason": "date_disputed", "values": ["2013", "2013-05-17"]}` | `date_disputed` | picks one of the values, or types another |
 | a release's `review`, `{"reason": "type_disputed", "values": ["single", "ep"]}` | `type_disputed` | picks one, or another type |
 | a release's `review`, `{"reason": "single_source", "note": "..."}` | `single_source` | marks it checked |
+| an album the import made that lacks a part (below) | `incomplete` | publishes it as it is ("Opublikuj mimo braków"); a later batch that brings the rest publishes it and closes the item |
+
+## What is published
+
+An album the import makes is shown on hhbd.pl only when it has all three (#168):
+
+1. a label, or it is a self-release: `self_released: true`, "wydanie własne", a nielegal;
+2. a release date to the day: `release_date_precision` `day`;
+3. a tracklist, at least one track; their lengths are not needed.
+
+Any other album is still added, unpublished (`albums.status` 0): a visitor finds it nowhere and
+its page answers 404, and an admin sees it with a review item saying what it lacks, as "brak:
+wytwórnia, data dzienna, tracklista". The report warns of it like any other item.
+
+A later batch that brings the rest publishes it and closes the item; one that brings part of it
+rewrites the item to what is still missing. A batch that finds an album the import made
+published but short of a part, as the albums of run 14 were, holds it back the same way. An
+album hhbd had before any import keeps its status whatever it lacks, and so does one an admin
+published as it was: no batch takes those back.
 
 ## A row hhbd has
 
@@ -132,7 +151,11 @@ a person to decide. The same goes for:
 - a cover or a logo: an album or label that has one keeps it, unless every cover it shows is
   a stand-in (`needs_upgrade`) and the batch's is larger: that one takes its place (#103);
 - photos: one the artist has (the same original) is not added again, and an artist gets five
-  at most (#96).
+  at most (#96);
+- a release date: a more precise one inside the month or the year hhbd has, a day in that
+  month, replaces it with its precision, as publishing needs the day (#168); one that disagrees
+  is a warning;
+- a self-release: fills in only where the album has no label; with one, it is a warning.
 
 Links (aliases, members, cities, credits) are added where missing; none is removed.
 
@@ -153,6 +176,7 @@ Links (aliases, members, cities, credits) are added where missing; none is remov
 | release | `release_date`, `release_date_precision`, `announced` | `albums.year` as a whole date, its precision, `announced` (#54) |
 | release | `artists` | `album_artist_lookup` with role, position and credited name (#58) |
 | release | `label` | `albums.labelid`; `null` for a release without a label (#55) |
+| release | `self_released` | `albums.self_released`, "wydanie własne" on the page; the schema refuses it with a `label` (#168) |
 | release | `formats`, `catalog_numbers` | `albums.media_*`, `albums.catalog_*` (#53) |
 | release | `cover` | `content/a/<variant>/<sha256>.jpg`, `album_covers`, `needs_upgrade` as sent (#60) |
 | release | `tracklist` | `songs` (one reused when its `musicbrainz:recording` or ISRC matches), `album_lookup` with disc and position (#59), credits in `artist_lookup`, `feature_lookup`, `music_lookup`, `scratch_lookup`, `remix_lookup`, roles by name (#66) |

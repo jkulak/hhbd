@@ -14,12 +14,17 @@ class Model_Review_Api extends Jkl_Model_Api
         'date_disputed'     => array('label' => 'Źródła nie zgadzają się co do daty', 'actions' => array('pick')),
         'type_disputed'     => array('label' => 'Źródła nie zgadzają się co do typu wydania', 'actions' => array('pick')),
         'single_source'     => array('label' => 'Znane tylko z jednego źródła', 'actions' => array('accept')),
+        'incomplete'        => array('label' => 'Niekompletny, nieopublikowany', 'actions' => array('publish')),
     );
 
     /** What each action writes as the item's resolution */
     public const RESOLUTIONS = array(
         'merge' => 'merged', 'keep' => 'kept', 'qualifier' => 'qualified', 'accept' => 'accepted', 'pick' => 'picked',
+        'publish' => 'published',
     );
+
+    /** How the importer closes an incomplete album's item once a batch completes it (#168) */
+    public const COMPLETED = 'completed';
 
     private const RELEASE_TYPES = array('album', 'ep', 'mixtape', 'compilation', 'beat_tape', 'single', 'other');
 
@@ -142,6 +147,10 @@ class Model_Review_Api extends Jkl_Model_Api
                 $this->setDate($item->entityId, $value, $userId);
             } elseif ('pick' === $action && 'type_disputed' === $item->reason) {
                 $this->setType($item->entityId, $value, $userId);
+            } elseif ('publish' === $action) {
+                // As it is, whatever it lacks; no later import takes it back (#168).
+                $this->_db->query('UPDATE albums SET status = ? WHERE id = ?', array(Model_Album_Api::PUBLISHED, $item->entityId));
+                $this->touch('albums', $item->entityId, $userId);
             }
             $this->close($item->id, self::RESOLUTIONS[$action], $note, $userId, $undo);
             $this->_db->commit();
@@ -149,6 +158,24 @@ class Model_Review_Api extends Jkl_Model_Api
             $this->_db->rollBack();
             throw $e;
         }
+    }
+
+    /** Rewrites an open item's detail, as the importer does when a batch leaves an album lacking less */
+    public function setDetail($id, array $detail)
+    {
+        $this->_db->query(
+            'UPDATE review_items SET detail = ? WHERE id = ? AND resolved IS NULL',
+            array(json_encode($detail, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), (int) $id)
+        );
+    }
+
+    /** Whether an admin ever published album $id as it was (#168), which no import undoes */
+    public function publishedByAdmin($albumId)
+    {
+        return !empty($this->_db->fetchAll(
+            "SELECT 1 FROM review_items WHERE entity_type = 'album' AND entity_id = ? AND reason = 'incomplete' AND resolution = ?",
+            array((int) $albumId, self::RESOLUTIONS['publish'])
+        ));
     }
 
     /** Settles an item without changing anything else, as the importer does when it replaces a stand-in */

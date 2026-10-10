@@ -20,6 +20,8 @@
       <li><span>Wydawnictwo:</span>
       <?php if (!empty($this->album->label)): ?>
         <?php echo $this->partial('label/_link.phtml', array('item' => $this->album->label)); ?>
+      <?php elseif ($this->album->selfReleased): ?>
+        wydanie własne
       <?php else: ?>
         --
       <?php endif ?>
