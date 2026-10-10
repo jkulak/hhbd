@@ -86,14 +86,8 @@
           <td><?php echo $song->track ?></td>
           <td class="align">
             <?php if (!empty($song->artist->items)): ?>
-
-
-            <?php foreach ($song->artist->items as $key => $feat): ?>
-              <!-- <?php echo $this->partial('artist/_link.phtml', array('artist' => $feat)) ?><?php if (sizeof($song->artist->items) - 1 > $key): ?>, <?php endif ?> -->
-                <?php echo $feat->name ?><?php if (sizeof($song->artist->items) - 1 > $key): ?>, <?php endif ?>
-            <?php endforeach ?>
-            <?php else: ?>
-              <?php // echo $song->albumArtist->name?>
+              <?php // In a box of limited width, so a compilation's long lists wrap rather than push the titles to the middle (#156) ?>
+              <span class="artists"><?php foreach ($song->artist->items as $key => $feat): ?><?php echo $feat->name ?><?php if (sizeof($song->artist->items) - 1 > $key): ?>, <?php endif ?><?php endforeach ?></span>
             <?php endif ?>
           </td>
           <td>
