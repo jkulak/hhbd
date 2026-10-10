@@ -18,10 +18,12 @@ day, and with it every script that deployed there.
 | | `/srv/hhbd/.env` | `IMAGE_TAG=<running tag>`, written by the host's `ci-deploy` |
 | | volumes `hhbd_db_data`, `hhbd_content` | the database and `content/` |
 
-Configuration goes in with `make ovh-install`. Images go out with a release, cut by a person:
+Configuration goes in with `make ovh-install`. Images go out with a release, cut by whoever
+finishes the change, right after its merge and after the migrations and configuration it needs
+(the order is in `CLAUDE.md`, "Finished means running on hhbd.pl", #175):
 
 ```bash
-gh release create vYYYY.MM.N --generate-notes
+gh release create vYYYY.MM.N --target main --title YYYY.MM.N --notes-file <the CHANGELOG's section>
 ```
 
 Publishing it starts `.github/workflows/deploy.yml`, which builds the app, nginx and importer

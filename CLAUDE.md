@@ -6,6 +6,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Every task is a GitHub issue in jkulak/hhbd: what waits for later carries the `backlog` label, and the pull request that does it closes it. Nothing is tracked in `tasks/` files for this repository; those are only for hand-overs to other repositories.
 
+### Finished means running on hhbd.pl
+
+A change is finished when it runs on hhbd.pl, not when its pull request is merged (#175). Whoever does it takes it all the way, in this order, and nobody releases it for them afterwards:
+
+1. Merge the pull request once CI is green.
+2. `make ovh-migrate` when it brings a migration, `make ovh-install` when it changes the production compose file, the secrets or the edge snippet: both before the release that needs them.
+3. Release: the CHANGELOG's section gets its version (`## YYYY.MM.N — date`) in a small prep pull request, then `gh release create vYYYY.MM.N --target main --title YYYY.MM.N --notes-file <that section>`.
+4. Watch `deploy.yml` to green; a red one has been taken back, and is fixed and released again.
+5. Check hhbd.pl itself for what the change does, beyond the release's smoke test.
+
+This holds here even where a general rule says releasing is someone else's decision. A change that touches nothing deployed (docs, tests, CI) needs no release.
+
 ## Project Overview
 
 HHBD is a Polish Hip-Hop Database - a content management system for music catalog featuring artists, albums, songs, labels, user profiles, comments, ratings, and community features. Built with **Zend Framework 1** (shardj/zf1-future) and **PHP 8.4**.
@@ -219,7 +231,7 @@ In **production mode** (use `-f compose.yaml` only):
 - Opcache disabled timestamp validation
 - Vendor directory baked into container
 
-Production itself runs `deploy/ovh/compose.yaml` on the shared OVH host, behind its Caddy edge and Cloudflare, since 2026-10-08. A release is `gh release create vYYYY.MM.N`, run by a person; [deploy/ovh/README.md](deploy/ovh/README.md) has the rest.
+Production itself runs `deploy/ovh/compose.yaml` on the shared OVH host, behind its Caddy edge and Cloudflare, since 2026-10-08. A release is `gh release create vYYYY.MM.N`, cut as part of finishing a change (see "Finished means running on hhbd.pl" above); [deploy/ovh/README.md](deploy/ovh/README.md) has the rest.
 
 ## Code Style Conventions
 
