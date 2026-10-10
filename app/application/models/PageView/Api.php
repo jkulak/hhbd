@@ -20,6 +20,17 @@ class Model_PageView_Api extends Jkl_Model_Api
 
     private const SESSION = 'pageViews';
 
+    /**
+     * The periods popularity is counted over (#194), by the word their addresses end in, and
+     * how a page says them; '' is all time, the totals in viewed.
+     */
+    public const PERIODS = array(
+        'tydzien' => 'z ostatnich 7 dni',
+        'miesiac' => 'z ostatnich 30 dni',
+        'rok'     => 'w tym roku',
+        ''        => 'wszech czasów',
+    );
+
     private static $_instance;
 
     /** @return Model_PageView_Api */
@@ -29,6 +40,51 @@ class Model_PageView_Api extends Jkl_Model_Api
             self::$_instance = new self();
         }
         return self::$_instance;
+    }
+
+    /** The address of a ranking: $base '/albumy/popularne', and the period's word after a dash */
+    public static function rankingUrl($base, $period)
+    {
+        return $base . ('' === $period ? '' : '-' . $period) . '.html';
+    }
+
+    /**
+     * The first day of a period that ends today, $today included, as Y-m-d: the last 7 days, the
+     * last 30, this calendar year; null for all time.
+     */
+    public static function since($period, $today)
+    {
+        switch ($period) {
+            case 'tydzien':
+                return date('Y-m-d', strtotime($today . ' -6 days'));
+            case 'miesiac':
+                return date('Y-m-d', strtotime($today . ' -29 days'));
+            case 'rok':
+                return substr($today, 0, 4) . '-01-01';
+            case '':
+                return null;
+        }
+        throw new InvalidArgumentException(sprintf('No period "%s"', $period));
+    }
+
+    /**
+     * The ids of type $type most viewed since $since, the most first, at most $count; $shown
+     * narrows them, a condition on the table aliased t3 (an album's SHOWN)
+     *
+     * @return int[]
+     */
+    public function mostViewedSince($type, $since, $count, $shown = '1')
+    {
+        if (!isset(self::TYPES[$type])) {
+            throw new InvalidArgumentException(sprintf('No page type "%s"', $type));
+        }
+        $rows = $this->_db->fetchAll(
+            'SELECT t3.id FROM page_views pv JOIN `' . self::TYPES[$type] . '` t3 ON t3.id = pv.entity_id
+              WHERE pv.entity_type = ? AND pv.day >= ? AND ' . $shown . '
+              GROUP BY t3.id ORDER BY SUM(pv.views) DESC, t3.id LIMIT ' . (int) $count,
+            array($type, $since)
+        );
+        return array_map('intval', array_column($rows, 'id'));
     }
 
     /** Whether a request with this method and user agent, from an admin or not, is a view to count */

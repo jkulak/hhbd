@@ -334,6 +334,28 @@ class Model_Album_Api extends Jkl_Model_Api
         return $this->getList($query);
     }
 
+    /**
+     * The albums most viewed since $since (#194), filled up from the most viewed of all time when
+     * the period has fewer, so a list is never empty, as right after the counting began (#68);
+     * all time when $since is null.
+     *
+     * @return array the list (Jkl_List), and how many of it the period itself ranked
+     */
+    public function popularSince($since, $count = 20)
+    {
+        $count = (int) $count;
+        $ids = null === $since ? array() : Model_PageView_Api::getInstance()->mostViewedSince('album', $since, $count, self::SHOWN);
+        $counted = count($ids);
+        if ($counted < $count) {
+            $rows = $this->_db->fetchAll(
+                'SELECT t3.id FROM albums t3 WHERE ' . self::SHOWN . (empty($ids) ? '' : ' AND t3.id NOT IN (' . implode(', ', $ids) . ')') .
+                ' ORDER BY t3.viewed DESC, t3.id LIMIT ' . ($count - $counted)
+            );
+            $ids = array_merge($ids, array_map('intval', array_column($rows, 'id')));
+        }
+        return array($this->getList($this->_byIds($ids)), $counted);
+    }
+
     public function getBest($count = 10)
     {
         $count = intval($count);
