@@ -96,8 +96,5 @@ class Bootstrap extends Zend_Application_Bootstrap_Bootstrap
         $view->headMeta()->setName('author', 'Jakub Kułak, www.webascrazy.net');
         $view->headTitle()->setSeparator(' - ');
         $view->headTitle('Hhbd.pl');
-
-        $configApp = Zend_Registry::get('Config_App');
-        $view->headIncludes = $configApp['includes'];
     }
 }

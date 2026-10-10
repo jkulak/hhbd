@@ -9,7 +9,7 @@
       <?php if ($this->showCovers): ?>
         <a href="<?php echo $album->getUrl(); ?>">
         	  <img src="<?php echo $album->thumbnail ?>" alt="Okładka albumu <?php echo $album->title ?>"
-        	  title="<?php echo  $album->artistNames . '<br />' . $album->title . ' (' . $album->year . ')' ?>" 
+        	  title="<?php echo $this->escape($album->artistNames . ' - ' . $album->title . ' (' . $album->year . ')') ?>" 
         	  class="thumb" />
         	  </a>
       <?php else: ?>

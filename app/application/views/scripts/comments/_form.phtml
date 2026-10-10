@@ -24,7 +24,7 @@ $captchaHash = md5($captchaAnswer . 'hhbd_salt_2024');
 <form action="<?php echo $this->url(array(), 'comment') ?>" method="post" id="post-comment">
   <label>Komentarz</label>
   <div id="textarea-wrapper">
-    <textarea name="content" onkeyup="limitChars(this, 1000, 'comment-character-count')"></textarea>
+    <textarea name="content" maxlength="1000"></textarea>
   </div>
   <div>
     <?php if ($this->LoggedIn()): ?>
@@ -58,26 +58,3 @@ $captchaHash = md5($captchaAnswer . 'hhbd_salt_2024');
     <input type="text" name="email-honey-pot" value="" id="email-honey-pot">
   </div>
 </form>
-
-<script type="text/javascript" charset="utf-8">
-function limitChars(textarea, limit, infodiv){
-  var text = textarea.value; 
-  var textlength = text.length;
-  var info = document.getElementById(infodiv);
-  if(textlength > limit)
-  {
-    info.innerHTML = 'Komentarz nie może mieć więcej niż '+  limit +' znaków.';
-    $('#comment-character-count').show();
-    return false;
-  }
-  else if (textlength > (limit - 100))
-  {
-    info.innerHTML = 'Pozostało '+ (limit - textlength) +' znaków!';
-    $('#comment-character-count').show();
-    return true;
-  }
-  else {
-    $('#comment-character-count').hide();
-  }
-}
-</script>
