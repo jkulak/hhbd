@@ -458,6 +458,13 @@ ul.list {
 #tracklist table td.align  {
   text-align: right;
 }
+
+/* A track's artists: as wide as they need, up to a limit, so a compilation's lists of three
+   names wrap instead of pushing the titles to the middle of the table (#156) */
+#tracklist .artists {
+  display: inline-block;
+  max-width: 10em;
+}
   
 #tracklist table tr td ul li {
   font-size: 12px;
@@ -1262,6 +1269,11 @@ ul.flat li {
     text-align: left;
     font-size: 85%;
     color: #766C45;
+  }
+
+  #tracklist .artists {
+    display: inline;
+    max-width: none;
   }
 
   #tracklist table td:nth-child(3) {
