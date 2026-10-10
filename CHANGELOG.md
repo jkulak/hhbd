@@ -3,8 +3,15 @@
 Releases use CalVer, `YYYY.MM.N`: the year, the month, and a counter that starts at 0 each
 month (`2026.10.0`, `2026.10.1`, `2026.11.0`). A release is the git tag `vYYYY.MM.N`,
 published as a release — `gh release create vYYYY.MM.N` — which is what deploys it
-(`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Releasing is a
-person's decision; nothing releases on its own.
+(`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Nothing releases on
+its own: releasing is the last step of finishing a change, taken by whoever made it (#175).
+
+## Unreleased
+
+### Changed
+- A change is finished when it runs on hhbd.pl: whoever makes it merges it, puts its migrations
+  and configuration on the host, releases it and checks it there, in the order `CLAUDE.md` gives
+  (#175).
 
 ## 2026.10.12 — 2026-10-10
 
