@@ -6,6 +6,16 @@ published as a release — `gh release create vYYYY.MM.N` — which is what depl
 (`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Nothing releases on
 its own: releasing is the last step of finishing a change, taken by whoever made it (#175).
 
+## Unreleased
+
+### Fixed
+- The release smoke test read the stylesheet and the script at their bare addresses, which
+  Cloudflare keeps per data centre; one held the script from before 2026.10.12, the hashes
+  differed, and 2026.10.13 was taken back with nothing wrong in it. The test reads them where
+  the pages link them, `?v=` and all, and nginx marks a bare `/css/` or `/js/` address and
+  `robots.txt` `Cache-Control: no-cache`, so nobody reads a kept copy of a file whose address
+  does not change with it (#182).
+
 ## 2026.10.13 — 2026-10-10
 
 Pages with an ad stop logging AdSense's `TagError` (#179), and finishing a change now means
