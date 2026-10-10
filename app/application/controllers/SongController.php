@@ -27,8 +27,9 @@ class SongController extends Zend_Controller_Action
         $id = preg_replace($reg, "$2", $_SERVER['HTTP_REFERER']);
 
         // save flag info
-        $result = Model_Song_Api::getInstance()->flagVideo($id);
-        return;
+        Model_Song_Api::getInstance()->flagVideo($id);
+        // JSON for the script: there is no view, and looking for one answered 500 (#43)
+        $this->_helper->json(array('success' => true));
     }
 
     public function viewAction()

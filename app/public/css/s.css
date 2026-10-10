@@ -64,6 +64,31 @@ section {
   display: none;
 }
 
+/* What the script shows, hides and fades (#43): .js is on <html> once a script runs */
+.js .js-visible {
+  display: revert;
+}
+
+.js .js-hidden,
+.is-hidden {
+  display: none !important;
+}
+
+.fade-in {
+  animation: fade-in 1.5s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* A table's row under the pointer, which the script marked before */
+table tr:hover {
+  background: #EEE4BE;
+}
+
 .right {
   float: right;
 }
@@ -653,17 +678,6 @@ ul.list {
   margin-left: 83px;
 }
 
-
-/********************************************************************************************/
-/* Tipsy                                                                                    */
-/********************************************************************************************/
-.tipsy { padding: 5px; font-size: 11px; opacity: 0.8; filter: alpha(opacity=80); background-repeat: no-repeat;  background-image: url(/s/tipsy.gif); }
-.tipsy-inner { padding: 4px 7px 5px 7px; background-color: black; color: white; max-width: 400px;}
-.tipsy-inner { -moz-border-radius:3px; -webkit-border-radius:3px; }
-.tipsy-north { background-position: top center; }
-.tipsy-south { background-position: bottom center; }
-.tipsy-east { background-position: right center; }
-.tipsy-west { background-position: left center; }
 
 /********************************************************************************************/
 /* News                                                                                     */

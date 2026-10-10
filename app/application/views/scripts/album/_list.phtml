@@ -3,7 +3,7 @@
     <li>
       <a href="<?php echo $value->getUrl(); ?>">
       	  <img src="<?php echo $value->thumbnail ?>" alt="Okładka albumu <?php echo $value->title ?>"
-      	  title="<?php echo  $value->artistNames . '<br />' . $value->title . ' (' . $value->year . ')' ?>" 
+      	  title="<?php echo $this->escape($value->artistNames . ' - ' . $value->title . ' (' . $value->year . ')') ?>" 
       	  class="thumb" />
       	  </a>
 

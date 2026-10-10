@@ -8,12 +8,9 @@
 <script>document.documentElement.className += ' js';</script>
 <?php $this->headLink()->prependStylesheet($this->Asset('/css/s.css')); ?>
 <?php echo $this->headLink(); ?>
-<?php if (isset($this->headIncludes['jquery'])) {
-    $this->headScript()->appendFile($this->baseUrl() . $this->headIncludes['jquery']['path']);
-} ?>
-<?php $this->headScript()->appendFile($this->baseUrl() . '/js/jquery.tipsy.js') ?>
 <?php echo $this->headScript(); ?>
-<script src="<?php echo $this->Asset('/js/s.js') ?>" type="text/javascript" charset="utf-8"></script>
+<?php // Plain JavaScript since #43, run once the page is parsed ?>
+<script src="<?php echo $this->Asset('/js/s.js') ?>" defer></script>
 <link href="/favicon.ico?" rel="shortcut icon" type="image/x-icon" />
 
 <link rel="search" type="application/opensearchdescription+xml" title="Hhbd.pl" href="/opensearch.xml">

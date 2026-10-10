@@ -9,9 +9,25 @@ person's decision; nothing releases on its own.
 ## 2026.10.10 — 2026-10-10
 
 The search finds names with ó in them, and finds them without their Polish letters, as people
-type on a phone (#151). No migration and no `make ovh-install`.
+type on a phone (#151). jQuery 1.4.4 is gone (#43): the site's script is plain JavaScript.
+
+### Changed
+- The site's script is plain JavaScript, with no library under it (#43). jQuery 1.4.4, from
+  2010 and with published XSS holes (CVE-2011-4969, CVE-2012-6708, CVE-2015-9251,
+  CVE-2019-11358, CVE-2020-11022, CVE-2020-11023), was 78 KB on every page for a dozen small
+  things: the tracklist's details and the generated description shown or hidden, the comment
+  form with its character count, a logged-in user's lyrics edit, the video flag, the phone's
+  menu. `s.js` does them with `fetch` and `classList`, loaded with `defer`; the comment form's
+  and the song page's inline scripts went into it. The covers' Tipsy tooltip is the browser's
+  own `title`.
+
+### Removed
+- `js/jquery-1.4.4.min.js`, `js/jquery.tipsy.js` and `s/tipsy.gif`, and `app.includes.jquery`
+  from `application.ini` (#43).
 
 ### Fixed
+- Flagging a song's video answered 500, as its action had no view, so the page said the flag
+  had failed while it was counted (#43). It answers JSON now.
 - The search finds a name with ó in it, and finds it without its Polish letters too (#151):
   `Wzgórze`, `wzgorze` and `WZGÓRZE` find Wzgórze Ya-Pa 3, `lona` finds Łona. The query went
   through `htmlentities()` before the database saw it, so `Wzgórze` was searched as
