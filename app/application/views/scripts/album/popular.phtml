@@ -1,0 +1,19 @@
+<div id="main">
+  <h1><?php echo $this->escape($this->title) ?></h1>
+  <?php echo $this->partial('common/_periods.phtml', array('base' => '/albumy/popularne', 'current' => $this->period)) ?>
+
+  <div class="list">
+    <?php echo $this->partial('album/_table.phtml', array('albums' => $this->albums)) ?>
+  </div>
+  <?php if ('' !== $this->period && $this->counted < count($this->albums->items)): ?>
+    <p class="secondary">W tym okresie obejrzano ich jeszcze niewiele, więc dalszą część listy uzupełniają najpopularniejsze od zawsze.</p>
+  <?php endif ?>
+</div>
+
+<div id="additional">
+  <div class="box googleads">
+    <h3 class="hidden">Google Ads</h3>
+    <?php echo $this->partial('common/googleAds/_rectangle.phtml'); ?>
+  </div>
+  <?php echo $this->render('album/box/_bestRated.phtml') ?>
+</div>

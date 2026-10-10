@@ -437,6 +437,17 @@ run_fixture_tests() {
     test_flag_video "The song page's report counts, by the song's id and the page's token (#178)" 200 '"counted":true' "$report_jar" "token=$report_token&song=7329"
     test_flag_video "and a second from the same visit does not" 200 '"counted":false' "$report_jar" "token=$report_token&song=7329"
     rm -f "$report_jar"
+    # Views this week put an album and an artist at the top of the week's rankings, not of all
+    # time's (#194): two visits, as a browser, each its own session
+    local browser="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36"
+    for _ in 1 2; do
+        curl -s -o /dev/null --max-time 10 -A "$browser" "${BASE_URL}/woyza-wlasnym-sumptem-a780.html"
+        curl -s -o /dev/null --max-time 10 -A "$browser" "${BASE_URL}/woyza-p68.html"
+    done
+    test_first_link "The album viewed this week leads the week's ranking (#194)" "/albumy/popularne-tydzien.html" "-a[0-9]+\.html" "/woyza-wlasnym-sumptem-a780.html"
+    test_first_link "and this year's" "/albumy/popularne-rok.html" "-a[0-9]+\.html" "/woyza-wlasnym-sumptem-a780.html"
+    test_first_link "while all time's is led by the most viewed ever" "/albumy/popularne.html" "-a[0-9]+\.html" "/pezet-jestem-hip-hopem-a1.html"
+    test_first_link "The artist viewed this week leads the week's artists" "/wykonawcy/popularni-tydzien.html" "-p[0-9]+\.html" "/woyza-p68.html"
     # An unpublished album and the song only it has (#168): nowhere for a visitor
     test_not_found "An unpublished album is a 404 to a visitor (#168)" "/mes-tasma-robocza-a779.html" "Taśma Robocza"
     test_page_absent "and its artist's page does not list it" "/mes-p35.html" "Taśma Robocza"
@@ -575,6 +586,23 @@ test_flag_video() {
         return 0
     fi
     local error="$name - got '$got' (expected $status with '$expected')"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
+}
+
+# test_first_link <name> <path> <pattern> <expected>: the first link in the page's #main whose
+# address matches the extended regex is the expected one
+test_first_link() {
+    local name="$1" path="$2" pattern="$3" expected="$4" first
+    first=$(curl -s --max-time 10 $CURL_OPTS "${BASE_URL}${path}" 2>/dev/null | sed -n '/<div id="main">/,$p' | grep -oE 'href="/[^"]*'"$pattern"'"' | head -1 | cut -d'"' -f2)
+    if [[ "$first" == "$expected" ]]; then
+        echo -e "${GREEN}✓${NC} $name"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - the first is '$first', not '$expected'"
     echo -e "${RED}✗${NC} $error"
     ERRORS+=("$error")
     ((FAILED++))
@@ -844,6 +872,8 @@ run_tests() {
     test_sitemap "The song sitemap" "/sitemap-songs.xml" urlset
     test_sitemap "The label sitemap" "/sitemap-labels.xml" urlset
     test_sitemap "The news sitemap" "/sitemap-news.xml" urlset
+    test_sitemap "The sitemap of the lists and rankings (#194)" "/sitemap-pages.xml" urlset
+    test_page "and it names this week's album ranking" "/sitemap-pages.xml" "<loc>${BASE_URL}/albumy/popularne-tydzien.html</loc>"
     test_not_found "A sitemap of no kind is a 404" "/sitemap-nothing.xml" "<urlset"
     test_page "The album sitemap's addresses are the canonical ones, scheme and all" "/sitemap-albums.xml" "<loc>${BASE_URL}/wdowa-superextra-a535.html</loc>"
     test_canonical_tag "An album's canonical tag has this site's scheme" "/wdowa-superextra-a535.html" "${BASE_URL}/wdowa-superextra-a535.html"
@@ -863,6 +893,18 @@ run_tests() {
     echo ""
 
     # Google's tags (#161, #162): consent first, everything denied; nothing of the old tags
+    # Popularity over a period (#194)
+    echo "--- Rankings ---"
+    test_page_multi "The albums of the last 7 days" "/albumy/popularne-tydzien.html" "<h1>Najpopularniejsze albumy z ostatnich 7 dni</h1>" 'href="/albumy/popularne-miesiac.html"' 'rel="canonical" href="'"${BASE_URL}"'/albumy/popularne-tydzien.html"'
+    test_page "of the last 30 days" "/albumy/popularne-miesiac.html" "<h1>Najpopularniejsze albumy z ostatnich 30 dni</h1>"
+    test_page "of this year" "/albumy/popularne-rok.html" "<h1>Najpopularniejsze albumy w tym roku</h1>"
+    test_page "of all time" "/albumy/popularne.html" "<h1>Najpopularniejsze albumy wszech czasów</h1>"
+    test_page "The artists of the last 7 days" "/wykonawcy/popularni-tydzien.html" "<h1>Najpopularniejsi wykonawcy z ostatnich 7 dni</h1>"
+    test_page "and of all time" "/wykonawcy/popularni.html" "<h1>Najpopularniejsi wykonawcy wszech czasów</h1>"
+    test_not_found "A period that is not one is a 404" "/albumy/popularne-dekada.html" "Najpopularniejsze"
+    test_page_multi "The home page shows this week's albums and artists, linked to the rankings" "/" "Popularne w tym tygodniu" "Popularni w tym tygodniu" 'href="/albumy/popularne-tydzien.html"'
+    echo ""
+
     # The video report takes a POST from the song's page alone, and refuses the rest unchanged (#178)
     echo "--- Video report ---"
     local flag_jar flag_token

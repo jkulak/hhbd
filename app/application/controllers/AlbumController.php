@@ -16,7 +16,7 @@ class AlbumController extends Zend_Controller_Action
     {
         $page = (!empty($this->params['page'])) ? $this->params['page'] : 1;
 
-        $this->view->popularAlbums = Model_Album_Api::getInstance()->getPopular(10);
+        list($this->view->popularAlbums) = Model_Album_Api::getInstance()->popularSince(Model_PageView_Api::since('tydzien', date('Y-m-d')), 10);
         $this->view->bestAlbums = Model_Album_Api::getInstance()->getBest(10);
         $this->view->albums = Model_Album_Api::getInstance()->getNewest(12, $page);
         $albumCount =  Model_Album_Api::getInstance()->getAlbumCount();
@@ -44,6 +44,32 @@ class AlbumController extends Zend_Controller_Action
 
         $this->view->headMeta()->setName('keywords', 'lista albumów, ' . implode(', ', array_unique($keywords)));
         $this->view->headMeta()->setName('description', 'Lista wydanych w polsce albumów hip-hopowych, ' . implode(', ', array_unique($description)));
+    }
+
+    /**
+     * The albums most viewed over a period (#194): the last 7 days, the last 30, this year or
+     * all time, each at its own address
+     */
+    public function popularAction()
+    {
+        $period = (string) $this->getRequest()->getParam('period', '');
+        if (!isset(Model_PageView_Api::PERIODS[$period])) {
+            throw new Zend_Controller_Action_Exception('No period ' . $period, 404);
+        }
+        list($albums, $counted) = Model_Album_Api::getInstance()->popularSince(Model_PageView_Api::since($period, date('Y-m-d')), 30);
+        $this->view->albums = $albums;
+        $this->view->counted = $counted;
+        $this->view->period = $period;
+        $this->view->bestAlbums = Model_Album_Api::getInstance()->getBest(10);
+
+        $this->view->title = 'Najpopularniejsze albumy ' . Model_PageView_Api::PERIODS[$period];
+        $this->view->headTitle()->set($this->view->title . ' - polski hip-hop - Hhbd.pl');
+        $names = array();
+        foreach (array_slice($albums->items, 0, 5) as $album) {
+            $names[] = $album->artistNames . ' - ' . $album->title;
+        }
+        $this->view->headMeta()->setName('description', 'Najchętniej oglądane polskie albumy hip-hopowe ' . Model_PageView_Api::PERIODS[$period] . ': ' . implode(', ', $names) . '.');
+        $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . Model_PageView_Api::rankingUrl('/albumy/popularne', $period);
     }
 
     public function announcedAction()

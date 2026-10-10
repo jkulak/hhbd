@@ -19,8 +19,10 @@ class IndexController extends Zend_Controller_Action
         $this->view->mainArtist = $artist;
 
         $this->view->popularSongs = Model_Song_Api::getInstance()->getMostPopular(10);
-        $this->view->popularArtists = Model_Artist_Api::getInstance()->getMostPopular(10);
-        $this->view->popularAlbums = Model_Album_Api::getInstance()->getPopular(5);
+        // This week's, filled up from all time while the week has too few views (#194)
+        $week = Model_PageView_Api::since('tydzien', date('Y-m-d'));
+        list($this->view->popularArtists) = Model_Artist_Api::getInstance()->popularSince($week, 10);
+        list($this->view->popularAlbums) = Model_Album_Api::getInstance()->popularSince($week, 5);
     }
 
     public function aboutAction()

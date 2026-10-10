@@ -133,8 +133,41 @@ class Model_Artist_Api extends Jkl_Model_Api
           'FROM artists AS t1 ' .
           'ORDER BY t1.viewed DESC ' .
           (($limit) ? 'LIMIT ' . $limit : '');
+        return $this->_popularList($this->_db->fetchAll($query));
+    }
 
-        $result = $this->_db->fetchAll($query);
+    /**
+     * The artists most viewed since $since (#194), filled up from the most viewed of all time
+     * when the period has fewer; all time when $since is null.
+     *
+     * @return array the list (Jkl_List), and how many of it the period itself ranked
+     */
+    public function popularSince($since, $count = 20)
+    {
+        $count = (int) $count;
+        $ids = null === $since ? array() : Model_PageView_Api::getInstance()->mostViewedSince('artist', $since, $count);
+        $counted = count($ids);
+        if ($counted < $count) {
+            $rows = $this->_db->fetchAll(
+                'SELECT id FROM artists' . (empty($ids) ? '' : ' WHERE id NOT IN (' . implode(', ', $ids) . ')') .
+                ' ORDER BY viewed DESC, id LIMIT ' . ($count - $counted)
+            );
+            $ids = array_merge($ids, array_map('intval', array_column($rows, 'id')));
+        }
+        if (empty($ids)) {
+            return array(new Jkl_List(), 0);
+        }
+        $rows = $this->_db->fetchAll(
+            'SELECT *, t1.id as art_id, ' .
+            '(SELECT COUNT(*) FROM hhb_comments WHERE com_object_id = t1.id AND com_object_type = "p") as comment_count ' .
+            'FROM artists AS t1 WHERE t1.id IN (' . implode(', ', $ids) . ') ORDER BY FIELD(t1.id, ' . implode(', ', $ids) . ')'
+        );
+        return array($this->_popularList($rows), $counted);
+    }
+
+    /** Artists rows as a ranking lists them: with their other names, album count and photo */
+    private function _popularList(array $result)
+    {
         $artists = new Jkl_List();
 
         foreach ($result as $params) {
