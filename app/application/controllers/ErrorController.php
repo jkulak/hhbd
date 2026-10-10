@@ -65,8 +65,11 @@ class ErrorController extends Zend_Controller_Action
      */
     private function describe()
     {
-        $this->view->headTitle()->set((404 === $this->getResponse()->getHttpResponseCode() ? 'Nie ma takiej strony' : 'Błąd') . ' - Hhbd.pl');
+        $notFound = 404 === $this->getResponse()->getHttpResponseCode();
+        $this->view->headTitle()->set(($notFound ? 'Nie ma takiej strony' : 'Błąd') . ' - Hhbd.pl');
         $this->view->headMeta()->setName('robots', 'noindex,follow');
+        // A 404 in analytics, with the address and the page that led there (#161)
+        $this->view->Analytics()->page($notFound ? '404' : 'error');
     }
 
     /**

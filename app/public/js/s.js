@@ -45,6 +45,13 @@
         });
     }
 
+    // An event for Google Analytics (#161), when its tag is on the page; nothing otherwise
+    function track(name, params) {
+        if (typeof window.gtag === 'function') {
+            window.gtag('event', name, params || {});
+        }
+    }
+
     function fadeIn(element) {
         element.classList.remove('fade-in');
         void element.offsetWidth;
@@ -207,6 +214,7 @@
                 if (token) {
                     token.value = '';
                 }
+                track('post_comment');
                 added(data);
             }).catch(function () {
                 alert('Problem z dodaniem komentarza, spróbuj za jakiś czas.');
@@ -281,6 +289,7 @@
                     if (data.success) {
                         paragraph.innerHTML = data.lyrics;
                         fadeIn(paragraph);
+                        track('edit_lyrics');
                     } else {
                         alert(data['result-message'] || data.error || 'Problem z zapisaniem formularza, spróbuj za jakiś czas.');
                         save.disabled = false;
@@ -310,8 +319,58 @@
                 if (count) {
                     count.textContent = (parseInt(count.textContent, 10) || 0) + 1;
                 }
+                track('flag_video');
             }).catch(function () {
                 alert('Problem ze zgłoszeniem, spróbuj za jakiś czas.');
+            });
+        });
+    }
+
+    // Song page: the video played and watched to its end (#161). YouTube's player, with its JS
+    // API on, says how it is doing once it is asked to: postMessage, no script of YouTube's here.
+    function video() {
+        var player = $('#clip iframe');
+        if (!player) {
+            return;
+        }
+        var origin = new URL(player.src).origin;
+        var played = false;
+        function listen() {
+            player.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 'clip', channel: 'widget' }), origin);
+        }
+        player.addEventListener('load', listen);
+        listen();
+        window.addEventListener('message', function (event) {
+            if (event.origin !== origin || typeof event.data !== 'string') {
+                return;
+            }
+            var data;
+            try {
+                data = JSON.parse(event.data);
+            } catch (e) {
+                return;
+            }
+            var state = data.event === 'onStateChange' ? data.info
+                : (data.event === 'infoDelivery' && data.info ? data.info.playerState : undefined);
+            if (state === 1 && !played) {
+                played = true;
+                track('play_video', { video_title: player.title });
+            } else if (state === 0) {
+                track('watch_video', { video_title: player.title });
+            }
+        });
+    }
+
+    // Every page: "Ustawienia prywatności" opens Google's consent message again (#162), where
+    // AdSense's script brought it; without it the link goes to the privacy page
+    function privacySettings() {
+        $$('#privacy-settings, #privacy-settings-inline').forEach(function (link) {
+            link.addEventListener('click', function (event) {
+                if (window.googlefc && typeof window.googlefc.showRevocationMessage === 'function') {
+                    event.preventDefault();
+                    window.googlefc.callbackQueue = window.googlefc.callbackQueue || [];
+                    window.googlefc.callbackQueue.push(window.googlefc.showRevocationMessage);
+                }
             });
         });
     }
@@ -322,4 +381,6 @@
     comments();
     lyrics();
     flagVideo();
+    video();
+    privacySettings();
 }());

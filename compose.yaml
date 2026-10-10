@@ -20,6 +20,8 @@ services:
       # The salt of the MD5 passwords from before #41: the fixtures' own here; production's
       # comes with a dump, in .env
       LEGACY_PASSWORD_SALT: ${LEGACY_PASSWORD_SALT:-fixtures-legacy-salt}
+      # Google Analytics 4 (#161): none here, so nothing measured, unless .env sets one to test
+      GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID:-}
       # Feature flags
       SHOW_ADS: "true"
     healthcheck:

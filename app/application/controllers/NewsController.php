@@ -26,6 +26,7 @@ class NewsController extends Zend_Controller_Action
         Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
 
         $this->view->news = $news;
+        $this->view->Analytics()->page('news', $news->id, $news->title);
 
         $this->view->recentNews = Model_News_Api::getInstance()->getRecent(25);
         $this->view->comments = Model_Comment_Api::getInstance()->getComments($newsId, Model_Comment_Container::TYPE_NEWS);

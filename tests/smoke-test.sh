@@ -403,7 +403,8 @@ run_fixture_tests() {
     test_page "An album's title is found without its Polish letters" "/szukaj.html?q=podroz" 'href="/sokol-podroz-zwana-zyciem-a6.html"'
     test_page "A query in ISO-8859-2 from an old link is read as such" "/szukaj.html?q=Sok%F3%B3" "Szukałeś: Sokół"
     test_page_absent "and does not match every row" "/szukaj.html?q=Sok%F3%B3" 'href="/pezet-p1.html"'
-    test_page "A song's video kept as a Flash address plays in YouTube's player (#149)" "/pogoda-s7329.html" 'src="https://www.youtube-nocookie.com/embed/M7lc1UVf-VE"'
+    test_page "A song's video kept as a Flash address plays in YouTube's player (#149)" "/pogoda-s7329.html" 'src="https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?enablejsapi=1"'
+    test_page_absent "No measurement id here, so no analytics loads (#161)" "/" "googletagmanager.com/gtag/js"
     test_page_absent "and nothing asks for Flash" "/pogoda-s7329.html" "x-shockwave-flash"
     test_page "An artist's meta description is its description's text (#147)" "/mes-p35.html" 'name="description" content="Raper z Krakowa, &quot;Fach&quot;."'
     test_page "A song's is its lyrics' lines with a comma between" "/pogoda-s7329.html" 'name="description" content="Tekst i teledysk utworu Wdowa - Pogoda. Słońce świeci jasno nad miastem..., A my na ławce"'
@@ -762,6 +763,15 @@ run_tests() {
     test_page_absent "A news item's meta description holds no HTML" "/onar-jak-na-pierwszej-plycie-wideo-n1877.html" 'name="description" content="[^"]*&lt;'
     echo ""
 
+    # Google's tags (#161, #162): consent first, everything denied; nothing of the old tags
+    echo "--- Analytics and consent ---"
+    test_page "Google's tags start with every consent denied (#162)" "/" "gtag('consent', 'default', {ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'denied'"
+    test_page_absent "Universal Analytics, dead since 2023, is gone (#161)" "/" "UA-3311418"
+    test_page_absent "and so is Tag Manager" "/" "GTM-MGJ9HQ"
+    test_page "The footer opens the privacy settings" "/" 'id="privacy-settings">Ustawienia prywatności</a>'
+    test_page "The privacy page says what is measured" "/prywatnosc.html" "Google Analytics 4"
+    echo ""
+
     # Phones (#149)
     echo "--- Phones ---"
     test_page "A page is as wide as the screen it is on" "/" 'name="viewport" content="width=device-width, initial-scale=1"'
@@ -835,12 +845,20 @@ print_summary() {
     fi
 }
 
+# What only production has: its measurement id (#161)
+run_production_tests() {
+    echo "--- Production ---"
+    test_page "GA4 loads with production's measurement id (#161)" "/" "googletagmanager.com/gtag/js?id=G-200N6YNR76"
+    test_page "An album's page view says what the page is and which album" "/wdowa-superextra-a535.html" '"content_group":"album","entity_id":535'
+    echo ""
+}
+
 # Main
 wait_for_service
 run_tests
 case "$SMOKE_TARGET" in
     fixtures) run_fixture_tests ;;
-    production) echo "--- Fixture cases: skipped, SMOKE_TARGET=production ---"; echo "" ;;
+    production) run_production_tests; echo "--- Fixture cases: skipped, SMOKE_TARGET=production ---"; echo "" ;;
     *) echo "SMOKE_TARGET is fixtures or production, not '$SMOKE_TARGET'" >&2; exit 2 ;;
 esac
 print_summary
