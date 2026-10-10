@@ -6,6 +6,17 @@ published as a release — `gh release create vYYYY.MM.N` — which is what depl
 (`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Nothing releases on
 its own: releasing is the last step of finishing a change, taken by whoever made it (#175).
 
+## Unreleased
+
+### Changed
+- An unpublished album (`status` 0) is nowhere for a visitor: not in the lists, the search, the
+  sitemap, an artist's or a label's page, nor in the counts; its page answers 404, and so does a
+  song on no published album. An admin opens its page and is told nobody else sees it. Until
+  now `status` hid nothing (#168).
+- Migration 0036 publishes the site's first 77 albums, added from June to 7 November 2004: they
+  had `status` 0 only because the site set none in its first months, and were always shown.
+  `make ovh-migrate` before the release, or they disappear with it (#168).
+
 ## 2026.10.14 — 2026-10-10
 
 What 2026.10.13 was to bring, and the fix for why it did not go out: its smoke test read the

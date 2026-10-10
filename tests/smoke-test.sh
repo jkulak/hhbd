@@ -427,6 +427,17 @@ run_fixture_tests() {
     test_page_multi "A search finding both shows each one's qualifier" "/szukaj.html?q=Solar" "Solar (SBM Label)" "Solar (raper z Poznania)"
     test_page "A page listing one of them links him" "/sklad-solara-p66.html" 'href="/solar-sbm-label-p64.html"'
     test_page_absent "under his name alone" "/sklad-solara-p66.html" "(SBM Label)"
+    test_page "An album from the site's first months, published by 0036, is shown (#168)" "/eldo-pierwszy-rok-a81.html" "<h1>"
+    test_page "and listed on its artist's page" "/eldo-p2.html" "Pierwszy Rok"
+    # An unpublished album and the song only it has (#168): nowhere for a visitor
+    test_not_found "An unpublished album is a 404 to a visitor (#168)" "/mes-tasma-robocza-a779.html" "Taśma Robocza"
+    test_page_absent "and its artist's page does not list it" "/mes-p35.html" "Taśma Robocza"
+    test_page_absent "nor does the search" "/szukaj.html?q=Ta%C5%9Bma+Robocza" "-a779.html"
+    test_page_absent "nor the album sitemap" "/sitemap-albums.xml" "-a779.html<"
+    test_not_found "A song on an unpublished album alone is a 404 too" "/szkic-numer-jeden-s9101.html" "Szkic Numer Jeden"
+    test_page_absent "and the search does not find it" "/szukaj.html?q=Szkic+Numer" "-s9101.html"
+    test_page_absent "nor the song sitemap" "/sitemap-songs.xml" "-s9101.html<"
+    test_page_absent "nor its artist's page" "/mes-p35.html" "Szkic Numer Jeden"
     # What an import left to settle (#103): nothing for a visitor, a panel for the fixtures' admin.
     test_page_absent "A visitor sees no review panel" "/solar-raper-z-poznania-p65.html" "Do przejrzenia"
     local jar visitor_opts="$CURL_OPTS"
@@ -436,6 +447,7 @@ run_fixture_tests() {
     test_page_multi "An admin sees a namesake's doubt and the artist it may be" "/solar-raper-z-poznania-p65.html" "Do przejrzenia" "Połącz z: Solar (SBM Label) (id 64)" "To inny wykonawca"
     test_page_multi "And an album's disputed date with the sources' values" "/eldo-podmiejski-gwar-a50.html" "Źródła nie zgadzają się co do daty" "Data: 2013-05-17"
     test_page_multi "And a stand-in cover" "/wdowa-superextra-a535.html" "Okładka zastępcza" "Ta okładka zostaje"
+    test_page_multi "An admin opens an unpublished album, told nobody else sees it (#168)" "/mes-tasma-robocza-a779.html" "Album nieopublikowany" "<h1>" "Taśma Robocza" 'name="robots" content="noindex,nofollow"'
     test_page_multi "The list counts the open items by reason" "/admin/do-przejrzenia.html" 'data-reason="namesake">1<' 'data-reason="single_source">1<' "Solar (raper z Poznania)"
     CURL_OPTS="$visitor_opts"
     rm -f "$jar"
