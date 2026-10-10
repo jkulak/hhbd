@@ -57,6 +57,39 @@ class Model_PageView_ApiTest extends TestCase
         $this->assertTrue(Model_PageView_Api::counts('get', $chrome, false));
     }
 
+    /**
+     * @dataProvider periods
+     */
+    public function testAPeriodStartsTheRightDayAndIncludesToday(string $period, string $today, ?string $since): void
+    {
+        $this->assertSame($since, Model_PageView_Api::since($period, $today));
+    }
+
+    public static function periods(): array
+    {
+        return array(
+            'the last 7 days'            => array('tydzien', '2026-10-11', '2026-10-05'),
+            'across a month'             => array('tydzien', '2026-03-03', '2026-02-25'),
+            'the last 30 days'           => array('miesiac', '2026-10-11', '2026-09-12'),
+            'across a year'              => array('miesiac', '2027-01-10', '2026-12-12'),
+            'this year'                  => array('rok', '2026-10-11', '2026-01-01'),
+            'this year, on its first day' => array('rok', '2027-01-01', '2027-01-01'),
+            'all time'                   => array('', '2026-10-11', null),
+        );
+    }
+
+    public function testThereIsNoOtherPeriod(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        Model_PageView_Api::since('dekada', '2026-10-11');
+    }
+
+    public function testARankingsAddressEndsInItsPeriod(): void
+    {
+        $this->assertSame('/albumy/popularne-tydzien.html', Model_PageView_Api::rankingUrl('/albumy/popularne', 'tydzien'));
+        $this->assertSame('/albumy/popularne.html', Model_PageView_Api::rankingUrl('/albumy/popularne', ''));
+    }
+
     public function testAnAdminsViewDoesNotCount(): void
     {
         $this->assertFalse(Model_PageView_Api::counts('GET', 'Mozilla/5.0 (Macintosh) Firefox/131.0', true));

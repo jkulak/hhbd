@@ -129,16 +129,14 @@ class Model_Song_Container
     }
 
     /**
-     * Get full URL path for song
-     *
-     * @return string Full URL path (e.g., /artist-song-s123.html)
+     * The song's address, its canonical one: /song-s123.html. It led with the first artist's
+     * slug, which the song's page answered with a 301 to this one (#202).
      */
     public function getUrl()
     {
-        $prefix = !empty($this->artist->items[0]) ? $this->artist->items[0]->url . '-' : '';
         $router = Zend_Controller_Front::getInstance()->getRouter();
         return $router->assemble(
-            array('id' => $this->id, 'seo' => $prefix . $this->url()),
+            array('id' => $this->id, 'seo' => $this->url()),
             'song',
             true
         );
