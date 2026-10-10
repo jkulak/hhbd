@@ -50,7 +50,7 @@ class ArtistController extends Zend_Controller_Action
 
         // Build canonical URL and redirect if current URL doesn't match
         // The qualifier is in the slug too, so two artists of one name never share one (#102).
-        $canonicalSlug = Jkl_Tools_Url::createUrl($artist->qualifiedName . '-p' . $artist->id) . '.html';
+        $canonicalSlug = Jkl_Tools_Url::createUrl($artist->qualifiedName) . '-p' . $artist->id . '.html';
         Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
 
         $artist->addAlbums(Model_Album_Api::getInstance()->getArtistsAlbums($artist->id, array(), false, 'year'));
