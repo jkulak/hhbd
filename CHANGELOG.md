@@ -9,6 +9,14 @@ person's decision; nothing releases on its own.
 ## Unreleased
 
 ### Fixed
+- An artist named in Cyrillic has a page (#155). Its slug came out empty, and the canonical
+  redirect went to `/p8228.html`, which no route matches: "Игроки Улиц" and "Нам Хлам Клан"
+  from the 2016 import answered 404. Cyrillic is transcribed now (`igroki-ulic-p8228.html`),
+  every Latin letter with a diacritic becomes its base letter ("Doré" `dore`, "Wöyza" `woyza`,
+  where the letter went), and a name with nothing left gets `x`, so no slug is empty. A page's
+  old address redirects to the new one (301).
+- A comment refused without JavaScript sent its writer to a 404: the redirect put `.html` inside
+  the slug, where it became `-html` (#155).
 - A compilation's tracklist has its titles on the left again (#156). The artists' column, right
   next to them, took the width of its longest line, three names on Flirtini's "Heartbreaks &
   Promises Vol. 3", and pushed the titles to the middle; a list longer than 10em now wraps.
