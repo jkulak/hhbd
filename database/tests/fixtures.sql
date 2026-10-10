@@ -815,3 +815,7 @@ INSERT INTO `users` (`ID`, `login`, `name`, `urlname`, `added`, `status`) VALUES
 UPDATE `albums` SET `added` = '2009-05-12 14:03:00', `addedby` = 7 WHERE `id` = 535;
 UPDATE `songs` SET `added` = '2009-05-12 14:05:00', `addedby` = 7 WHERE `id` = 7329;
 UPDATE `labels` SET `added` = '2008-11-02 09:30:00', `addedby` = 0 WHERE `id` = 58;
+
+-- A video in the form most songs keep it, the Flash player's address, which YouTube's own
+-- player plays by its id (#149)
+UPDATE `songs` SET `youtube_url` = 'http://www.youtube.com/v/M7lc1UVf-VE?version=3&f=videos&app=youtube_gdata' WHERE `id` = 7329;
