@@ -1,0 +1,16 @@
+<div id="main">
+  <h1><?php echo $this->escape($this->title) ?></h1>
+  <p>Polskie albumy hip-hopowe według roku wydania. Każdy rok to osobna strona ze wszystkimi płytami, które się wtedy ukazały.</p>
+  <ul class="years years-index">
+    <?php foreach ($this->years as $row): ?>
+    <li><a href="/albumy-<?php echo $row['year'] ?>.html">Polski hip-hop <?php echo $row['year'] ?></a> <span class="secondary"><?php echo $row['albums'] ?> <?php echo Jkl_Tools_String::plural($row['albums'], 'album', 'albumy', 'albumów') ?></span></li>
+    <?php endforeach ?>
+  </ul>
+</div>
+
+<div id="additional">
+  <div class="box googleads">
+    <h3 class="hidden">Google Ads</h3>
+    <?php echo $this->partial('common/googleAds/_rectangle.phtml'); ?>
+  </div>
+</div>

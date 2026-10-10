@@ -21,6 +21,8 @@
   <?php echo $this->render('album/box/_bestRated.phtml') ?>
 
   <?php echo $this->partial('album/box/_list.phtml', array('boxId' => 'artistsalbums', 'boxHeader' => 'Popularne w tym tygodniu', 'albums' => $this->popularAlbums)) ?>
+  <?php echo $this->partial('album/box/_years.phtml', array('years' => $this->years, 'current' => null)) ?>
+
   <div class="box">
     <h3>Najpopularniejsze albumy</h3>
     <?php echo $this->partial('common/_periods.phtml', array('base' => '/albumy/popularne', 'current' => null)) ?>

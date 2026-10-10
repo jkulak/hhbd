@@ -1,0 +1,24 @@
+<div id="main">
+  <h1><?php echo $this->escape($this->title) ?></h1>
+  <p class="years-nav">
+    <?php if ($this->previous): ?><a href="/albumy-<?php echo $this->previous ?>.html" rel="prev">&larr; <?php echo $this->previous ?></a><?php endif ?>
+    <a href="/albumy/lata.html">wszystkie lata</a>
+    <?php if ($this->next): ?><a href="/albumy-<?php echo $this->next ?>.html" rel="next"><?php echo $this->next ?> &rarr;</a><?php endif ?>
+  </p>
+  <p><?php echo count($this->albums->items) ?> <?php echo Jkl_Tools_String::plural(count($this->albums->items), 'album', 'albumy', 'albumów') ?> z <?php echo $this->year ?> roku, od stycznia; na końcu te, których dzień albo miesiąc premiery nie jest znany.</p>
+
+  <div class="list">
+    <?php echo $this->partial('album/_table.phtml', array('albums' => $this->albums)) ?>
+  </div>
+</div>
+
+<div id="additional">
+  <div class="box googleads">
+    <h3 class="hidden">Google Ads</h3>
+    <?php echo $this->partial('common/googleAds/_rectangle.phtml'); ?>
+  </div>
+
+  <?php echo $this->partial('album/box/_list.phtml', array('boxId' => 'popular-of-year', 'boxHeader' => 'Najpopularniejsze z ' . $this->year, 'albums' => $this->popularAlbums)) ?>
+
+  <?php echo $this->partial('album/box/_years.phtml', array('years' => $this->years, 'current' => $this->year)) ?>
+</div>

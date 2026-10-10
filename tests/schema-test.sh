@@ -137,6 +137,16 @@ view label labels 58 /alkopoligamia-l58.html
 view news news 1877 /onar-jak-na-pierwszej-plycie-wideo-n1877.html
 check "nothing answers at /stat, which let anyone add views" "404" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL/stat?type=album&id=535")"
 
+echo "> the premieres of this day in earlier years (#197)"
+# Today, Warsaw's, twenty years back: Superextra to the day, Podmiejski Gwar to the month alone;
+# both get their dates back after, which later checks read.
+dates=$(sql "SELECT GROUP_CONCAT(CONCAT('UPDATE albums SET year = ', QUOTE(year), ', release_date_precision = ', QUOTE(release_date_precision), ' WHERE id = ', id) SEPARATOR '; ') FROM albums WHERE id IN (535, 50)")
+sql "UPDATE albums SET year = '$(( ${TODAY:0:4} - 20 ))-${TODAY:5}', release_date_precision = 'day' WHERE id = 535; UPDATE albums SET year = '$(( ${TODAY:0:4} - 5 ))-${TODAY:5}', release_date_precision = 'month' WHERE id = 50"
+on_this_day=$(curl -s --max-time 10 "$URL/" | sed -n '/id="on-this-day"/,/<\/div>/p' | tr -s ' \n' ' ')
+check "the home page shows an album released on this day twenty years ago" "1" "$(grep -c '20 lat temu:</span> <a href="/wdowa-superextra-a535.html"> Wdowa - Superextra</a> (2006)' <<<"$on_this_day" || true)"
+check "but not one whose day is not known" "0" "$(grep -c 'Podmiejski Gwar' <<<"$on_this_day" || true)"
+sql "$dates"
+
 echo "> external ids"
 sql "INSERT INTO external_ids (entity_type, entity_id, source, kind, value) VALUES ('album', 535, 'discogs', 'master', '1234567')"
 if sql "INSERT INTO external_ids (entity_type, entity_id, source, kind, value) VALUES ('album', 536, 'discogs', 'master', '1234567')" >"$T/out" 2>&1; then

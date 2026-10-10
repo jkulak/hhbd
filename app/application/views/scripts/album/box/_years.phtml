@@ -1,0 +1,22 @@
+<?php
+/**
+ * The years with albums (#196), each linked to its page, how many in brackets.
+ *
+ * Takes: years (year => albums), current (the year shown, or null).
+ */
+?>
+<?php if (!empty($this->years)): ?>
+<div class="box">
+  <h3>Albumy według roku</h3>
+  <ul class="years">
+    <?php foreach ($this->years as $year => $count): ?>
+      <?php if ($year === $this->current): ?>
+      <li><strong><?php echo $year ?></strong></li>
+      <?php else: ?>
+      <li><a href="/albumy-<?php echo (int) $year ?>.html"><?php echo (int) $year ?></a> <span class="secondary">(<?php echo (int) $count ?>)</span></li>
+      <?php endif ?>
+    <?php endforeach ?>
+  </ul>
+  <a href="/albumy/lata.html">Wszystkie lata</a>
+</div>
+<?php endif ?>

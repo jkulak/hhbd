@@ -30,10 +30,23 @@
 
   <!-- middle column -->
   <div class="column">
+    <!-- the premieres of this day in earlier years (#197) -->
+    <?php if (!empty($this->onThisDay->items)): ?>
+    <div id="on-this-day" class="box">
+      <h2>Tego dnia premierę miały</h2>
+      <ul>
+        <?php foreach ($this->onThisDay->items as $album): ?>
+        <li><span class="secondary"><?php echo Jkl_Tools_Date::yearsAgo((int) substr($this->today, 0, 4) - (int) $album->year) ?>:</span> <?php echo $this->partial('album/_link.phtml', array('album' => $album, 'showArtist' => true)) ?> (<?php echo $album->year ?>)</li>
+        <?php endforeach ?>
+      </ul>
+    </div>
+    <?php endif ?>
+
     <!-- latest releases -->
     <div id="latest" class="albums">
       <h2>Ostatnio wydane albumy</h2>
       <?php echo $this->partial('album/_list.phtml', array('items' => $this->newestList->items)) ?>
+      <a href="/albumy/lata.html">Albumy rok po roku</a>
       <a class="br" href="<?php echo $this->url(array(), 'albums') ?>">Pokaż wszystkie albumy</a>
     </div>
 

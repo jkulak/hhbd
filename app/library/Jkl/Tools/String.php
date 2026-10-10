@@ -17,6 +17,20 @@ class Jkl_Tools_String
     }
 
     /**
+     * The Polish form of a noun for a count (#196): 1 płyta, 2-4 płyty (but 12-14 płyt), and
+     * płyt for the rest
+     */
+    public static function plural($count, $one, $few, $many)
+    {
+        $count = abs((int) $count);
+        if (1 === $count) {
+            return $one;
+        }
+        $tens = $count % 100;
+        return ($count % 10 >= 2 && $count % 10 <= 4 && ($tens < 12 || $tens > 14)) ? $few : $many;
+    }
+
+    /**
      * A meta description from a text that may be HTML (#147): its excerpt (below), up to 160
      * characters.
      */
