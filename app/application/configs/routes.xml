@@ -229,15 +229,6 @@
           </defaults>
         </commentCaptcha>
 
-        <!-- Viev counting/stats -->
-        <stat>
-          <route>stat</route>
-          <defaults>
-            <controller>stat</controller>
-            <action>index</action>
-          </defaults>
-        </stat>
-
         <!-- ************* -->
         <!-- * USER PART * -->
         <!-- ************* -->
