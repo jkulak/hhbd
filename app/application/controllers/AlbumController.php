@@ -95,7 +95,7 @@ class AlbumController extends Zend_Controller_Action
         $album = Model_Album_Api::getInstance()->find($params['id'], true);
 
         // Build canonical URL and redirect if current URL doesn't match
-        $canonicalSlug = Jkl_Tools_Url::createUrl($album->artist->name . '+-+' . $album->title . '-a' . $album->id) . '.html';
+        $canonicalSlug = Jkl_Tools_Url::createUrl($album->artist->name . '+-+' . $album->title) . '-a' . $album->id . '.html';
         Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
 
         $album->autoDescription = $this->_generateDescription($album);

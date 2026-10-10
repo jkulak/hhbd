@@ -42,7 +42,11 @@ INSERT INTO `artists_photos` (`artistid`, `filename`, `description`, `main`, `so
 INSERT INTO `artists` (`id`, `name`, `disambiguation`, `urlname`, `type`, `trivia`, `website`, `status`, `viewed`) VALUES
 (64, 'Solar', 'SBM Label', 'solar-sbm-label', 'm', '', '', 999, 900),
 (65, 'Solar', 'raper z Poznania', 'solar-raper-z-poznania', 'm', '', '', 999, 100),
-(66, 'Skład Solara', '', 'sklad-solara', 'b', '', '', 999, 50);
+(66, 'Skład Solara', '', 'sklad-solara', 'b', '', '', 999, 50),
+-- Names whose letters are not Polish (#155): Cyrillic, which left an empty slug and a 404,
+-- and a Latin name with an umlaut, which lost the letter
+(67, 'Игроки Улиц', '', 'igroki-ulic', 'b', '', '', 999, 40),
+(68, 'Wöyza', '', 'woyza', 'm', '', '', 999, 30);
 INSERT INTO `band_lookup` (`artistid`, `bandid`, `status`) VALUES
 (64, 66, 999);
 

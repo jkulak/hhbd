@@ -237,20 +237,23 @@ class Jkl_Tools_UrlTest extends TestCase
      */
     public function testCreateUrlEmptyString(): void
     {
+        // Never empty: an address of nothing before its id matches no route (#155)
         $result = Jkl_Tools_Url::createUrl('');
-        $this->assertEquals('', $result);
+        $this->assertEquals(Jkl_Tools_Url::EMPTY_SLUG, $result);
     }
 
     public function testCreateUrlOnlySpaces(): void
     {
+        // Never empty: an address of nothing before its id matches no route (#155)
         $result = Jkl_Tools_Url::createUrl('   ');
-        $this->assertEquals('', $result);
+        $this->assertEquals(Jkl_Tools_Url::EMPTY_SLUG, $result);
     }
 
     public function testCreateUrlOnlySpecialChars(): void
     {
+        // Never empty: an address of nothing before its id matches no route (#155)
         $result = Jkl_Tools_Url::createUrl('!@#$%^&*()');
-        $this->assertEquals('', $result);
+        $this->assertEquals(Jkl_Tools_Url::EMPTY_SLUG, $result);
     }
 
     public function testCreateUrlNumericOnly(): void
@@ -322,5 +325,44 @@ class Jkl_Tools_UrlTest extends TestCase
         $result2 = Jkl_Tools_Url::createUrl($result1);
 
         $this->assertEquals($result1, $result2);
+    }
+
+    /**
+     * Every letter a name brings gets a slug (#155): other Latin diacritics as their base letters,
+     * Cyrillic transcribed, and a name with nothing left a fixed word, never an empty slug.
+     *
+     * @dataProvider namesFromEveryScript
+     */
+    public function testEveryNameGetsASlugOfItsOwnLetters(string $input, string $expected): void
+    {
+        $this->assertSame($expected, Jkl_Tools_Url::createUrl($input));
+    }
+
+    public static function namesFromEveryScript(): array
+    {
+        return [
+            'a Polish name, as before'          => ['Żółć Gęślą Jaźń', 'zolc-gesla-jazn'],
+            'a French name'                     => ['Doré', 'dore'],
+            'a Hungarian name'                  => ['Áron Szilágyi', 'aron-szilagyi'],
+            'umlauts as their base letters'     => ['Wöyza', 'woyza'],
+            'capitals with umlauts'             => ['WÜ (Asfalt Records)', 'wu-asfalt-records'],
+            'Czech and Slovak'                  => ['Řeřicha Šťastný Ľudo', 'rericha-stastny-ludo'],
+            'German sharp s and ligatures'      => ['Straße Æon Œuvre', 'strasse-aeon-oeuvre'],
+            'Russian'                           => ['Игроки Улиц', 'igroki-ulic'],
+            'Russian, with ch'                  => ['Нам Хлам Клан', 'nam-chlam-klan'],
+            'Russian, sz, cz, szcz and the signs' => ['Шишкин Чернышёв Щука Объект', 'sziszkin-czernyszjow-szczuka-obekt'],
+            'Ukrainian'                         => ['Їжак Євген Ґанок', 'jizak-jewgen-ganok'],
+            'Serbian'                           => ['Ђорђе Љубав Џеп', 'djordje-ljubaw-dzep'],
+            'mixed scripts and digits'          => ['DJ Ёжик 2016', 'dj-jozik-2016'],
+            'symbols alone'                     => ['!!! ???', 'x'],
+            'a script no table covers'          => ['東京', 'x'],
+            'nothing'                           => ['', 'x'],
+        ];
+    }
+
+    public function testAnIdAfterANameOfSymbolsLeavesAnAddressARouteMatches(): void
+    {
+        $this->assertSame('x-p8228.html', Jkl_Tools_Url::createUrl('!?!') . '-p8228.html');
+        $this->assertSame(1, preg_match('/^(.+)-p(\d+)\.html$/', Jkl_Tools_Url::createUrl('Игроки Улиц') . '-p8228.html'));
     }
 }
