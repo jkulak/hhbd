@@ -6,7 +6,15 @@ published as a release — `gh release create vYYYY.MM.N` — which is what depl
 (`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Nothing releases on
 its own: releasing is the last step of finishing a change, taken by whoever made it (#175).
 
-## Unreleased
+## 2026.10.18 — 2026-10-11
+
+For search engines and for visitors: page views are counted again, by day (#68), so the home
+page, the album list and the artist list rank what people read this week, month and year
+(#194); albums, artists and songs describe themselves in JSON-LD (#195); every year has a page
+of its albums (#196); the home page shows the premieres of this day in earlier years (#197); and
+song links go straight to their canonical address (#202).
+
+Migration 0038: on production already, applied before the release.
 
 ### Added
 - An album's, an artist's and a song's page say what they are in schema.org JSON-LD: a
