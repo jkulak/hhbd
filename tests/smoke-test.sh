@@ -791,6 +791,9 @@ run_tests() {
     test_page "The privacy page says what is measured" "/prywatnosc.html" "Google Analytics 4"
     test_page "ads.txt names hhbd's AdSense account (#169)" "/ads.txt" "google.com, pub-6149271850793027, DIRECT, f08c47fec0942fa0"
     test_page "and every page says it belongs to that account" "/" '<meta name="google-adsense-account" content="ca-pub-6149271850793027">'
+    test_page "The side column's ad is AdSense's asynchronous unit, in its old slot (#172)" "/" 'data-ad-client="ca-pub-6149271850793027" data-ad-slot="1220656090"></ins>'
+    test_page_absent "and nothing loads the 2010 script that held the page up" "/" "show_ads\.js"
+    test_page_absent "nor sets its globals" "/wdowa-superextra-a535.html" "google_ad_"
     echo ""
 
     # Phones (#149)

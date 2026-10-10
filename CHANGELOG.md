@@ -6,6 +6,13 @@ published as a release — `gh release create vYYYY.MM.N` — which is what depl
 (`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Releasing is a
 person's decision; nothing releases on its own.
 
+## Unreleased
+
+### Changed
+- The side column's ad, `hhbd_rectangle` (slot `1220656090`, 300×250), is AdSense's
+  asynchronous unit, asked for by `s.js`, instead of its 2010 code: `show_ads.js` held the page
+  up where it stood, came over `http://`, and loaded AdSense's library a second time (#172).
+
 ## 2026.10.11 — 2026-10-10
 
 Google Analytics 4 is in the code, with what each page is and what people do on it, Google's
