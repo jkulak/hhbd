@@ -9,7 +9,8 @@
  *   group, the album, artist, song, label or news item it shows, the search and its results, a
  *   logged-in user, an admin's visit as internal traffic. The measurement id comes from the
  *   environment (GA_MEASUREMENT_ID); without one, as locally and in CI, no analytics loads.
- * - AdSense's script when ads are on (SHOW_ADS), which also brings the consent message.
+ * - AdSense's script when ads are on (SHOW_ADS), which also brings the consent message, and the
+ *   side column's ad unit: ad().
  *
  * A controller says what its page is: $this->view->Analytics()->page('album', $id, $name), and
  * adds what it knows: ->set('search_term', $query). A login or a registration ends in a
@@ -26,6 +27,9 @@ class Zend_View_Helper_Analytics extends Zend_View_Helper_Abstract
 
     /** hhbd's AdSense publisher, the one GTM loaded before #161 */
     public const ADSENSE_CLIENT = 'ca-pub-6149271850793027';
+
+    /** hhbd_rectangle, the 300×250 unit in the side column since 2010 */
+    public const RECTANGLE_SLOT = '1220656090';
 
     private $group;
     private $params = array();
@@ -94,6 +98,24 @@ class Zend_View_Helper_Analytics extends Zend_View_Helper_Abstract
             }
         }
         return self::script($measurementId, $this->config(), $events, $ads ? self::ADSENSE_CLIENT : null);
+    }
+
+    /**
+     * The side column's ad where ads are on, nothing where they are off (#172). s.js asks for
+     * its ad once the page is parsed, so nothing here waits for AdSense.
+     */
+    public function ad()
+    {
+        $config = Zend_Registry::get('Config_App');
+        return empty($config['showAds']) ? '' : self::unit(self::ADSENSE_CLIENT, self::RECTANGLE_SLOT);
+    }
+
+    /** A 300×250 unit as AdSense's current code prints it */
+    public static function unit($client, $slot)
+    {
+        return '<ins class="adsbygoogle" style="display:inline-block;width:300px;height:250px"'
+            . ' data-ad-client="' . htmlspecialchars($client, ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-ad-slot="' . htmlspecialchars($slot, ENT_QUOTES, 'UTF-8') . '"></ins>';
     }
 
     /** The page view's parameters: its group, what the controller set, and who is visiting */

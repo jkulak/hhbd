@@ -375,6 +375,14 @@
         });
     }
 
+    // Every page with ads on: each unit asks AdSense for its ad (#172), the line AdSense's own code
+    // has inline after it; adsbygoogle.js, loaded async in <head>, takes the queue when it comes
+    function ads() {
+        $$('ins.adsbygoogle').forEach(function () {
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
+        });
+    }
+
     tracklistDetails();
     autoDescription();
     menu();
@@ -383,4 +391,5 @@
     flagVideo();
     video();
     privacySettings();
+    ads();
 }());
