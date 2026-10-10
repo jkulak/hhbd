@@ -356,6 +356,62 @@ class Model_Album_Api extends Jkl_Model_Api
         return array($this->getList($this->_byIds($ids)), $counted);
     }
 
+    /**
+     * The years with published albums (#196), the latest first
+     *
+     * @return array of array('year' => int, 'albums' => int)
+     */
+    public function getYears()
+    {
+        $rows = $this->_db->fetchAll(
+            'SELECT YEAR(t3.year) AS y, COUNT(*) AS n FROM albums t3
+              WHERE t3.year IS NOT NULL AND ' . self::SHOWN . '
+              GROUP BY y ORDER BY y DESC'
+        );
+        return array_map(function ($row) {
+            return array('year' => (int) $row['y'], 'albums' => (int) $row['n']);
+        }, $rows);
+    }
+
+    /**
+     * A year's published albums (#196): by date, those with a day first, then those with a
+     * month, then those with the year alone
+     */
+    public function getByYear($year)
+    {
+        $year = (int) $year;
+        $query = 'SELECT ' . self::LIST_COLUMNS . ' FROM albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          "WHERE t3.year >= '" . $year . "-01-01' AND t3.year < '" . ($year + 1) . "-01-01' AND " . self::SHOWN . ' ' .
+          "ORDER BY FIELD(t3.release_date_precision, 'day', 'month', 'year'), t3.year, t3.title, t3.id";
+        return $this->getList($query);
+    }
+
+    /**
+     * The published albums whose premiere was on this day and month in an earlier year (#197),
+     * dated to the day, the oldest anniversary first
+     *
+     * @param string $today Y-m-d, Warsaw's
+     */
+    public function getOnThisDay($today, $count = 6)
+    {
+        list($year, $month, $day) = array_map('intval', explode('-', $today));
+        $query = 'SELECT ' . self::LIST_COLUMNS . ' FROM albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          "WHERE t3.release_date_precision = 'day' AND MONTH(t3.year) = " . $month . ' AND DAYOFMONTH(t3.year) = ' . $day .
+          ' AND YEAR(t3.year) < ' . $year . ' AND ' . self::SHOWN . ' ' .
+          'ORDER BY t3.year, t3.id LIMIT ' . (int) $count;
+        return $this->getList($query);
+    }
+
+    /** A year's most viewed albums, of all time's views (#196) */
+    public function getPopularOfYear($year, $count = 10)
+    {
+        $year = (int) $year;
+        $query = 'SELECT ' . self::LIST_COLUMNS . ' FROM albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          "WHERE t3.year >= '" . $year . "-01-01' AND t3.year < '" . ($year + 1) . "-01-01' AND " . self::SHOWN . ' ' .
+          'ORDER BY t3.viewed DESC, t3.id LIMIT ' . (int) $count;
+        return $this->getList($query);
+    }
+
     public function getBest($count = 10)
     {
         $count = intval($count);

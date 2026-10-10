@@ -119,6 +119,27 @@
         </defaults>
       </announced>
 
+      <!-- A year's albums (#196), and the list of the years -->
+      <albumsOfYear type="Zend_Controller_Router_Route_Regex">
+        <route>albumy-(\d{4})\.html</route>
+        <defaults>
+          <controller>album</controller>
+          <action>year</action>
+        </defaults>
+        <map>
+          <year>1</year>
+        </map>
+        <reverse>albumy-%d.html</reverse>
+      </albumsOfYear>
+
+      <albumYears>
+        <route>albumy/lata.html</route>
+        <defaults>
+          <controller>album</controller>
+          <action>years</action>
+        </defaults>
+      </albumYears>
+
       <!-- The most viewed over a period (#194): /albumy/popularne.html for all time, -tydzien,
            -miesiac and -rok for the last 7 days, the last 30 and this year -->
       <albumsPopular type="Zend_Controller_Router_Route_Regex">

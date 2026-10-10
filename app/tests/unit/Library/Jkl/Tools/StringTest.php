@@ -189,4 +189,29 @@ class Jkl_Tools_StringTest extends TestCase
     {
         $this->assertSame('Fani nie mogą się doczekać!', Jkl_Tools_String::excerpt('Fani nie mogą się doczekać!', 200));
     }
+
+    /**
+     * @dataProvider counts
+     */
+    public function testANounTakesThePolishFormForItsCount(int $count, string $expected): void
+    {
+        $this->assertSame($expected, Jkl_Tools_String::plural($count, 'płyta', 'płyty', 'płyt'));
+    }
+
+    public static function counts(): array
+    {
+        return array(
+            'one'      => array(1, 'płyta'),
+            'two'      => array(2, 'płyty'),
+            'four'     => array(4, 'płyty'),
+            'five'     => array(5, 'płyt'),
+            'twelve'   => array(12, 'płyt'),
+            'fourteen' => array(14, 'płyt'),
+            '22'       => array(22, 'płyty'),
+            '25'       => array(25, 'płyt'),
+            '112'      => array(112, 'płyt'),
+            '384'      => array(384, 'płyty'),
+            'none'     => array(0, 'płyt'),
+        );
+    }
 }
