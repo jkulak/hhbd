@@ -18,7 +18,7 @@ hhbd-new/
 
 The old admin panel (`backoffice/`) is archived on the branch `backoffice-archive`; nothing runs it, and it will not be revived: a future backoffice gets written from scratch.
 
-Production runs on the shared OVH host, behind its Caddy edge and Cloudflare, since 2026-10-08. A release is `gh release create vYYYY.MM.N`; see [deploy/ovh/README.md](deploy/ovh/README.md).
+Production runs on the shared OVH host, behind its Caddy edge and Cloudflare, since 2026-10-08. Every merge to `main` releases and deploys itself as `vYYYY.MM.N`; see [deploy/ovh/README.md](deploy/ovh/README.md).
 
 ## Quick Start
 
@@ -268,4 +268,4 @@ Tests run on GitHub Actions for every pull request, and not again on the push a 
 - **Smoke Tests**: `.github/workflows/smoke-tests.yml` - Integration tests with Docker
 - **Deploy checks**: `.github/workflows/deploy-checks.yml` - the secrets gate, and the production stack behind a stand-in edge
 
-A published release, `gh release create vYYYY.MM.N`, runs `.github/workflows/deploy.yml`, which builds the app, nginx and importer images, rolls the app and nginx out on the OVH host, and leaves the importer's for `make ovh-import`.
+A merge to `main` runs `.github/workflows/release.yml`, which publishes the release `vYYYY.MM.N` and dispatches `.github/workflows/deploy.yml`: it builds the app, nginx and importer images, rolls the app and nginx out on the OVH host, and leaves the importer's for `make ovh-import`.

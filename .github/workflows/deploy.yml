@@ -1,15 +1,17 @@
 name: Deploy
 
-# Every published release, rolled out on the shared OVH host: build the images named in
+# Every release, rolled out on the shared OVH host: build the images named in
 # deploy/ovh/service.env, push them to this repository's registry with the run's own token,
 # and roll them out with scripts/ovh-release.sh — `deploy <service> <tag>`, the service's smoke
 # test, and the release before when that fails. From gcloud-ovh-migrate's service template,
-# word for word the same in every service. A release is cut by hand: `gh release create v…`.
+# word for word the same in every service. A merge to main is released by release.yml, which
+# dispatches this against the new tag; a release cut by hand, `gh release create v…`, starts it
+# through its own event.
 #
 # A release is a tag, never a branch, and three things say so independently: the plan job
 # refuses any other ref, the `production` environment admits `v*` tags only, and `ci-deploy`
-# on the host accepts release tags alone. `workflow_dispatch` is how an earlier release is put
-# back: dispatch it against that tag.
+# on the host accepts release tags alone. `workflow_dispatch` against an earlier tag is how
+# that release is put back.
 on:
   release:
     types: [published]
@@ -68,6 +70,9 @@ jobs:
     strategy:
       matrix:
         image: ${{ fromJSON(needs.plan.outputs.images) }}
+    env:
+      # Where the image lives in the registry: its release tags, and its layer cache.
+      IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -102,9 +107,12 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ github.ref_name }}
-          tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}:${{ github.ref_name }}
-          cache-from: type=gha,scope=${{ matrix.image.name }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}
+          tags: ${{ env.IMAGE }}:${{ github.ref_name }}
+          # The layers come from the release before and go to the next through the registry,
+          # beside the image: GitHub's Actions cache is kept per ref, a release's ref is its tag,
+          # and no later release could read it.
+          cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE }}:buildcache,mode=max
 
   deploy:
     name: Roll out on the host

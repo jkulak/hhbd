@@ -8,15 +8,14 @@ Every task is a GitHub issue in jkulak/hhbd: what waits for later carries the `b
 
 ### Finished means running on hhbd.pl
 
-A change is finished when it runs on hhbd.pl, not when its pull request is merged (#175). Whoever does it takes it all the way, in this order, and nobody releases it for them afterwards:
+A change is finished when it runs on hhbd.pl, not when its pull request is merged (#175). Whoever does it takes it all the way, in this order:
 
-1. Merge the pull request once CI is green.
-2. `make ovh-migrate` when it brings a migration, `make ovh-install` when it changes the production compose file, the secrets or the edge snippet: both before the release that needs them.
-3. Release: the CHANGELOG's section gets its version (`## YYYY.MM.N — date`) in a small prep pull request, then `gh release create vYYYY.MM.N --target main --title YYYY.MM.N --notes-file <that section>`.
-4. Watch `deploy.yml` to green; a red one has been taken back, and is fixed and released again.
-5. Check hhbd.pl itself for what the change does, beyond the release's smoke test.
+1. `make ovh-migrate` when it brings a migration, `make ovh-install` when it changes the production compose file, the secrets or the edge snippet: both before the merge, as the merge releases it. The running release has to work with them (deploy/ovh/README.md).
+2. Merge the pull request once CI is green. The merge releases itself (#193): `release.yml` refuses a merge whose pull request did not pass, names the release `vYYYY.MM.N`, writes its note from what `CHANGELOG.md` gained, and dispatches `deploy.yml` against the tag.
+3. Watch the release run and the deploy run it dispatches to green; a deploy whose smoke test fails has been taken back, and is fixed and merged again.
+4. Check hhbd.pl itself for what the change does, beyond the release's smoke test.
 
-This holds here even where a general rule says releasing is someone else's decision. A change that touches nothing deployed (docs, tests, CI) needs no release.
+`gh release create vYYYY.MM.N` by hand is only for what `release.yml` refuses, such as a commit that reached `main` without a pull request. A change that touches nothing deployed (docs, tests, CI) is released all the same, with a note that says so.
 
 ## Project Overview
 
@@ -231,7 +230,7 @@ In **production mode** (use `-f compose.yaml` only):
 - Opcache disabled timestamp validation
 - Vendor directory baked into container
 
-Production itself runs `deploy/ovh/compose.yaml` on the shared OVH host, behind its Caddy edge and Cloudflare, since 2026-10-08. A release is `gh release create vYYYY.MM.N`, cut as part of finishing a change (see "Finished means running on hhbd.pl" above); [deploy/ovh/README.md](deploy/ovh/README.md) has the rest.
+Production itself runs `deploy/ovh/compose.yaml` on the shared OVH host, behind its Caddy edge and Cloudflare, since 2026-10-08. Every merge to `main` is released and deployed by itself (see "Finished means running on hhbd.pl" above); [deploy/ovh/README.md](deploy/ovh/README.md) has the rest.
 
 ## Code Style Conventions
 
@@ -248,9 +247,10 @@ GitHub Actions workflows (`.github/workflows/`):
 - **unit-tests.yml** - PHPUnit tests with coverage
 - **smoke-tests.yml** - Integration tests with Docker, in two halves at once on two runners: the site's pages, and the tools that change the database
 - **deploy-checks.yml** - The secrets gate, and the production stack behind a stand-in edge
-- **deploy.yml** - For a published release, builds the app, nginx and importer images and rolls the first two out on the OVH host; the shared host's template, word for word
+- **release.yml** - For a merge to `main`: refuses one whose pull request did not pass, publishes the release `vYYYY.MM.N` with a note from `CHANGELOG.md` (`scripts/release-notes.py`), and dispatches `deploy.yml`; the shared host's template, word for word
+- **deploy.yml** - For a release, builds the app, nginx and importer images, with their layer cache in the registry, and rolls the first two out on the OVH host; the shared host's template, word for word
 
-The first three run on pull requests (and by hand), never again on the push a merge makes to `main`; a newer push to a pull request cancels the older run. `deploy.yml` runs on a published release, `gh release create vYYYY.MM.N`.
+The first three run on pull requests (and by hand), never again on the push a merge makes to `main`; a newer push to a pull request cancels the older run. That push runs `release.yml` alone, which tests nothing again: it releases what the pull request tested. `deploy.yml` runs on its dispatch, or on a release published by hand.
 
 The workflows that build images log in to Docker Hub first, with the repository's `DOCKERHUB_TOKEN` secret and `DOCKERHUB_USERNAME` variable: GitHub's runners share their addresses with every other build, and Docker Hub's anonymous limit, counted per address, failed ours with 429 (#135). Without the secret, as on a fork's pull request, the step is skipped.
 
