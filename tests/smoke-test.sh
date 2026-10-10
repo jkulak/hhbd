@@ -837,12 +837,15 @@ run_tests() {
 
     # Core pages
     echo "--- Listing Pages ---"
-    test_page "Homepage" "/" "Pezet"
+    # What each list page is, not who is on its list today: the home page's popular boxes are
+    # this week's, the artist list's all time's, the premieres the announcements still ahead,
+    # and a name that drops off one took a release back with nothing wrong in it (#212).
+    test_page_multi "Homepage" "/" "<h2>Aktualności</h2>" "<h2>Ostatnio wydane albumy</h2>" "<h2>Popularne w tym tygodniu</h2>"
     test_page_absent "The home page's news excerpts split no letter (#163)" "/" "�"
     # The table, not a title: production's top album was a 2017 placeholder until #54 removed it.
     test_page "Album List" "/albumy.html" "Lista albumów hip-hopowych"
-    test_page "Premieres" "/premiery.html" "Stasiak"
-    test_page "Artist List" "/wykonawcy.html" "Eldo"
+    test_page "Premieres" "/premiery.html" "<h1>Albumy zapowiedziane</h1>"
+    test_page "Artist List" "/wykonawcy.html" "<h1>Lista wykonawców</h1>"
     test_page "Label List" "/wytwornie.html" "Asfalt"
     echo ""
 
