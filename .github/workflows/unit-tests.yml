@@ -11,49 +11,32 @@ concurrency:
   group: unit-tests-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962  # 2.40.0
         with:
           php-version: '8.4'
-          # gd for the importer's image sizes (#96), as the importer image has it
+          # gd for the importer's image sizes (#96), as the importer image has it. No coverage:
+          # its upload failed on every run and nobody received it (#206).
           extensions: mbstring, xml, pdo, pdo_mysql, gd
-          coverage: xdebug
+          coverage: none
 
-      - name: Cache Composer cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.composer/cache
-          key: composer-cache-${{ runner.os }}-${{ hashFiles('app/composer.lock') }}
-          restore-keys: |
-            composer-cache-${{ runner.os }}-
-
-      - name: Cache vendor directory
-        uses: actions/cache@v4
-        with:
-          path: app/vendor
-          key: composer-vendor-${{ runner.os }}-${{ hashFiles('app/composer.lock') }}
-          restore-keys: |
-            composer-vendor-${{ runner.os }}-
-
+      # No cache: a pull request's Actions cache is read by its own later pushes alone, and
+      # nothing runs on main to leave one the next pull request could read (#206).
       - name: Install Composer dependencies
         working-directory: app
         run: composer install --prefer-dist --no-progress
 
-      - name: Run PHPUnit with coverage
+      - name: Run PHPUnit
         working-directory: app
-        run: ./vendor/bin/phpunit -c tests/phpunit.xml --coverage-text --coverage-clover=coverage.xml
-
-      - name: Upload coverage report
-        uses: codecov/codecov-action@v4
-        with:
-          file: app/coverage.xml
-          fail_ci_if_error: false
-        continue-on-error: true
+        run: ./vendor/bin/phpunit -c tests/phpunit.xml

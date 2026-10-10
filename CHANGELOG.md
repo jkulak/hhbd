@@ -26,6 +26,10 @@ which the note leaves out. The sections before, by version, stay as they were.
   so `undo` takes it back, and the item says what is still missing until then.
 
 ### Internal
+- CI builds each image from the layers the last release left in the registry and keeps no
+  cache of its own, the coverage upload that failed on every run goes with xdebug, every action
+  is on a current major pinned to a commit, and the smoke test after a deploy checks in seconds
+  what only production can show; the whole suite stays on the pull request (#206).
 - `release.yml` and `scripts/release-notes.py` come from gcloud-ovh-migrate's service template,
   and `deploy.yml` with them keeps the images' layer cache in the registry, `:buildcache`
   beside each image, where the next release reads it (#193).

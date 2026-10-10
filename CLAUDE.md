@@ -244,7 +244,7 @@ Production itself runs `deploy/ovh/compose.yaml` on the shared OVH host, behind 
 ## CI/CD
 
 GitHub Actions workflows (`.github/workflows/`):
-- **unit-tests.yml** - PHPUnit tests with coverage
+- **unit-tests.yml** - PHPUnit tests, no coverage (nobody received it, #206)
 - **smoke-tests.yml** - Integration tests with Docker, in two halves at once on two runners: the site's pages, and the tools that change the database
 - **deploy-checks.yml** - The secrets gate, and the production stack behind a stand-in edge
 - **release.yml** - For a merge to `main`: refuses one whose pull request did not pass, publishes the release `vYYYY.MM.N` with a note from `CHANGELOG.md` (`scripts/release-notes.py`), and dispatches `deploy.yml`; the shared host's template, word for word
@@ -253,6 +253,10 @@ GitHub Actions workflows (`.github/workflows/`):
 The first three run on pull requests (and by hand), never again on the push a merge makes to `main`; a newer push to a pull request cancels the older run. That push runs `release.yml` alone, which tests nothing again: it releases what the pull request tested. `deploy.yml` runs on its dispatch, or on a release published by hand.
 
 The workflows that build images log in to Docker Hub first, with the repository's `DOCKERHUB_TOKEN` secret and `DOCKERHUB_USERNAME` variable: GitHub's runners share their addresses with every other build, and Docker Hub's anonymous limit, counted per address, failed ours with 429 (#135). Without the secret, as on a fork's pull request, the step is skipped.
+
+The images a pull request builds start from the layers the last release left beside each image in the registry, `ghcr.io/jkulak/hhbd-{app,nginx,importer}:buildcache` (deploy.yml writes them): the workflows log in to GHCR with their own token, `packages: read`, and write no cache of their own, as GitHub keeps an Actions cache per ref and a pull request's would be read by its own later pushes alone (#206). Every action is pinned to a commit, with its version in a comment.
+
+After a deploy the host runs `deploy/ovh/smoke.sh`, `SMOKE_TARGET=release`: each kind of page once and what only production holds, in seconds. The whole suite runs on the pull request; `SMOKE_TARGET=production ./tests/smoke-test.sh https://hhbd.pl` runs all of it that production's data can pass.
 
 ## Important Notes
 
