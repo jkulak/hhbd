@@ -440,6 +440,15 @@ run_fixture_tests() {
     CURL_OPTS="$visitor_opts"
     rm -f "$jar"
     echo ""
+
+    # What nginx says of caching (#182). Here only: on production Cloudflare answers, and may
+    # rewrite Cache-Control, which is checked by hand after the release that changed it.
+    echo "--- Caching ---"
+    test_header "The script at its bare address is read fresh, never from a kept copy (#182)" "/js/s.js" "^cache-control: no-cache"
+    test_header "and so is the stylesheet" "/css/s.css" "^cache-control: no-cache"
+    test_header "and robots.txt" "/robots.txt" "^cache-control: no-cache"
+    test_header "while the script at the address the pages link may be kept" "$(linked_address /js/s.js)" "^cache-control: no-cache" absent
+    echo ""
 }
 
 # test_redirect_302 <name> <path> <location>: the path answers 302 to a location ending in the one given
@@ -511,6 +520,23 @@ test_page_status() {
     return 1
 }
 
+# test_header <name> <path> <pattern> [absent]: the response to path has a header line matching
+# the extended regex, case aside; with "absent", none does
+test_header() {
+    local name="$1" path="$2" pattern="$3" expect="${4:-present}" count
+    count=$(curl -s -o /dev/null -D - --max-time 10 $CURL_OPTS "${BASE_URL}${path}" 2>/dev/null | tr -d '\r' | grep -ciE -- "$pattern")
+    if { [[ "$expect" == present && "$count" -gt 0 ]]; } || { [[ "$expect" == absent && "$count" == 0 ]]; }; then
+        echo -e "${GREEN}✓${NC} $name"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - $path: a header matching '$pattern' is $([[ "$expect" == present ]] && echo missing || echo there)"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
+}
+
 # test_sitemap <name> <path> <urlset|sitemapindex>: XML a search engine reads (#147): served as
 # application/xml, nothing after the root element closes, every entry closed and with one <loc>,
 # and every <loc> an absolute address on this site: https:// ones on production
@@ -549,6 +575,13 @@ test_sitemap() {
     return 1
 }
 
+# linked_address <path>: the address the home page loads the file at, "<path>?v=<hash>". Read a
+# file there, as a browser does: the bare path is a cache key of its own, which a Cloudflare data
+# centre can keep from an older release for five days (#182).
+linked_address() {
+    curl -s --max-time 10 $CURL_OPTS "${BASE_URL}/" 2>/dev/null | grep -o "${1}?v=[0-9a-f]*" | head -1
+}
+
 # md5_of: the MD5 of stdin, with md5sum (Linux) or md5 (macOS)
 md5_of() {
     if command -v md5sum >/dev/null 2>&1; then md5sum | cut -d' ' -f1; else md5 -q; fi
@@ -559,8 +592,11 @@ md5_of() {
 test_asset() {
     local name="$1" path="$2"
     local address hash
-    address=$(curl -s --max-time 10 $CURL_OPTS "${BASE_URL}/" 2>/dev/null | grep -o "${path}?v=[0-9a-f]*" | head -1)
-    hash=$(curl -s --max-time 10 $CURL_OPTS "${BASE_URL}${path}" 2>/dev/null | md5_of | cut -c1-8)
+    address=$(linked_address "$path")
+    hash=""
+    if [[ -n "$address" ]]; then
+        hash=$(curl -s --max-time 10 $CURL_OPTS "${BASE_URL}${address}" 2>/dev/null | md5_of | cut -c1-8)
+    fi
     if [[ -n "$hash" && "$address" == "${path}?v=${hash}" ]]; then
         echo -e "${GREEN}✓${NC} $name"
         ((PASSED++))
@@ -664,7 +700,7 @@ test_admin_page() {
 # holds the first text and not the second
 test_stylesheet() {
     local name="$1" present="$2" absent="${3:-}" css
-    css=$(curl -s --max-time 10 $CURL_OPTS "${BASE_URL}/css/s.css" 2>/dev/null | tr -s ' \n\t' '   ')
+    css=$(curl -s --max-time 10 $CURL_OPTS "${BASE_URL}$(linked_address /css/s.css)" 2>/dev/null | tr -s ' \n\t' '   ')
     if [[ "$css" == *"$present"* && ( -z "$absent" || "$css" != *"$absent"* ) ]]; then
         echo -e "${GREEN}✓${NC} $name"
         ((PASSED++))
