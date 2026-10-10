@@ -13,6 +13,11 @@ its own: releasing is the last step of finishing a change, taken by whoever made
   and configuration on the host, releases it and checks it there, in the order `CLAUDE.md` gives
   (#175).
 
+### Fixed
+- Every page with an ad logged a `TagError`: `s.js` asked AdSense for one ad per unit in the page,
+  counting the units AdSense's own page-level formats had already put there and filled. It asks
+  only for the empty ones now (#179).
+
 ## 2026.10.12 — 2026-10-10
 
 The side column's ad stops holding pages up: it is AdSense's asynchronous unit, in the same slot,
