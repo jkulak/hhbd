@@ -22,7 +22,7 @@ class NewsController extends Zend_Controller_Action
         }
         $news = Model_News_Api::getInstance()->find($newsId, true);
 
-        $canonicalSlug = Jkl_Tools_Url::createUrl($news->title . '-n' . $news->id) . '.html';
+        $canonicalSlug = Jkl_Tools_Url::createUrl($news->title) . '-n' . $news->id . '.html';
         Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
 
         $this->view->news = $news;
