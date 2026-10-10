@@ -56,3 +56,7 @@ INSERT INTO `review_items` (`id`, `entity_type`, `entity_id`, `reason`, `detail`
 (3, 'album', 50, 'date_disputed', '{"text": "Discogs says 2013, MusicBrainz 2013-05-17", "values": ["2013", "2013-05-17"]}', 1, '2026-10-09 12:00:02'),
 (4, 'album', 2, 'type_disputed', '{"values": ["single", "ep"]}', 1, '2026-10-09 12:00:03'),
 (5, 'album', 46, 'single_source', '{"text": "only Discogs knows it"}', 1, '2026-10-09 12:00:04');
+
+-- The admin's password, adminpass, as password_hash() makes it (#41), which needs 0034's wider
+-- column; the tests log in with it.
+UPDATE `hhb_users` SET `usr_password` = '$2y$12$sxdWRc7n3UH1A8DiXi7iyutjX4TF22J4e/Tlgy99UZ5bQeSDDUZia' WHERE `usr_id` = 10;

@@ -118,7 +118,8 @@
     }
 
     // Album, artist, song, label and news pages: the comment form, its character count, its
-    // submission without leaving the page, and the new comment at the top of the list
+    // question for anonymous users, its submission without leaving the page, and the new
+    // comment at the top of the list
     function comments() {
         var form = $('#post-comment');
         if (!form) {
@@ -128,6 +129,45 @@
         var count = $('#comment-character-count');
         var again = $('#comment-form-show');
         var limit = 1000;
+
+        // The server's question (#41), asked for when someone starts a comment and again after
+        // every attempt, as an answer is taken once, right or wrong
+        var question = $('#captcha-question');
+        var token = $('#captcha-token');
+        var answer = $('#captcha-answer');
+        var asking = null;
+        function ask() {
+            if (!question || !token) {
+                return;
+            }
+            if (asking) {
+                return;
+            }
+            token.value = '';
+            question.textContent = 'Chwila, przygotowuję pytanie…';
+            asking = post('/comments/captcha', new URLSearchParams()).then(function (data) {
+                if (data.error || !data.token) {
+                    question.textContent = 'Nie udało się przygotować pytania, spróbuj za chwilę.';
+                    return;
+                }
+                token.value = data.token;
+                question.textContent = data.question + ' (antyspam)';
+                if (answer) {
+                    answer.value = '';
+                }
+            }).catch(function () {
+                question.textContent = 'Nie udało się przygotować pytania, spróbuj za chwilę.';
+            }).then(function () {
+                asking = null;
+            });
+        }
+        if (token) {
+            form.addEventListener('focusin', function () {
+                if (!token.value) {
+                    ask();
+                }
+            });
+        }
 
         if (textarea && count) {
             textarea.addEventListener('input', function () {
@@ -161,11 +201,16 @@
             post(form.getAttribute('action'), new URLSearchParams(new FormData(form))).then(function (data) {
                 if (data.error) {
                     alert(data.error);
+                    ask();
                     return;
+                }
+                if (token) {
+                    token.value = '';
                 }
                 added(data);
             }).catch(function () {
                 alert('Problem z dodaniem komentarza, spróbuj za jakiś czas.');
+                ask();
             }).then(function () {
                 if (button) {
                     button.disabled = false;

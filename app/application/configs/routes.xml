@@ -211,6 +211,15 @@
           </defaults>
         </comment>
 
+        <!-- The comment form's question (#41) -->
+        <commentCaptcha>
+          <route>comments/captcha</route>
+          <defaults>
+            <controller>comment</controller>
+            <action>captcha</action>
+          </defaults>
+        </commentCaptcha>
+
         <!-- Viev counting/stats -->
         <stat>
           <route>stat</route>
