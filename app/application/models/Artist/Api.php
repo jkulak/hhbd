@@ -84,7 +84,7 @@ class Model_Artist_Api extends Jkl_Model_Api
 
         $query = "SELECT *, t1.id as art_id
               FROM artists AS t1
-              WHERE (t1.name LIKE '%$like%' )
+              WHERE (t1.name LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION . ")
               ORDER BY t1.viewed DESC" .
                   (($limit != null) ? ' LIMIT ' . $limit . ' OFFSET ' . ($page * $limit) : '');
 
@@ -108,7 +108,7 @@ class Model_Artist_Api extends Jkl_Model_Api
 
         $query = "SELECT *, t1.id AS art_id 
               FROM `artists` t1, `altnames_lookup` t2
-              WHERE (t1.id=t2.`artistid` AND t2.`altname` LIKE '%$like%')" .
+              WHERE (t1.id=t2.`artistid` AND t2.`altname` LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION . ")" .
                   "ORDER BY t1.viewed DESC" .
                   (($limit != null) ? ' LIMIT ' . $limit : '') .
                   ' OFFSET ' . ($page * $limit);
@@ -320,7 +320,7 @@ class Model_Artist_Api extends Jkl_Model_Api
         $like = Jkl_Db::escape($like);
         $query = "SELECT count(*) as count
               FROM artists AS t1
-              WHERE t1.name LIKE '%$like%'";
+              WHERE t1.name LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION;
         $result = $this->_db->fetchAll($query);
         return intval($result[0]['count']);
     }
