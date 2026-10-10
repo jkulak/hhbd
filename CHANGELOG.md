@@ -6,13 +6,13 @@ published as a release — `gh release create vYYYY.MM.N` — which is what depl
 (`.github/workflows/deploy.yml`); a tag pushed on its own deploys nothing. Nothing releases on
 its own: releasing is the last step of finishing a change, taken by whoever made it (#175).
 
-## 2026.10.15 — 2026-10-10
+## 2026.10.16 — 2026-10-10
 
-An unpublished album is hidden from visitors, as `status` always said it should be, and the
-site's first 77 albums, which had `status` 0 only by an accident of 2004, are published first so
-nothing visible goes (#168).
+An album an import makes is published only with a label or as a self-release, a date to the day
+and a tracklist; the rest waits for an admin, saying what it lacks (#168). The contract gains
+`self_released`. Nothing changes for visitors until a batch is read under the rule.
 
-Migration 0036: `make ovh-migrate` before the release, or the 77 albums disappear with it.
+Migration 0037: `make ovh-migrate` before the release.
 
 ### Added
 - An album an import makes is published only with a label or as a self-release, a release date
@@ -29,6 +29,16 @@ Migration 0036: `make ovh-migrate` before the release, or the 77 albums disappea
 ### Changed
 - A batch's release date to the day replaces a month or a year hhbd has when it falls inside
   them, with its precision; any other differing date stays a warning (#168).
+
+## 2026.10.15 — 2026-10-10
+
+An unpublished album is hidden from visitors, as `status` always said it should be, and the
+site's first 77 albums, which had `status` 0 only by an accident of 2004, are published first so
+nothing visible goes (#168).
+
+Migration 0036: `make ovh-migrate` before the release, or the 77 albums disappear with it.
+
+### Changed
 - An unpublished album (`status` 0) is nowhere for a visitor: not in the lists, the search, the
   sitemap, an artist's or a label's page, nor in the counts; its page answers 404, and so does a
   song on no published album. An admin opens its page and is told nobody else sees it. Until
