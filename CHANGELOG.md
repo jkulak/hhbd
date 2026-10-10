@@ -8,6 +8,13 @@ person's decision; nothing releases on its own.
 
 ## Unreleased
 
+### Changed
+- A visitor no longer sees where a page's data came from (#158): "Data provided by Discogs." on
+  album and artist pages, the author and licence under every artist photo, and the about page's
+  sources paragraph with the Discogs notice. A logged-in admin sees all of them at the top of the
+  same page, in a box marked as theirs alone. The database and the importer keep recording every
+  source, credit and licence; the listen links stay for everyone.
+
 ### Fixed
 - An artist named in Cyrillic has a page (#155). Its slug came out empty, and the canonical
   redirect went to `/p8228.html`, which no route matches: "Игроки Улиц" and "Нам Хлам Клан"

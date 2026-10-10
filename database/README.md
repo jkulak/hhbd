@@ -454,9 +454,11 @@ row's file is there with the recorded hash.
 ## Artist photos
 
 An artist can have several photos (`artists_photos`); the page shows the main one at the top and
-the others in a gallery below, each with the caption its licence asks for: "Fot. <credit>,
+the others in a gallery below. Each has the caption its licence asks for: "Fot. <credit>,
 <licence>", the credit linked to `sourceurl`, the licence to `licence_url`, and "(zmodyfikowane)"
-when `modified` says the file was cropped or resized (0020, #61). `Model_Image_Api::addArtistPhoto()`
+when `modified` says the file was cropped or resized (0020, #61). Since 2026-10-10 only a
+logged-in admin sees the captions, in the sources box at the top of the page; a visitor sees the
+photos alone (#158). `Model_Image_Api::addArtistPhoto()`
 keeps exactly one main photo per artist. Width, height, SHA-256 and MIME type come from the
 files: `make photos-backfill` and `make ovh-photos-backfill` fill them for the photos already on
 the volume (`DRY_RUN=1` to only report), and `make check-images` verifies each recorded hash.
@@ -599,9 +601,11 @@ not text to sort.
 **Credits follow provenance** (#62). Discogs's API terms ask for "Data provided by Discogs."
 with a link next to anything taken through the API; its monthly dump is CC0 and asks for
 nothing. So the importer records a field from the dump with `licence = 'CC0'`, and any other
-`discogs` row counts as taken through the API: the album and artist pages then show the line,
-linked to the row's Discogs page from `external_ids`. The about page carries the notice that
-the site is not affiliated with Discogs.
+`discogs` row counts as taken through the API, and the album and artist pages have the line,
+linked to the row's Discogs page from `external_ids`; the about page has the notice that the
+site is not affiliated with Discogs. Since 2026-10-10 a visitor sees neither: a logged-in admin
+sees both, with the photos' captions, in a box of its own at the top of the page
+(`common/_sources.phtml`, #158). The records stay as they were.
 
 ```bash
 make import-runs         # the last 20 runs on the local database, newest first; N=50 for more
