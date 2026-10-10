@@ -27,6 +27,9 @@ Google's tags wait for consent (#162). The production compose file now carries
 - A privacy page, `/prywatnosc.html`, saying what is measured and shown, by whom, for how long,
   and how to change the choice (#162).
 
+- `ads.txt` and the `google-adsense-account` meta tag, by which AdSense tells hhbd.pl belongs to
+  its account, `pub-6149271850793027`, before it reviews the site (#169).
+
 ### Removed
 - Universal Analytics (`UA-3311418-1`), which Google stopped processing in 2023, and Google Tag
   Manager (`GTM-MGJ9HQ`), whose two tags, GA4 and AdSense's auto ads, the layout loads itself
