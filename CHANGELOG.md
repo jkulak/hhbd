@@ -19,9 +19,22 @@ its own: releasing is the last step of finishing a change, taken by whoever made
   link previews, scripts, HEAD requests and admins count for nothing. Nothing had called the
   old counter since before this repository's history, so the popular lists stood still (#68).
 
+- Popularity over a period: albums at `/albumy/popularne-tydzien.html`, `-miesiac` and `-rok`
+  (the last 7 days, the last 30, this year) and `/albumy/popularne.html` (all time), artists the
+  same at `/wykonawcy/popularni…`, each with its own title, description and canonical, linked
+  from the lists and in a new sitemap of the lists and rankings, `sitemap-pages.xml`. The home
+  page's popular albums and artists are this week's. A period with too few views is filled up
+  from all time, and says so (#194).
+
 ### Removed
 - `/stat`, the counter a page's script once called, which let anyone add views to any row with
   a GET (#68).
+
+### Fixed
+- Every link to a song led with its artist's slug, `/<artist>-<song>-sN.html`, which the song's
+  page answered with a 301 to its canonical `/<song>-sN.html`: a redirect for each song link a
+  crawler followed. Songs are linked at their canonical address; the old form still redirects
+  (#202).
 
 ## 2026.10.17 — 2026-10-10
 

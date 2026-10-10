@@ -1,0 +1,23 @@
+<div id="main">
+  <h1><?php echo $this->escape($this->title) ?></h1>
+  <?php echo $this->partial('common/_periods.phtml', array('base' => '/wykonawcy/popularni', 'current' => $this->period)) ?>
+
+  <div class="list">
+    <?php echo $this->partial('artist/_list.phtml', array('artists' => $this->artists->items)) ?>
+  </div>
+  <?php if ('' !== $this->period && $this->counted < count($this->artists->items)): ?>
+    <p class="secondary">W tym okresie obejrzano ich jeszcze niewiele, więc dalszą część listy uzupełniają najpopularniejsi od zawsze.</p>
+  <?php endif ?>
+</div>
+
+<div id="additional">
+  <div class="box googleads">
+    <h3 class="hidden">Google Ads</h3>
+    <?php echo $this->partial('common/googleAds/_rectangle.phtml'); ?>
+  </div>
+
+  <div class="box">
+    <h3>Ostatnio dodani</h3>
+    <?php echo $this->partial('artist/box/_list.phtml', array('artists' => $this->recentlyAdded)) ?>
+  </div>
+</div>

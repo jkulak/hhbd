@@ -35,6 +35,32 @@ class ArtistController extends Zend_Controller_Action
         $this->view->headMeta()->setName('keywords', 'polski hip-hop,wykonawcy');
     }
 
+    /**
+     * The artists most viewed over a period (#194): the last 7 days, the last 30, this year or
+     * all time, each at its own address
+     */
+    public function popularAction()
+    {
+        $period = (string) $this->getRequest()->getParam('period', '');
+        if (!isset(Model_PageView_Api::PERIODS[$period])) {
+            throw new Zend_Controller_Action_Exception('No period ' . $period, 404);
+        }
+        list($artists, $counted) = Model_Artist_Api::getInstance()->popularSince(Model_PageView_Api::since($period, date('Y-m-d')), 40);
+        $this->view->artists = $artists;
+        $this->view->counted = $counted;
+        $this->view->period = $period;
+        $this->view->recentlyAdded = Model_Artist_Api::getInstance()->getRecentlyAdded();
+
+        $this->view->title = 'Najpopularniejsi wykonawcy ' . Model_PageView_Api::PERIODS[$period];
+        $this->view->headTitle()->set($this->view->title . ' - polski hip-hop - Hhbd.pl');
+        $names = array();
+        foreach (array_slice($artists->items, 0, 8) as $artist) {
+            $names[] = $artist->qualifiedName;
+        }
+        $this->view->headMeta()->setName('description', 'Najchętniej oglądani polscy wykonawcy hip-hopowi ' . Model_PageView_Api::PERIODS[$period] . ': ' . implode(', ', $names) . '.');
+        $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . Model_PageView_Api::rankingUrl('/wykonawcy/popularni', $period);
+    }
+
     // View artist detail page
     public function viewAction()
     {

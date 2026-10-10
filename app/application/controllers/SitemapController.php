@@ -10,7 +10,10 @@
 class SitemapController extends Zend_Controller_Action
 {
     /** The kinds of page with a sitemap, in the index's order */
-    public const KINDS = array('albums', 'artists', 'news', 'songs', 'labels');
+    public const KINDS = array('pages', 'albums', 'artists', 'news', 'songs', 'labels');
+
+    /** The pages that list others: the lists and the rankings over each period (#194) */
+    public const PAGES = array('/', '/albumy.html', '/wykonawcy.html', '/wytwornie.html', '/premiery.html', '/top10.html');
 
     /** The protocol's most for one file; hhbd has about 12,000 songs, the longest list */
     public const LIMIT = 50000;
@@ -38,6 +41,9 @@ class SitemapController extends Zend_Controller_Action
     public function viewAction()
     {
         switch ($this->params['type']) {
+            case 'pages':
+                $this->view->urls = $this->pages();
+                return;
             case 'albums':
                 // One entry per album, however many artists it credits (#58).
                 $list = Model_Album_Api::getInstance()->getAlbumsSitemap(self::LIMIT);
@@ -63,6 +69,21 @@ class SitemapController extends Zend_Controller_Action
             $urls[] = $site . $item->getUrl();
         }
         $this->view->urls = $urls;
+    }
+
+    /** The lists and the rankings, at their absolute addresses */
+    private function pages()
+    {
+        $paths = self::PAGES;
+        foreach (array('/albumy/popularne', '/wykonawcy/popularni') as $base) {
+            foreach (array_keys(Model_PageView_Api::PERIODS) as $period) {
+                $paths[] = Model_PageView_Api::rankingUrl($base, $period);
+            }
+        }
+        $site = $this->site();
+        return array_map(function ($path) use ($site) {
+            return $site . $path;
+        }, $paths);
     }
 
     /** The site's origin as the request reached it, https:// behind the edge (#147) */
