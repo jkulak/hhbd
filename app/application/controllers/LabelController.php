@@ -39,6 +39,8 @@ class LabelController extends Zend_Controller_Action
         Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
 
         $this->view->Analytics()->page('label', $label->id, $label->name);
+
+        Model_PageView_Api::getInstance()->count('label', $label->id, $this->view->IsAdmin());
         $label->releases = Model_Album_Api::getInstance()->getLabelReleases($label->id, null);
         $artists = array();
         foreach ($label->releases->items as $key => $value) {

@@ -54,6 +54,8 @@ class ArtistController extends Zend_Controller_Action
         Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
 
         $this->view->Analytics()->page('artist', $artist->id, $artist->qualifiedName);
+
+        Model_PageView_Api::getInstance()->count('artist', $artist->id, $this->view->IsAdmin());
         $artist->addAlbums(Model_Album_Api::getInstance()->getArtistsAlbums($artist->id, array(), false, 'year'));
 
         if (!empty($artist->projects->items)) {

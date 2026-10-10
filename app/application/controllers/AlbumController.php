@@ -104,6 +104,8 @@ class AlbumController extends Zend_Controller_Action
         Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
 
         $this->view->Analytics()->page('album', $album->id, $album->artistNames . ' - ' . $album->title);
+
+        Model_PageView_Api::getInstance()->count('album', $album->id, $this->view->IsAdmin());
         $album->autoDescription = $this->_generateDescription($album);
         $this->view->album = $album;
         // What an import left to settle about it, for an admin's eyes only (#103).

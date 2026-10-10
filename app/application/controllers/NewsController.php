@@ -27,6 +27,7 @@ class NewsController extends Zend_Controller_Action
 
         $this->view->news = $news;
         $this->view->Analytics()->page('news', $news->id, $news->title);
+        Model_PageView_Api::getInstance()->count('news', $news->id, $this->view->IsAdmin());
 
         $this->view->recentNews = Model_News_Api::getInstance()->getRecent(25);
         $this->view->comments = Model_Comment_Api::getInstance()->getComments($newsId, Model_Comment_Container::TYPE_NEWS);
