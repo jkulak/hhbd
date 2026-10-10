@@ -180,7 +180,7 @@ Search engines are welcome since #147 (`app/public/robots.txt` kept them all out
 
 ### Stylesheet, script and phones
 
-`app/public/css/s.css` and `app/public/js/s.js` are what the site loads, unminified, through `$this->Asset()`, which adds the start of the file's MD5 to the address (`?v=`): Cloudflare and browsers keep `/css/` and `/js/` for five days, so a changed file needs a new address. There is no build step and no `.min` copy to keep in step (#149).
+`app/public/css/s.css` and `app/public/js/s.js` are what the site loads, unminified, through `$this->Asset()`; `s.js` is plain JavaScript, with no library under it since #43, and a page's own script goes there rather than inline, which adds the start of the file's MD5 to the address (`?v=`): Cloudflare and browsers keep `/css/` and `/js/` for five days, so a changed file needs a new address. There is no build step and no `.min` copy to keep in step (#149).
 
 Below 992 px the layout is the phones' and tablets' (#149): one column, a header bar with a menu button (`#menu-toggle`, which `s.js` opens; without a script the menu stays open), tables restacked as grid rows by the classes `album-table`, `artist-table` and `label-table`. From 992 px it is the desktop's, unchanged. A new page is checked at 320, 375, 768 and 1280 px for anything wider than the screen.
 
