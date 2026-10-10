@@ -24,6 +24,9 @@ which the note leaves out. The sections before, by version, stay as they were.
   is published once nothing is missing (#199). The form asks only for what the review item
   names, takes a label hhbd has or "wydanie własne", never both, writes through the edit journal
   so `undo` takes it back, and the item says what is still missing until then.
+- An admin sees how many times each album's, artist's, song's, label's and news item's page was
+  viewed, in the last 7 and 30 days, this year and since the site began, with a link to the page's
+  report in Google Analytics (#214).
 
 ### Internal
 - CI builds each image from the layers the last release left in the registry and keeps no

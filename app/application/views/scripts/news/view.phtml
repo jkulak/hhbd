@@ -1,6 +1,9 @@
 <div id="main">
   <h1><?php echo $this->news->title ?></h1>
   <div class="br secondary"><?php echo $this->news->addedNormalized ?></div>
+  <?php if ('' !== ($views = $this->ViewsFor('news', $this->news->id, parse_url($this->canonicalUrl, PHP_URL_PATH)))): ?>
+    <div class="secondary">Wyświetlenia: <?php echo $views ?></div>
+  <?php endif ?>
   <p class="br" id="news-container">
     <?php if ($this->news->attachment): ?>
       <img id="news-attachment" src="<?php echo $this->news->attachment->url ?>" alt="<?php echo $this->news->title ?>" />

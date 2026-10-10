@@ -25,6 +25,9 @@
         <?php if ('' !== ($added = $this->AddedFor('label', $this->label->id))): ?>
           <li>Dodano: <?php echo $added ?></li>
         <?php endif ?>
+        <?php if ('' !== ($views = $this->ViewsFor('label', $this->label->id, parse_url($this->canonicalUrl, PHP_URL_PATH)))): ?>
+          <li>Wyświetlenia: <?php echo $views ?></li>
+        <?php endif ?>
       </ul>
     </div> <!-- brief -->
     </section>
