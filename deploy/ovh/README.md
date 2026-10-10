@@ -18,15 +18,15 @@ day, and with it every script that deployed there.
 | | `/srv/hhbd/.env` | `IMAGE_TAG=<running tag>`, written by the host's `ci-deploy` |
 | | volumes `hhbd_db_data`, `hhbd_content` | the database and `content/` |
 
-Configuration goes in with `make ovh-install`. Images go out with a release, cut by whoever
-finishes the change, right after its merge and after the migrations and configuration it needs
-(the order is in `CLAUDE.md`, "Finished means running on hhbd.pl", #175):
+Configuration goes in with `make ovh-install`. Images go out with a release, and every merge to
+`main` is one (#193): `.github/workflows/release.yml` refuses a merge whose pull request did not
+pass its checks, names it `vYYYY.MM.N`, publishes it with a note made of the first sentence of
+each entry `CHANGELOG.md` gained, and dispatches `.github/workflows/deploy.yml` against the tag.
+Migrations and configuration go in before the merge (the order is in `CLAUDE.md`, "Finished
+means running on hhbd.pl"). A release by hand, `gh release create vYYYY.MM.N`, is only for what
+the workflow refuses.
 
-```bash
-gh release create vYYYY.MM.N --target main --title YYYY.MM.N --notes-file <the CHANGELOG's section>
-```
-
-Publishing it starts `.github/workflows/deploy.yml`, which builds the app, nginx and importer
+The deploy workflow builds the app, nginx and importer
 images under that one tag, pushes them privately to `ghcr.io/jkulak/hhbd-{app,nginx,importer}`,
 and runs `scripts/ovh-release.sh`: read the running tag with `status hhbd`, `deploy hhbd <tag>`,
 run `deploy/ovh/smoke.sh`, and when that fails deploy the tag read at the start. A release that
@@ -101,7 +101,7 @@ make ovh-migrate          # apply what is pending
 make ovh-migrate-down     # revert the last one, after typing its version to confirm
 ```
 
-A release that needs a schema change: `make ovh-migrate` first, then `gh release create`. The
+A change that needs a schema change: `make ovh-migrate` first, then the merge that releases it. The
 release that is running must work with the migrated schema, and the new one with the old:
 `ci-deploy` takes a release that does not become healthy back to the one before, which then
 runs against whatever the migration did (CONTRACT.md §6). Add a column in one release, use it
