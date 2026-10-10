@@ -16,6 +16,11 @@ person's decision; nothing releases on its own.
   source, credit and licence; the listen links stay for everyone.
 
 ### Fixed
+- News excerpts are cut after a whole word, never split a Polish letter, and end in "..." only
+  when they were cut (#163). The excerpt counted bytes, cut one character before the first space
+  after the limit ("odpowiad..."), could stop inside a letter ("si" and a broken character on the home page),
+  and added "..." to every text. A line break between two words leaves a space now. The admin's
+  statistics shorten a comment the same way.
 - An artist named in Cyrillic has a page (#155). Its slug came out empty, and the canonical
   redirect went to `/p8228.html`, which no route matches: "Игроки Улиц" and "Нам Хлам Клан"
   from the 2016 import answered 404. Cyrillic is transcribed now (`igroki-ulic-p8228.html`),
