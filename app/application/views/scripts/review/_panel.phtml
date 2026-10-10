@@ -4,7 +4,8 @@
  * form posting to admin/do-przejrzenia/rozstrzygnij.html with the session's token; it comes
  * back here.
  *
- * Takes: items (Model_Review_Container[]), messages (string[]), back (this page's path).
+ * Takes: items (Model_Review_Container[]), messages (string[]), back (this page's path), and
+ * unpublished (an album only admins see, #168).
  */
 $types = array('album' => 'album', 'ep' => 'EP', 'mixtape' => 'mixtape', 'compilation' => 'kompilacja', 'beat_tape' => 'beat tape', 'single' => 'singiel', 'other' => 'inne');
 $form = function ($item, $do, $value, $label, $field = null) {
@@ -19,9 +20,12 @@ $form = function ($item, $do, $value, $label, $field = null) {
     return $html . '<input type="text" name="note" placeholder="notatka (opcjonalnie)" /> <button type="submit">' . $this->escape($label) . '</button></form>';
 };
 ?>
-<?php if (!empty($this->messages) || !empty($this->items)): ?>
+<?php if (!empty($this->messages) || !empty($this->items) || !empty($this->unpublished)): ?>
 <section class="review-panel" style="border: 2px solid #d0c17e; background: #f9f5e3; padding: 10px; margin: 10px 0;">
   <h2>Do przejrzenia <small>(widzi to tylko admin; <a href="<?php echo $this->url(array(), 'adminReview') ?>">wszystkie</a>)</small></h2>
+  <?php if (!empty($this->unpublished)): ?>
+    <p class="review-unpublished"><strong>Album nieopublikowany:</strong> odwiedzający dostają 404 i nie znajdą go na listach, w wyszukiwarce ani w mapie strony.</p>
+  <?php endif ?>
   <?php foreach ((array) $this->messages as $message): ?>
     <p class="review-message"><?php echo $this->escape($message) ?></p>
   <?php endforeach ?>

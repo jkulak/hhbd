@@ -797,6 +797,12 @@ UPDATE `hhb_users` SET `usr_updated` = '0000-00-00 00:00:00', `usr_last_login` =
 UPDATE `hhb_users` SET `usr_added` = '0000-00-00 00:00:00' WHERE `usr_id` = 8;
 UPDATE `news` SET `expires` = '0000-00-00 00:00:00' WHERE `ID` = 2;
 
+-- An album from the site's first months, which set no status: 0 on production for the first
+-- 77, though always shown. Migration 0036 publishes them (#168).
+INSERT INTO `albums` (`id`, `title`, `labelid`, `year`, `legal`, `cover`, `artistabout`, `status`, `viewed`, `added`) VALUES
+(81, 'Pierwszy Rok', 1, '2004-05-04', 'y', '', '', 0, 5231, '2004-11-07 23:22:12');
+INSERT INTO `album_artist_lookup` (`albumid`, `artistid`, `status`) VALUES (81, 2, 999);
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================
