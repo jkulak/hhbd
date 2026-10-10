@@ -8,7 +8,21 @@ its own: releasing is the last step of finishing a change, taken by whoever made
 
 ## Unreleased
 
+### Added
+- An album an import makes is published only with a label or as a self-release, a release date
+  to the day and a tracklist. Any other is added unpublished, with a review item, `incomplete`,
+  naming what it lacks ("brak: wytwórnia, data dzienna, tracklista"), until a later batch
+  brings the rest and publishes it, or an admin publishes it as it is ("Opublikuj mimo
+  braków"). A batch that finds an album the import made published but short, as run 14 left
+  153 of 2016's, holds it back the same way; an album hhbd had, or one an admin published, it
+  never takes back (#168).
+- The import contract's releases say `self_released` ("wydanie własne", a nielegal), which the
+  schema refuses with a label; migration 0037 keeps it in `albums.self_released`, and the album
+  page shows "wydanie własne" where a label would be (#168).
+
 ### Changed
+- A batch's release date to the day replaces a month or a year hhbd has when it falls inside
+  them, with its precision; any other differing date stays a warning (#168).
 - An unpublished album (`status` 0) is nowhere for a visitor: not in the lists, the search, the
   sitemap, an artist's or a label's page, nor in the counts; its page answers 404, and so does a
   song on no published album. An admin opens its page and is told nobody else sees it. Until

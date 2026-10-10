@@ -71,7 +71,7 @@ logo=$(sha logo-label.png)
 echo "> a dry run"
 check "the dry run reads every document" "0" "$(import "$BATCH" dry-run dry)"
 check "and reports what an apply would do" "7 created, 3 updated, 1 unchanged, 0 refused" "$(totals dry)"
-check "with a warning for each value hhbd keeps, and the namesake and the stand-in cover to review" "5" "$(jq '[.documents[].warnings[]] | length' "$T/dry.json")"
+check "with a warning for each value hhbd keeps, and the namesake, the stand-in cover and the incomplete single to review" "6" "$(jq '[.documents[].warnings[]] | length' "$T/dry.json")"
 check "and leaves no row behind" "$rows_start" "$(rows)"
 check "and no file" "" "$(content | comm -13 "$T/content-start" -)"
 check "its progress on stderr is one JSON line per document and one for the run, in the host's format (#101)" "12 12" \
@@ -113,12 +113,19 @@ check "its page is under the qualified name" "1" \
     "$(curl -s "$URL$(jq -r '.documents[] | select(.ref == "artist:mes-imiennik") | .url' "$T/apply.json")" | grep -c '<h1>Mes (testowy imiennik)</h1>' || true)"
 check "and the report asks a person to look at it" "1" \
     "$(jq '[.documents[] | select(.ref == "artist:mes-imiennik") | .warnings[] | select(test("for a person to review: same name as hhbd artist 35"))] | length' "$T/apply.json")"
-check "the namesake and the single's stand-in cover wait for a person, on their pages" "artist:namesake album:cover_placeholder" \
+check "the namesake, the single's stand-in cover and what the single lacks wait for a person, on their pages" "artist:namesake album:cover_placeholder album:incomplete" \
     "$(sql "SELECT GROUP_CONCAT(CONCAT(entity_type, ':', reason) ORDER BY id SEPARATOR ' ') FROM review_items WHERE run_id = (SELECT MAX(id) FROM import_runs) AND resolved IS NULL")"
 check "where each changed group came from, and only those" "core cover tracklist" \
     "$(sql "SELECT GROUP_CONCAT(field ORDER BY field SEPARATOR ' ') FROM import_provenance WHERE entity_type = 'album' AND entity_id = $album")"
 check "Eldo's core is not credited to the batch" "facts" \
     "$(sql "SELECT GROUP_CONCAT(field) FROM import_provenance WHERE entity_type = 'artist' AND entity_id = 2")"
+single_id=$(jq -r '.documents[] | select(.ref == "release:testowy-singiel") | .hhbd_id' "$T/apply.json")
+check "an album with a label, a date to the day and a tracklist is published (#168)" "999" "$(sql "SELECT status FROM albums WHERE id = $album")"
+check "the single, with no label and a month alone, waits unpublished, its item naming what it lacks" "0 brak: wytwórnia, data dzienna" \
+    "$(sql "SELECT CONCAT(a.status, ' ', JSON_VALUE(r.detail, '$.text')) FROM albums a JOIN review_items r ON r.entity_type = 'album' AND r.entity_id = a.id AND r.reason = 'incomplete' AND r.resolved IS NULL WHERE a.id = $single_id")"
+check "and a visitor gets a 404 for it" "404" "$(curl -s -o /dev/null -w '%{http_code}' "$URL$(jq -r '.documents[] | select(.ref == "release:testowy-singiel") | .url' "$T/apply.json")")"
+check "an album hhbd had keeps its status, whatever it lacks" "999 0" \
+    "$(sql "SELECT CONCAT(status, ' ', (SELECT COUNT(*) FROM review_items WHERE entity_type = 'album' AND entity_id = 1 AND reason = 'incomplete')) FROM albums WHERE id = 1")"
 check "the run holds the report" "apply 11" "$(sql "SELECT CONCAT(mode, ' ', JSON_LENGTH(report, '$.documents')) FROM import_runs ORDER BY id DESC LIMIT 1")"
 content >"$T/content-applied"
 rows_applied=$(rows)
@@ -128,10 +135,33 @@ check "the second apply reads every document" "0" "$(import "$BATCH" apply again
 check "and changes nothing" "0 created, 0 updated, 11 unchanged, 0 refused" "$(totals again)"
 check "not a row" "$rows_applied" "$(rows)"
 check "not a file" "" "$(content | comm -3 "$T/content-applied" -)"
-check "nor a second review item" "2" "$(sql "SELECT COUNT(*) FROM review_items WHERE run_id IS NOT NULL AND run_id > 1")"
+check "nor a second review item" "3" "$(sql "SELECT COUNT(*) FROM review_items WHERE run_id IS NOT NULL AND run_id > 1")"
+
+echo "> the single as run 14 left such albums: published, with nothing to review (#168)"
+sql "UPDATE albums SET status = 999 WHERE id = $single_id; DELETE FROM review_items WHERE entity_type = 'album' AND entity_id = $single_id AND reason = 'incomplete'" >/dev/null
+check "the batch again reads every document" "0" "$(import "$BATCH" apply rerun)"
+check "and holds the single back, as the import made it and it lacks a label and a day" "0 brak: wytwórnia, data dzienna" \
+    "$(sql "SELECT CONCAT(a.status, ' ', JSON_VALUE(r.detail, '$.text')) FROM albums a JOIN review_items r ON r.entity_type = 'album' AND r.entity_id = a.id AND r.reason = 'incomplete' AND r.resolved IS NULL WHERE a.id = $single_id")"
+check "saying it changed the single, and only it" "1 updated" "$(jq -r '[.documents[] | select(.action == "updated")] | "\(length) \(.[0].action)"' "$T/rerun.json")"
+
+echo "> a batch that brings what the single lacked: it is self-released, out on 13 March"
+mkdir -p "$T/complete"
+cp -R "$BATCH/files" "$T/complete/"
+jq -c 'if .ref == "release:testowy-singiel" then .self_released = true | .release_date = "2020-03-13" | .release_date_precision = "day" else . end' "$BATCH/batch.ndjson" >"$T/complete/batch.ndjson"
+check "the import reads it" "0" "$(import "$T/complete" apply complete)"
+check "the day refines the month hhbd had, and the single is a self-release" "2020-03-13 day 1" \
+    "$(sql "SELECT CONCAT_WS(' ', year, release_date_precision, self_released) FROM albums WHERE id = $single_id")"
+check "so it is published, and its item closed by the import" "999 completed 1100" \
+    "$(sql "SELECT CONCAT_WS(' ', a.status, r.resolution, r.resolved_by) FROM albums a JOIN review_items r ON r.entity_type = 'album' AND r.entity_id = a.id AND r.reason = 'incomplete' WHERE a.id = $single_id ORDER BY r.id DESC LIMIT 1")"
+check "its page shows it as a self-release" "1" "$(curl -s "$URL$(jq -r '.documents[] | select(.ref == "release:testowy-singiel") | .url' "$T/complete.json")" | grep -c 'wydanie własne' || true)"
+
+echo "> an album an admin published as it was (#168)"
+sql "UPDATE albums SET status = 999, labelid = NULL, self_released = 0 WHERE id = $single_id; INSERT INTO review_items (entity_type, entity_id, reason, detail, resolved, resolved_by, resolution) VALUES ('album', $single_id, 'incomplete', '{}', NOW(), 10, 'published')" >/dev/null
+check "the first batch again reads every document" "0" "$(import "$BATCH" apply after-admin)"
+check "and leaves it published, with no new item" "999 0" \
+    "$(sql "SELECT CONCAT(status, ' ', (SELECT COUNT(*) FROM review_items WHERE entity_type = 'album' AND entity_id = $single_id AND reason = 'incomplete' AND resolved IS NULL)) FROM albums WHERE id = $single_id")"
 
 echo "> a larger cover for the single, whose cover is a stand-in"
-single_id=$(jq -r '.documents[] | select(.ref == "release:testowy-singiel") | .hhbd_id' "$T/apply.json")
 mkdir -p "$T/upgrade/files"
 cp "$BATCH/files/cover-album.jpg" "$T/upgrade/files/"
 jq -c --argjson id "$single_id" 'select(.ref == "release:testowy-album") | {kind: "image", target: {entity: "album", ref: "hhbd:album:\($id)"}, role: "cover", file: .cover}' "$BATCH/batch.ndjson" >"$T/upgrade/batch.ndjson"

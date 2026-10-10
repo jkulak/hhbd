@@ -199,6 +199,51 @@ class Model_Album_Api extends Jkl_Model_Api
         return !empty($this->_db->fetchAll('SELECT 1 FROM albums WHERE id = ? AND status = ?', array((int) $id, self::PUBLISHED)));
     }
 
+    /** The parts an imported album needs to be published (#168), as an admin reads them */
+    public const PARTS = array('label' => 'wytwórnia', 'date' => 'data dzienna', 'tracklist' => 'tracklista');
+
+    /**
+     * What an album lacks to be published (#168): a label, or being a self-release; a release
+     * date to the day; a tracklist, its lengths aside. Nothing for one that has all three.
+     *
+     * @param int|null    $labelId
+     * @param bool        $selfReleased
+     * @param string|null $date      albums.year
+     * @param string|null $precision albums.release_date_precision
+     * @param int         $tracks
+     * @return string[] what it lacks, as PARTS names it, in that order
+     */
+    public static function lacks($labelId, $selfReleased, $date, $precision, $tracks)
+    {
+        $lacks = array();
+        if (empty($labelId) && empty($selfReleased)) {
+            $lacks[] = self::PARTS['label'];
+        }
+        if (empty($date) || 'day' !== $precision) {
+            $lacks[] = self::PARTS['date'];
+        }
+        if ((int) $tracks < 1) {
+            $lacks[] = self::PARTS['tracklist'];
+        }
+        return $lacks;
+    }
+
+    /** What album $id lacks to be published, as the catalogue has it now */
+    public function lacksOf($id)
+    {
+        $rows = $this->_db->fetchAll(
+            'SELECT labelid, self_released, year, release_date_precision,
+                    (SELECT COUNT(*) FROM album_lookup l WHERE l.albumid = a.id) AS tracks
+               FROM albums a WHERE a.id = ?',
+            array((int) $id)
+        );
+        if (empty($rows)) {
+            throw new RuntimeException(sprintf('No album %d', $id));
+        }
+        $row = $rows[0];
+        return self::lacks($row['labelid'], (int) $row['self_released'], $row['year'], $row['release_date_precision'], $row['tracks']);
+    }
+
     public function find($id, $full = false)
     {
         $id = intval($id);

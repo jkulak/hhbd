@@ -175,6 +175,8 @@
     "release": {
       "type": "object",
       "required": ["kind", "ref", "title", "artists"],
+      "if": { "required": ["self_released"], "properties": { "self_released": { "const": true } } },
+      "then": { "properties": { "label": { "type": "null" } } },
       "properties": {
         "kind": { "const": "release" },
         "ref": { "type": "string", "pattern": "^release:.+$" },
@@ -203,6 +205,10 @@
             { "type": "null" },
             { "type": "object", "required": ["ref"], "properties": { "ref": { "$ref": "#/$defs/ref" } } }
           ]
+        },
+        "self_released": {
+          "description": "A release its artists put out themselves, with no label: \"wydanie własne\", a nielegal (#168). It counts as a label for publishing, and has none: label is null or left out.",
+          "type": "boolean"
         },
         "catalog_numbers": {
           "type": "object",

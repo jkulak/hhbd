@@ -50,6 +50,8 @@ class Model_Album_Container
     public $media = array();
     /** False for a nielegal, a release that came out without a publisher's licence */
     public $legal = true;
+    /** True for a release its artists put out themselves, which has no label (#168) */
+    public $selfReleased = false;
     /**
      * Every artist credited on the release, main ones first, each as array('artist' =>
      * Model_Artist_Container, 'role' => 'main' or 'featured', 'name' => as credited)
@@ -99,8 +101,9 @@ class Model_Album_Container
         }
         $this->artistNames = self::artistNamesOf($this->credits);
 
-        // No label is labelid NULL (#55).
+        // No label is labelid NULL (#55); a self-release has none by design (#168).
         $this->label = !empty($params['lab_id']) ? Model_Label_Api::getInstance()->find($params['lab_id']) : null;
+        $this->selfReleased = null === $this->label && !empty($params['self_released']);
 
         if (!empty($params['legal'])) {
             $this->legal = ($params['legal'] == 'y') ? true : false;

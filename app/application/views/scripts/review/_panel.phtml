@@ -59,6 +59,9 @@ $form = function ($item, $do, $value, $label, $field = null) {
         <?php echo $form($item, 'pick', '', 'Inny typ', $select . '</select>') ?>
       <?php elseif ('single_source' === $item->reason): ?>
         <?php echo $form($item, 'accept', '', 'Sprawdzone, zostaje') ?>
+      <?php elseif ('incomplete' === $item->reason): ?>
+        <p>Import, który przyniesie brakujące części, opublikuje go sam (#168).</p>
+        <?php echo $form($item, 'publish', '', 'Opublikuj mimo braków') ?>
       <?php endif ?>
     </div>
   <?php endforeach ?>
