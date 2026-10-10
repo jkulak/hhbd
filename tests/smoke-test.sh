@@ -374,10 +374,14 @@ run_fixture_tests() {
     test_page "An album dated only by its year shows the year" "/eldo-podmiejski-gwar-a50.html" "Premiera:</span> 2013"
     test_page "An album with no known date renders" "/eldo-polskie-karate-a778.html" "Polskie Karate"
     test_page_multi "A two-disc tracklist is numbered by disc" "/eldo-trzecia-czesc-tryptyku-a3.html" "1-01" "2-01"
-    test_page_multi "Discogs data is credited and linked (Superextra)" "/wdowa-superextra-a535.html" "Data provided by Discogs." "https://www.discogs.com/release/1234567"
-    test_page_absent "Discogs's CC0 data is not credited (Jestem Hip Hopem)" "/pezet-jestem-hip-hopem-a1.html" "Data provided by Discogs"
+    # Where the data came from is for an admin's eyes only, at the top of the page (#158)
+    test_page_absent "A visitor sees no Discogs credit (Superextra, #158)" "/wdowa-superextra-a535.html" "Data provided by Discogs"
+    test_admin_page "An admin sees it, linked, in the sources box (Superextra)" "/wdowa-superextra-a535.html" "widzi to tylko admin" "Data provided by Discogs." "https://www.discogs.com/release/1234567"
+    test_admin_page "Discogs's CC0 data asks for no credit, and a page with nothing to show has no box (Jestem Hip Hopem)" "/pezet-jestem-hip-hopem-a1.html" "!Data provided by Discogs" "!admin-sources"
     test_page_multi "An album links where it can be heard" "/wdowa-superextra-a535.html" "https://www.deezer.com/album/302127" "https://music.apple.com/album/1440857781"
-    test_page "An artist's Discogs data is credited (Mes)" "/mes-p35.html" "https://www.discogs.com/artist/271903"
+    test_page_absent "A visitor sees no Discogs credit on an artist's page (Mes)" "/mes-p35.html" "Data provided by Discogs"
+    test_admin_page "An admin sees the artist's Discogs credit, linked (Mes)" "/mes-p35.html" "Data provided by Discogs." "https://www.discogs.com/artist/271903"
+    test_admin_page "An admin sees the sources and the Discogs notice on the about page" "/o-nas.html" "widzi to tylko admin" "not affiliated with, sponsored or endorsed by Discogs"
     test_page "Another name stored mangled reads right (#27)" "/mes-p35.html" "JŹW"
     test_page "A news item shows its image from content/news/ (#133)" "/premiera-nowego-albumu-pezeta-n1.html" 'id="news-attachment" src="/content/news/test-news-001.jpg"'
     test_page_200 "and nginx serves it" "/content/news/test-news-001.jpg"
@@ -403,8 +407,11 @@ run_fixture_tests() {
     test_page "An artist's meta description is its description's text (#147)" "/mes-p35.html" 'name="description" content="Raper z Krakowa, &quot;Fach&quot;."'
     test_page "A song's is its lyrics' lines with a comma between" "/pogoda-s7329.html" 'name="description" content="Tekst i teledysk utworu Wdowa - Pogoda. Słońce świeci jasno nad miastem..., A my na ławce"'
     test_page "A news item's is its text without the tags" "/onar-jak-na-pierwszej-plycie-wideo-n1877.html" 'name="description" content="Onar wraca z nowym singlem promującym jego najnowszy album. Artysta prezentuje świeży materiał, który nawiązuje do jego wcześniejszej twórczości."'
-    test_page_multi "An artist's main photo carries its credit and licence (Mes)" "/mes-p35.html" "Jan Kowalski" "https://creativecommons.org/licenses/by-sa/4.0/"
-    test_page_multi "An artist's other photos are in a gallery, captioned (Mes)" "/mes-p35.html" "Zdjęcia" "Anna Nowak" "(zmodyfikowane)"
+    test_page_absent "A visitor sees no photo's author (Mes, #158)" "/mes-p35.html" "Jan Kowalski"
+    test_page_absent "nor its licence" "/mes-p35.html" "creativecommons.org"
+    test_page_absent "nor the gallery's credits" "/mes-p35.html" "Anna Nowak"
+    test_page_multi "The artist's other photos are still in a gallery (Mes)" "/mes-p35.html" "Zdjęcia" 'class="gallery"'
+    test_admin_page "An admin sees every photo's credit, the main one first (Mes)" "/mes-p35.html" "Zdjęcie główne: Fot." "Jan Kowalski" "https://creativecommons.org/licenses/by-sa/4.0/" "Anna Nowak" "(zmodyfikowane)"
     test_page "A joint album links both its artists" "/pezet-jestem-hip-hopem-a1.html" "&amp; <a href"
     test_page "A joint album is listed on each artist's page, named after both" "/eldo-p2.html" "Pezet & Eldo - Jestem Hip Hopem"
     test_page_multi "An artist sharing a name has a page, title and slug with the qualifier" "/solar-sbm-label-p64.html" "<h1>Solar (SBM Label)</h1>" 'og:title" content="Solar (SBM Label)"'
@@ -612,6 +619,43 @@ test_captcha_once() {
     return 1
 }
 
+# as_admin <path>: the page as the fixtures' admin sees it, logged in with a cookie of its own
+as_admin() {
+    local jar page
+    jar=$(mktemp "${TMPDIR:-/tmp}/hhbd-smoke-admin.XXXXXX")
+    curl -s -o /dev/null --max-time 10 $CURL_OPTS -c "$jar" -b "$jar" \
+        --data-urlencode "email=admin@example.com" --data-urlencode "password=adminpass" "${BASE_URL}/uzytkownik/logowanie.html" 2>/dev/null
+    page=$(curl -s --max-time 10 $CURL_OPTS -b "$jar" "${BASE_URL}$1" 2>/dev/null)
+    rm -f "$jar"
+    echo "$page"
+}
+
+# test_admin_page <name> <path> <text...>: as the fixtures' admin, the page holds every text;
+# "!text" means it must not
+test_admin_page() {
+    local name="$1" path="$2"
+    shift 2
+    local page text missing=""
+    page=$(as_admin "$path")
+    for text in "$@"; do
+        if [[ "$text" == '!'* ]]; then
+            echo "$page" | grep -qiF -- "${text#!}" && missing="$missing present:'${text#!}'"
+        else
+            echo "$page" | grep -qiF -- "$text" || missing="$missing missing:'$text'"
+        fi
+    done
+    if [[ -z "$missing" ]]; then
+        echo -e "${GREEN}✓${NC} $name"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name -$missing"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
+}
+
 run_tests() {
     echo "Running tests..."
     echo ""
@@ -631,7 +675,7 @@ run_tests() {
     test_page "Label Detail (Alkopoligamia)" "/alkopoligamia-l58.html" "Alkopoligamia"
     test_page "Artist Detail (Mes)" "/mes-p35.html" "Piotr  Szmidt"
     test_page_multi "Album Detail (Wdowa - Superextra)" "/wdowa-superextra-a535.html" "Wdowa" "Pogoda" "Alkopoligamia"
-    test_page "The about page says the site is not affiliated with Discogs" "/o-nas.html" "not affiliated with, sponsored or endorsed by Discogs"
+    test_page_absent "A visitor sees no sources paragraph on the about page (#158)" "/o-nas.html" "not affiliated with, sponsored or endorsed by Discogs"
     test_page "The album sitemap gives each album's canonical URL" "/sitemap-albums.xml" "/wdowa-superextra-a535.html</loc>"
     test_page "The song sitemap gives canonical URLs" "/sitemap-songs.xml" "/pogoda-s7329.html</loc>"
     test_page "The label sitemap gives canonical URLs" "/sitemap-labels.xml" "/alkopoligamia-l58.html</loc>"

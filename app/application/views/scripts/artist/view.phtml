@@ -1,12 +1,12 @@
 <div id="main">
     <h1><?php echo $this->artist->qualifiedName ?></h1>
   <?php if ($this->IsAdmin()): ?><?php echo $this->partial('review/_panel.phtml', array('items' => $this->reviewItems, 'messages' => $this->reviewMessages, 'back' => strtok($_SERVER['REQUEST_URI'], '?'))) ?><?php endif ?>
+  <?php if ($this->IsAdmin()): ?><?php echo $this->partial('common/_sources.phtml', array('provenance' => $this->provenance, 'externalIds' => $this->externalIds, 'discogsKinds' => array('artist'), 'photos' => $this->artist->photos->items)) ?><?php endif ?>
   <?php echo $this->partial('common/_share.phtml', array('currentUrl' => $this->currentUrl, 'title' => $this->title)) ?>
 	<?php if ($this->artist->name != 'V/A'): ?>
 	  <div id="picture">
   	  <?php $photo = $this->artist->photos->items[0] ?>
   	  <img src="<?php echo $photo->url ?>"<?php if ($photo->width): ?> width="<?php echo $photo->width ?>" height="<?php echo $photo->height ?>"<?php endif ?> alt="Zdjęcie <?php echo $this->artist->qualifiedName ?>" title="<?php echo $this->artist->qualifiedName ?>" class="image" />
-  	  <?php if ($photo->getCaption()): ?><p class="caption"><?php echo $photo->getCaption() ?></p><?php endif ?>
   	</div>
 	<?php endif ?>
 
@@ -101,13 +101,11 @@
     <h2>Zdjęcia</h2>
     <ul class="gallery">
       <?php foreach (array_slice($this->artist->photos->items, 1) as $photo): ?>
-        <li><img src="<?php echo $photo->url ?>"<?php if ($photo->width): ?> width="<?php echo $photo->width ?>" height="<?php echo $photo->height ?>"<?php endif ?> alt="Zdjęcie <?php echo $this->artist->qualifiedName ?>" /><?php if ($photo->getCaption()): ?><span class="caption"><?php echo $photo->getCaption() ?></span><?php endif ?></li>
+        <li><img src="<?php echo $photo->url ?>"<?php if ($photo->width): ?> width="<?php echo $photo->width ?>" height="<?php echo $photo->height ?>"<?php endif ?> alt="Zdjęcie <?php echo $this->artist->qualifiedName ?>" /></li>
       <?php endforeach ?>
     </ul>
   </div>
   <?php endif ?>
-
-  <?php echo $this->partial('common/_credits.phtml', array('provenance' => $this->provenance, 'externalIds' => $this->externalIds, 'discogsKinds' => array('artist'))) ?>
 
   <div class="pane" id="comments">
      <div class="header"><h2>Wasze komentarze <span class="hidden">na temat <?php echo $this->artist->name ?></span></h2></div>
