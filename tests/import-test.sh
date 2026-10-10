@@ -91,7 +91,7 @@ check "the single's smaller cover never upscaled, and flagged to replace" "300:3
 check "every size written into content/" "a/orig a/600 a/300 a/75" \
     "$(for v in orig 600 300 75; do [ -f "content/a/$v/$cover.jpg" ] && printf 'a/%s ' "$v"; done | sed 's/ $//')"
 page=$(curl -s "$URL$(jq -r '.documents[] | select(.ref == "release:testowy-album") | .url' "$T/apply.json")")
-check "the album's page shows the 600 cover" "1" "$(grep -c "/content/a/600/$cover.jpg" <<<"$page" || true)"
+check "the album's page shows the 600 cover" "1" "$(grep -c "src=\"/content/a/600/$cover.jpg\"" <<<"$page" || true)"
 check "and its tracklist, credits and label" "Wstęp Testowy|Numer Testowy (remix)|Dj Technik|Beatbox testowy|Testowe Nagrania Źródłowe" \
     "$(for s in 'Wstęp Testowy' 'Numer Testowy (remix)' 'Dj Technik' 'Beatbox testowy' 'Testowe Nagrania Źródłowe'; do grep -qF -- "$s" <<<"$page" && printf '%s|' "$s"; done | sed 's/|$//')"
 check "nginx serves the cover" "200 image/jpeg" "$(curl -s -o /dev/null -w '%{http_code} %{content_type}' "$URL/content/a/600/$cover.jpg")"
