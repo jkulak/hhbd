@@ -386,6 +386,22 @@ class Model_Album_Api extends Jkl_Model_Api
         return $this->getList($query);
     }
 
+    /**
+     * The published albums whose premiere was on this day and month in an earlier year (#197),
+     * dated to the day, the oldest anniversary first
+     *
+     * @param string $today Y-m-d, Warsaw's
+     */
+    public function getOnThisDay($today, $count = 6)
+    {
+        list($year, $month, $day) = array_map('intval', explode('-', $today));
+        $query = 'SELECT ' . self::LIST_COLUMNS . ' FROM albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          "WHERE t3.release_date_precision = 'day' AND MONTH(t3.year) = " . $month . ' AND DAYOFMONTH(t3.year) = ' . $day .
+          ' AND YEAR(t3.year) < ' . $year . ' AND ' . self::SHOWN . ' ' .
+          'ORDER BY t3.year, t3.id LIMIT ' . (int) $count;
+        return $this->getList($query);
+    }
+
     /** A year's most viewed albums, of all time's views (#196) */
     public function getPopularOfYear($year, $count = 10)
     {

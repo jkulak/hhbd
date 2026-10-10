@@ -12,6 +12,9 @@ class IndexController extends Zend_Controller_Action
     {
         $this->view->news = Model_News_Api::getInstance()->getRecent(9);
         $this->view->newestList = Model_Album_Api::getInstance()->getNewest(7);
+        // Warsaw's day, as the application's timezone has it, not the database's UTC (#197)
+        $this->view->today = date('Y-m-d');
+        $this->view->onThisDay = Model_Album_Api::getInstance()->getOnThisDay($this->view->today);
         $this->view->announcedList = Model_Album_Api::getInstance()->getAnnounced(5);
 
         $artist = Model_Artist_Api::getInstance()->find(6, true);
