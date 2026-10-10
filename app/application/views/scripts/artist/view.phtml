@@ -6,7 +6,7 @@
 	<?php if ($this->artist->name != 'V/A'): ?>
 	  <div id="picture">
   	  <?php $photo = $this->artist->photos->items[0] ?>
-  	  <img src="<?php echo $photo->url ?>"<?php if ($photo->width): ?> width="<?php echo $photo->width ?>" height="<?php echo $photo->height ?>"<?php endif ?> alt="Zdjęcie <?php echo $this->artist->qualifiedName ?>" title="<?php echo $this->artist->qualifiedName ?>" class="image" />
+  	  <img src="<?php echo $photo->url ?>"<?php if ($photo->width): ?> width="<?php echo $photo->width ?>" height="<?php echo $photo->height ?>"<?php endif ?> alt="Zdjęcie <?php echo $this->artist->qualifiedName ?>" title="<?php echo $this->artist->qualifiedName ?>" class="image<?php if ($photo->height > $photo->width): ?> portrait<?php endif ?>" />
   	</div>
 	<?php endif ?>
 

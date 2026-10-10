@@ -384,8 +384,17 @@ ul.list {
 /* Album                                                                                     */
 /********************************************************************************************/
 
+/* An album's cover and an artist's main photo in a 300 px box, in their own proportions: the
+   longer side at 300 px, nothing cropped (#166). It was 300×300 for every file, which squeezed
+   a 600×378 photo into a square. The page marks a picture taller than wide as .portrait, from
+   the file's size. */
 #picture img {
   width: 300px;
+  height: auto;
+}
+
+#picture img.portrait {
+  width: auto;
   height: 300px;
 }
 
