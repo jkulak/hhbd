@@ -333,6 +333,30 @@ And what it changed that a person had added: the same with `updatedby = 1100 AND
 One thing is known lost and cannot be recovered from the database: 58 of the 120 `added`
 values in `artists_photos`, overwritten in one mass update while `added` still had `ON UPDATE`.
 
+## Passwords and the comment question
+
+**Passwords (#41).** `hhb_users.usr_password` holds a `password_hash()`, bcrypt now
+(`Model_User_Password`), checked in PHP with `password_verify()`. Before, it held
+`md5(password . salt)`, one salt for every account, written in the code of this public
+repository. An account from before still logs in with its MD5, checked with that salt from the
+environment (`LEGACY_PASSWORD_SALT`, in `deploy/ovh/hhbd.enc.env` for production), and that
+login writes a `password_hash()` in its place. How many MD5s are left:
+
+```sql
+SELECT COUNT(*) FROM hhb_users WHERE usr_password REGEXP '^[0-9a-f]{32}$';
+```
+
+An account that never logs in again keeps its MD5, which the salt in git history opens to a
+dictionary as it always did. Once the count stops falling, a migration can blank those
+passwords; such an account then needs an admin to set a new one, as there is no reset by
+e-mail. 0034 widened the column; its down puts aside the hashes the old `char(32)` cannot hold,
+and those accounts cannot log in until the up puts them back.
+
+**The comment question (#41).** An anonymous comment answers "Ile to 3 + 4?". The script asks
+`POST /comments/captcha` for a question when someone starts a comment; `captcha_challenges`
+(0035) keeps its answer under a random token for an hour, and the comment's check deletes the
+row whether the answer was right or not, so an answer counts once.
+
 ## Catalog links
 
 Rules the link tables follow, and the migration that set each one:
@@ -608,7 +632,7 @@ run: an import run with provenance, and external ids.
 | labels | 15 | Including Alkopoligamia (ID 58), Asfalt |
 | news | 6 | Including ID 1877 (Onar article) |
 | artists_photos | 30 | Linked to main artists |
-| hhb_users | 10 | Test users for ratings/comments |
+| hhb_users | 11 | Test users for ratings/comments; the admin (10) logs in with `adminpass` and a `password_hash()`, `legacy@example.com` (11) with `legacypass` and an MD5 from before #41, salted with `fixtures-legacy-salt` |
 | ratings | 100 | For Top10 rankings |
 | ratings_avg | 50 | Average ratings for albums |
 | searches | 15 | Popular search terms |

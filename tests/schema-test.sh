@@ -264,7 +264,7 @@ else
 fi
 
 echo "> utf8mb4 with the Polish collation"
-check "every table is utf8mb4_polish_ci, but the byte-compared ones and the runner's own" "utf8mb4_bin 10, utf8mb4_general_ci 1, utf8mb4_polish_ci 44" "$(sql "SELECT GROUP_CONCAT(CONCAT(c, ' ', n) ORDER BY c SEPARATOR ', ') FROM (SELECT table_collation c, COUNT(*) n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' GROUP BY table_collation) x")"
+check "every table is utf8mb4_polish_ci, but the byte-compared ones and the runner's own" "utf8mb4_bin 10, utf8mb4_general_ci 1, utf8mb4_polish_ci 45" "$(sql "SELECT GROUP_CONCAT(CONCAT(c, ' ', n) ORDER BY c SEPARATOR ', ') FROM (SELECT table_collation c, COUNT(*) n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' GROUP BY table_collation) x")"
 check "no column is left in utf8mb3" "0" "$(count "character_set_name = 'utf8mb3'")"
 if sql "INSERT INTO artists (name, urlname, type, status, trivia, website) VALUES ('Zabson', 'zabson-2', 'm', 999, '', '')" >"$T/out" 2>&1; then
     ok "Zabson is a name of its own next to Żabson"

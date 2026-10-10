@@ -2,7 +2,6 @@
 
 define('MAX_COMMENT_LENGTH', 1000);
 define('MIN_FORM_TIME_SECONDS', 2);  // Minimum time to fill form (bot protection)
-define('CAPTCHA_SALT', 'hhbd_salt_2024');
 
 #[\AllowDynamicProperties]
 class CommentController extends Zend_Controller_Action
@@ -52,14 +51,12 @@ class CommentController extends Zend_Controller_Action
             return;
         }
 
-        // Verify CAPTCHA for anonymous users
+        // An anonymous comment answers the question the server holds, once (#41)
         $captchaFailed = false;
         if (!Zend_Auth::getInstance()->hasIdentity()) {
             $captchaAnswer = isset($this->params['captcha_answer']) ? trim($this->params['captcha_answer']) : '';
-            $captchaHash = isset($this->params['captcha_hash']) ? $this->params['captcha_hash'] : '';
-            $expectedHash = md5($captchaAnswer . CAPTCHA_SALT);
-
-            if (empty($captchaAnswer) || $expectedHash !== $captchaHash) {
+            $captchaToken = isset($this->params['captcha_token']) ? $this->params['captcha_token'] : '';
+            if (!Model_Captcha_Api::getInstance()->check($captchaToken, $captchaAnswer)) {
                 Zend_Registry::get('Logger')->info('CAPTCHA failed - answer: ' . $captchaAnswer . ' - author: ' . $author);
                 $captchaFailed = true;
             }
@@ -113,6 +110,22 @@ class CommentController extends Zend_Controller_Action
         //if  (!$this->getRequest()->isXmlHttpRequest()) {
         //}
 
+        // The script gets what went wrong as JSON, to say it and ask a new question (#41);
+        // a form sent without one gets the page back with the error
+        $refusal = null;
+        if (empty($content)) {
+            $refusal = 'Komentarz nie może być pusty.';
+        } elseif (strlen($content) > MAX_COMMENT_LENGTH) {
+            $refusal = 'Komentarz jest za długi (maksymalnie 1000 znaków).';
+        } elseif ($captchaFailed) {
+            $refusal = 'Nieprawidłowa odpowiedź na pytanie zabezpieczające. Odpowiedz na nowe pytanie.';
+        }
+        if (null !== $refusal && $this->getRequest()->isXmlHttpRequest()) {
+            $this->getResponse()->setHttpResponseCode(422);
+            $this->_helper->json(array('error' => $refusal, 'captcha' => $captchaFailed));
+            return;
+        }
+
         // verify if content not empty
         if (empty($content)) {
             $redirect .= '?postError=1&emptyComment=1#comments';
@@ -152,6 +165,22 @@ class CommentController extends Zend_Controller_Action
                 return;
             }
         }
+    }
+
+    /**
+     * A new question for the comment form, as JSON: the token its answer is kept under and the
+     * question (#41). The script asks when someone starts a comment. A POST, so no crawler and
+     * no cache makes one.
+     */
+    public function captchaAction()
+    {
+        if (!$this->getRequest()->isPost()) {
+            $this->getResponse()->setHttpResponseCode(405)->setHeader('Allow', 'POST');
+            $this->_helper->json(array('error' => 'POST only'));
+            return;
+        }
+        $this->getResponse()->setHeader('Cache-Control', 'no-store', true);
+        $this->_helper->json(Model_Captcha_Api::getInstance()->create());
     }
 
     public function viewAction()

@@ -360,8 +360,12 @@ INSERT INTO `hhb_users` (`usr_id`, `usr_email`, `usr_password`, `usr_display_nam
 (7, 'test7@example.com', MD5('password7'), 'TestUser7', 'no', NOW(), NOW(), NOW(), 1),
 (8, 'test8@example.com', MD5('password8'), 'TestUser8', 'no', NOW(), NOW(), NOW(), 1),
 (9, 'test9@example.com', MD5('password9'), 'TestUser9', 'no', NOW(), NOW(), NOW(), 1),
--- Hashed with the salt Model_User adds, so the tests can log in as this admin: adminpass.
-(10, 'admin@example.com', MD5(CONCAT('adminpass', 'this is long enough safety salt!')), 'Admin', 'yes', NOW(), NOW(), NOW(), 100);
+-- The admin the tests log in as, with adminpass: an MD5 here, as the baseline's column holds no
+-- more, replaced by a password_hash() in fixtures-latest.sql (#41).
+(10, 'admin@example.com', MD5(CONCAT('adminpass', 'fixtures-legacy-salt')), 'Admin', 'yes', NOW(), NOW(), NOW(), 100),
+-- An account from before #41: MD5 with the fixtures' legacy salt (compose.yaml's
+-- LEGACY_PASSWORD_SALT), which logs in with legacypass once and gets a password_hash().
+(11, 'legacy@example.com', MD5(CONCAT('legacypass', 'fixtures-legacy-salt')), 'Legacy', 'no', NOW(), NOW(), NOW(), 3);
 
 -- ============================================
 -- 12. RATINGS (Individual user ratings)

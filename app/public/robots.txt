@@ -4,6 +4,7 @@
 # artist whose page starts with "stat" or "comments" stays in.
 User-agent: *
 Disallow: /comments$
+Disallow: /comments/
 Disallow: /stat$
 Disallow: /api/
 Disallow: /admin/

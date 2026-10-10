@@ -49,6 +49,8 @@ x-app: &app
     DB_NAME: hhbd
     DB_USER: hhbd
     DB_PASSWORD: ${DB_PASSWORD:?}
+    # The salt of the MD5 passwords from before #41, until no account has one (hhbd.enc.env)
+    LEGACY_PASSWORD_SALT: ${LEGACY_PASSWORD_SALT:?}
     SHOW_ADS: "true"
   healthcheck:
     # PHP-FPM answers its status page over FastCGI.
