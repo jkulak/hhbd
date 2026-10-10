@@ -237,7 +237,7 @@ check "into the catalogue" "7 created, 3 updated, 1 unchanged, 0 refused" \
 cover=$(jq -r 'select(.ref == "release:testowy-album") | .cover.sha256' tests/import/batch/batch.ndjson)
 album=$(jq -r '.documents[] | select(.ref == "release:testowy-album") | .url' "$T/import.json" 2>/dev/null)
 check "the album's page, through the edge, shows the cover the importer wrote" "1" \
-    "$(via_edge "http://hhbd.pl$album" | grep -c "/content/a/600/$cover.jpg" || true)"
+    "$(via_edge "http://hhbd.pl$album" | grep -c "src=\"/content/a/600/$cover.jpg\"" || true)"
 check "and nginx serves it from the content volume" "200 image/jpeg" \
     "$(via_edge -o /dev/null -w '%{http_code} %{content_type}' "http://hhbd.pl/content/a/600/$cover.jpg")"
 check "its progress lines are JSON in the host's format, one per document and one for the run" "12 " \
