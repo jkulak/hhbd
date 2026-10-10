@@ -50,6 +50,7 @@ class SongController extends Zend_Controller_Action
         $canonicalSlug = Jkl_Tools_Url::createUrl($song->title) . '-s' . $song->id . '.html';
         Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
 
+        $this->view->Analytics()->page('song', $song->id, $song->albumArtist->name . ' - ' . $song->title);
         $song->autoDescription = $this->_generateDescription($song);
         $this->view->song = $song;
         $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . '/' . $canonicalSlug;

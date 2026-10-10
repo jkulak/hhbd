@@ -38,6 +38,11 @@ class Bootstrap extends Zend_Application_Bootstrap_Bootstrap
             $options['resources']['mail']['defaultFrom']['name'] = getenv('MAIL_FROM_NAME');
         }
 
+        // Google Analytics 4, production only (#161)
+        if (getenv('GA_MEASUREMENT_ID') !== false) {
+            $options['app']['gaMeasurementId'] = getenv('GA_MEASUREMENT_ID');
+        }
+
         // Feature flags
         if (getenv('SHOW_ADS') !== false) {
             $options['app']['showAds'] = filter_var(getenv('SHOW_ADS'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
