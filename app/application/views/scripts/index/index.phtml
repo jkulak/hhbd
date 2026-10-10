@@ -39,8 +39,9 @@
 
     <!-- most popular artists -->
     <div class="box">
-      <h2>Popularni wykonawcy</h2>
+      <h2>Popularni w tym tygodniu</h2>
       <?php echo $this->partial('artist/box/_list.phtml', array('artists' => $this->popularArtists)) ?>
+      <a href="/wykonawcy/popularni-tydzien.html">Ranking wykonawców: tydzień, miesiąc, rok</a>
     </div>
 
     <!-- most popular songs -->
@@ -70,7 +71,8 @@
 
   <!-- most popular albums -->
   <div class="box albums">
-    <h2>Popularne albumy</h2>
+    <h2>Popularne w tym tygodniu</h2>
     <?php echo $this->partial('album/_list.phtml', array('items' => $this->popularAlbums->items)) ?>
+    <a href="/albumy/popularne-tydzien.html">Ranking albumów: tydzień, miesiąc, rok</a>
   </div>
 </div>
