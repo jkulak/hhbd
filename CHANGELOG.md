@@ -9,6 +9,10 @@ its own: releasing is the last step of finishing a change, taken by whoever made
 ## Unreleased
 
 ### Added
+- An album's, an artist's and a song's page say what they are in schema.org JSON-LD: a
+  `MusicAlbum` with its artists, date at hhbd's precision, label, cover and tracklist, a
+  `MusicGroup` with its other names, photo and albums, a `MusicRecording` with its artist, album
+  and length, and the `BreadcrumbList` to each (#195).
 - Page views are counted again, on the server as an album's, artist's, song's, label's or news
   page is shown: the total in `viewed`, and the day's in `page_views` (migration 0038), for
   popularity over a week, a month or a year. A view counts once per visit, page and day; bots,
