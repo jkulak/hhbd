@@ -84,15 +84,20 @@ class AdminController extends Zend_Controller_Action
             $this->getResponse()->setBody('Formularz wygasł albo nie pochodzi z hhbd.pl. Wróć na stronę i spróbuj jeszcze raz.');
             return;
         }
+        $do = (string) $request->getPost('do');
+        // Completing an album sends its fields; settle() takes them as one value (#199).
+        $value = 'complete' === $do
+            ? json_encode(array('date' => (string) $request->getPost('date'), 'label' => (string) $request->getPost('label'), 'self' => (string) $request->getPost('self')))
+            : (string) $request->getPost('value');
         try {
-            Model_Review_Api::getInstance()->settle(
+            $closed = Model_Review_Api::getInstance()->settle(
                 (int) $request->getPost('id'),
-                (string) $request->getPost('do'),
-                (string) $request->getPost('value'),
+                $do,
+                $value,
                 (string) $request->getPost('note'),
                 (int) Zend_Auth::getInstance()->getIdentity()->usr_id
             );
-            $this->_helper->flashMessenger->addMessage('Rozstrzygnięte.');
+            $this->_helper->flashMessenger->addMessage($closed ? 'Rozstrzygnięte.' : 'Zapisane; albumowi wciąż czegoś brakuje.');
         } catch (RuntimeException $e) {
             $this->_helper->flashMessenger->addMessage('Nie udało się: ' . $e->getMessage());
         }

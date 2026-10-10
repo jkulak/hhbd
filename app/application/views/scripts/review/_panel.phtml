@@ -60,7 +60,37 @@ $form = function ($item, $do, $value, $label, $field = null) {
       <?php elseif ('single_source' === $item->reason): ?>
         <?php echo $form($item, 'accept', '', 'Sprawdzone, zostaje') ?>
       <?php elseif ('incomplete' === $item->reason): ?>
-        <p>Import, który przyniesie brakujące części, opublikuje go sam (#168).</p>
+        <?php $lacks = Model_Album_Api::getInstance()->lacksOf($item->entityId) ?>
+        <?php $album = Model_Album_Api::getInstance()->find($item->entityId) ?>
+        <?php $parts = Model_Album_Api::PARTS ?>
+        <form method="post" action="<?php echo $this->url(array(), 'adminReviewSettle') ?>" class="review-action review-complete">
+          <input type="hidden" name="token" value="<?php echo $this->escape(Jkl_Csrf::token()) ?>" />
+          <input type="hidden" name="id" value="<?php echo (int) $item->id ?>" />
+          <input type="hidden" name="do" value="complete" />
+          <input type="hidden" name="back" value="<?php echo $this->escape($this->back) ?>" />
+          <?php if (in_array($parts['date'], $lacks, true)): ?>
+            <p>
+              <label>Data premiery <input type="date" name="date" /></label><br />
+              <small>Teraz: <?php echo $this->escape($album->releaseDateNormalized ?: 'brak') ?>. Dzień z innego roku też zostanie przyjęty, a rok albumu się zmieni.</small>
+            </p>
+          <?php endif ?>
+          <?php if (in_array($parts['label'], $lacks, true)): ?>
+            <p>
+              <label>Wytwórnia <input type="text" name="label" list="labels-<?php echo (int) $item->id ?>" placeholder="zacznij pisać nazwę" autocomplete="off" /></label>
+              <datalist id="labels-<?php echo (int) $item->id ?>">
+                <?php foreach (Model_Label_Api::getInstance()->getNames() as $name): ?><option value="<?php echo $this->escape($name) ?>"></option><?php endforeach ?>
+              </datalist>
+              albo <label><input type="checkbox" name="self" value="1" /> wydanie własne</label>
+            </p>
+          <?php endif ?>
+          <?php if (in_array($parts['tracklist'], $lacks, true)): ?>
+            <p>Tracklisty ten formularz nie uzupełnia: dopisze ją import.</p>
+          <?php endif ?>
+          <?php if (array_intersect(array($parts['date'], $parts['label']), $lacks)): ?>
+            <input type="text" name="note" placeholder="skąd to wiesz (opcjonalnie)" /> <button type="submit">Zapisz</button>
+          <?php endif ?>
+        </form>
+        <p>Gdy niczego już nie brakuje, album się opublikuje. Import, który przyniesie brakujące części, opublikuje go sam (#168).</p>
         <?php echo $form($item, 'publish', '', 'Opublikuj mimo braków') ?>
       <?php endif ?>
     </div>

@@ -472,8 +472,15 @@ run_fixture_tests() {
     test_page_multi "An admin opens an unpublished album, told nobody else sees it (#168)" "/mes-tasma-robocza-a779.html" "Album nieopublikowany" "<h1>" "Taśma Robocza" 'name="robots" content="noindex,nofollow"'
     test_page_multi "and what it lacks, with the way to publish it as it is" "/mes-tasma-robocza-a779.html" "Niekompletny, nieopublikowany" "brak: wytwórnia, data dzienna" "Opublikuj mimo braków"
     test_page_multi "The list counts the open items by reason" "/admin/do-przejrzenia.html" 'data-reason="namesake">1<' 'data-reason="single_source">1<' 'data-reason="incomplete">1<' "Solar (raper z Poznania)"
+    # The admin completes the held-back album on its page, with the form's own token (#199)
+    local panel_token
+    panel_token=$(curl -s --max-time 10 $CURL_OPTS "${BASE_URL}/mes-tasma-robocza-a779.html" | grep -o 'name="token" value="[0-9a-f]*"' | head -1 | cut -d'"' -f4)
+    curl -s -o /dev/null --max-time 20 $CURL_OPTS --data-urlencode "token=$panel_token" --data-urlencode "id=8" --data-urlencode "do=complete" \
+        --data-urlencode "date=2016-05-20" --data-urlencode "label=Alkopoligamia" --data-urlencode "back=/mes-tasma-robocza-a779.html" \
+        "${BASE_URL}/admin/do-przejrzenia/rozstrzygnij.html"
     CURL_OPTS="$visitor_opts"
     rm -f "$jar"
+    test_page_multi "An admin's day and label publish an album an import held back (#199)" "/mes-tasma-robocza-a779.html" "<h1>" "Alkopoligamia" "20 maja 2016"
     echo ""
 
     # What nginx says of caching (#182). Here only: on production Cloudflare answers, and may
