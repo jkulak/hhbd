@@ -71,10 +71,12 @@ class SitemapController extends Zend_Controller_Action
         $this->view->urls = $urls;
     }
 
-    /** The lists and the rankings, at their absolute addresses */
+    /** The lists, the rankings and the about page, at their absolute addresses */
     private function pages()
     {
         $paths = self::PAGES;
+        // What hhbd.pl is, in figures (#218)
+        $paths[] = '/o-nas.html';
         // Each year's albums, and the list of the years (#196)
         $paths[] = '/albumy/lata.html';
         foreach (Model_Album_Api::getInstance()->getYears() as $row) {

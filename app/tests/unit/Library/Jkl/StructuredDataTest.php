@@ -4,7 +4,8 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * schema.org JSON-LD for search engines (#195): an album with its artists, date, label and
- * tracks; an artist; a song; the path to each; and a script no page text can break out of.
+ * tracks; an artist; a song; the path to each; the site and who runs it (#218); and a script
+ * no page text can break out of.
  */
 class Jkl_StructuredDataTest extends TestCase
 {
@@ -117,6 +118,34 @@ class Jkl_StructuredDataTest extends TestCase
 
         $this->assertSame('BreadcrumbList', $path['@type']);
         $this->assertSame(array('@type' => 'ListItem', 'position' => 2, 'name' => 'Albumy', 'item' => 'https://hhbd.pl/albumy.html'), $path['itemListElement'][1]);
+    }
+
+    public function testTheSiteSaysWhoPublishesItAndHowToSearchIt(): void
+    {
+        $site = Jkl_StructuredData::website(array(
+            'name' => 'Hhbd.pl', 'url' => 'https://hhbd.pl/', 'description' => 'Encyklopedia polskiego hip-hopu.',
+            'search' => 'https://hhbd.pl/szukaj.html?q={search_term_string}',
+        ));
+
+        $this->assertSame('WebSite', $site['@type']);
+        $this->assertSame('https://hhbd.pl/#website', $site['@id']);
+        $this->assertSame('pl', $site['inLanguage']);
+        $this->assertSame(array('@id' => 'https://hhbd.pl/#organization'), $site['publisher']);
+        $this->assertSame('https://hhbd.pl/szukaj.html?q={search_term_string}', $site['potentialAction']['target']['urlTemplate']);
+        $this->assertSame('required name=search_term_string', $site['potentialAction']['query-input'], 'the name in the template is the one the input names');
+    }
+
+    public function testTheOrganizationIsTheOneTheSiteNamesAsItsPublisher(): void
+    {
+        $organization = Jkl_StructuredData::organization(array(
+            'name' => 'Hhbd.pl', 'alternateName' => 'Hip-Hopowa Baza Danych', 'url' => 'https://hhbd.pl/',
+            'foundingDate' => '2005-10', 'description' => 'Encyklopedia polskiego hip-hopu.',
+        ));
+
+        $this->assertSame('Organization', $organization['@type']);
+        $this->assertSame('https://hhbd.pl/#organization', $organization['@id']);
+        $this->assertSame('Hip-Hopowa Baza Danych', $organization['alternateName']);
+        $this->assertSame('2005-10', $organization['foundingDate']);
     }
 
     public function testNoTitleCanCloseTheScriptEarly(): void
