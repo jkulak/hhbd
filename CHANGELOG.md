@@ -42,6 +42,9 @@ which the note leaves out. The sections before, by version, stay as they were.
   kind of release, when and by which label, how many tracks; for an artist its other names and
   its albums over the years (#219). Search engines and the assistants answering from them quote
   such sentences.
+- Bing, whose index ChatGPT search and Copilot answer from, and IndexNow's other engines hear
+  of hhbd.pl's new pages as an import or an admin publishes them, instead of waiting to read the
+  sitemaps again (#220). `make ovh-indexnow` tells them every address in the sitemaps at once.
 
 ### Internal
 - CI builds each image from the layers the last release left in the registry and keeps no

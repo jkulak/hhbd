@@ -66,6 +66,11 @@ ovh-photos-backfill: ## Record the size, type and hash of production's artist ph
 ovh-check-images: ## List the covers, photos and logos production's catalogue names but its content volume lacks
 	DB_TARGET=ovh ./scripts/check-images.sh
 
+.PHONY: ovh-indexnow
+ovh-indexnow: ## Tell IndexNow every address in production's sitemaps, at the start and after a gap (#220); DRY_RUN=1 to only count them
+	ssh -o BatchMode=yes "$${OVH_SSH_USER:-ubuntu}@$${OVH_HOST:?OVH_HOST is not set}" \
+		'cd /srv/hhbd && sudo SOPS_AGE_KEY_FILE=/etc/sops/age.key /usr/local/bin/sops exec-env hhbd.enc.env "docker compose run --rm --no-deps -T app php /var/www/html/app/tools/indexnow.php all $(if $(DRY_RUN),--dry-run)"'
+
 .PHONY: ovh-import
 ovh-import: ## Read an import batch into production's catalogue: make ovh-import BATCH=<dir> MODE=apply (a dry run without MODE)
 	@./deploy/ovh/import.sh "$${BATCH:?BATCH is the batch directory}" $(or $(MODE),dry-run)
