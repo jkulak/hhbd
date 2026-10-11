@@ -64,6 +64,15 @@ class LabelController extends Zend_Controller_Action
         $this->view->headTitle()->set($label->name . ' - Hhbd.pl');
         $this->view->headMeta()->setName('keywords', $label->name . ',' . implode(',', $artists) . ',wytwórnia,polski hip-hop');
         $this->view->headMeta()->setName('description', Jkl_Tools_String::metaDescription($label->name . ' to wytwórnia wydająca polski hip-hop, w jej szeregach są tacy artyści jak: ' . implode(', ', $artists)));
+
+        // Open Graph (#177): Open Graph has no type for a label; a website is the nearest
+        $og = new Jkl_Og('Hhbd.pl');
+        $og->setTitle($label->name);
+        $og->setDescription(empty($label->description) ? $label->autoDescription : $label->description);
+        $og->setImage($label->logo);
+        $og->setUrl($this->view->canonicalUrl);
+        $og->setType('website');
+        $this->view->og = $og->getMetaData();
     }
 
     // description autogeneration, displayedfor SEO purposes
