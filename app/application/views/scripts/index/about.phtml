@@ -1,9 +1,12 @@
+<?php echo $this->StructuredData()->organization() ?>
 <div id="main">
+  <h1>O nas</h1>
   <?php if ($this->IsAdmin()): ?><?php echo $this->partial('common/_sources.phtml', array('about' => true)) ?><?php endif ?>
 
   <div class="pane">
     <h2>Informacje podstawowe</h2>
-    <p>HHBD to skrót od Hip-Hopowa Baza Danych. Jeżeli chcesz się z nami skontaktować, kliknij w <a href="<?php echo $this->url(array(), 'contact'); ?>">kontakt</a>.</p>
+    <p>Hhbd.pl, czyli Hip-Hopowa Baza Danych, to encyklopedia polskiego hip-hopu prowadzona od 2005 roku. <span id="figures"><?php echo $this->escape($this->figures) ?></span></p>
+    <p>Jeżeli chcesz się z nami skontaktować, kliknij w <a href="<?php echo $this->url(array(), 'contact'); ?>">kontakt</a>.</p>
   </div>
   
   <div class="pane">
@@ -29,7 +32,7 @@
 
   <div class="pane">
     <h2>Jak to działa?</h2>
-    <p>Zend Framework + MySQL + Memcached + dobry hosting :)</p>
+    <p>PHP, Zend Framework i MariaDB na własnym serwerze, za Cloudflare.</p>
   </div>
   
   <div class="pane">

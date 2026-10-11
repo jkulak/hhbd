@@ -534,6 +534,23 @@ class Model_Album_Api extends Jkl_Model_Api
         return (int)$result[0]['albumcount'];
     }
 
+    /**
+     * The released albums a visitor can open, and the first and last year they came out in, for
+     * the about page's figures (#218): array(albums, from, to), the years null for none
+     */
+    public function getShownFigures()
+    {
+        $rows = $this->_db->fetchAll(
+            'SELECT COUNT(*) AS n, MIN(YEAR(t3.year)) AS first, MAX(YEAR(t3.year)) AS last FROM albums t3
+              WHERE t3.announced = 0 AND ' . self::SHOWN
+        );
+        return array(
+            (int) $rows[0]['n'],
+            null === $rows[0]['first'] ? null : (int) $rows[0]['first'],
+            null === $rows[0]['last'] ? null : (int) $rows[0]['last'],
+        );
+    }
+
     public function getFeaturingByArtist($id, $limit = 10)
     {
         $id = intval($id);
