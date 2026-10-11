@@ -951,6 +951,7 @@ run_tests() {
         test_page "robots.txt names $crawler (#217)" "/robots.txt" "^User-agent: $crawler$"
     done
     test_robots_one_group "and every crawler it names reads the same rules as *"
+    test_not_found "A .txt named like IndexNow's key that is not the key is a 404 (#220)" "/0123456789abcdef0123456789abcdef.txt" "^0123456789abcdef0123456789abcdef$"
     test_page "llms.txt describes hhbd.pl (#217)" "/llms.txt" "^> Hhbd.pl, Hip-Hopowa Baza Danych, is a database of Polish hip-hop"
     test_header "as text" "/llms.txt" "^content-type: text/plain"
     test_sitemap "The sitemap index" "/sitemap-index.xml" sitemapindex
@@ -1149,6 +1150,10 @@ run_production_tests() {
     echo "--- Production ---"
     test_page "GA4 loads with production's measurement id (#161)" "/" "googletagmanager.com/gtag/js?id=G-200N6YNR76"
     test_page "An album's page view says what the page is and which album" "/wdowa-superextra-a535.html" '"content_group":"album","entity_id":535'
+    # IndexNow's key, as production's compose file sets it (#220)
+    local key
+    key=$(grep -o 'INDEXNOW_KEY-[A-Za-z0-9-]\{8,128\}' "$(dirname "$0")/../deploy/ovh/compose.yaml" | head -1 | cut -d- -f2-)
+    test_page "IndexNow's key is served where its requests say it is (#220)" "/${key}.txt" "^${key}$"
     echo ""
 }
 

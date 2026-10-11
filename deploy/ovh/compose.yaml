@@ -53,6 +53,9 @@ x-app: &app
     LEGACY_PASSWORD_SALT: ${LEGACY_PASSWORD_SALT:?}
     # Google Analytics 4 (#161): not a secret; a stack test sets it empty, so it sends nothing
     GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID-G-200N6YNR76}
+    # IndexNow's key (#220): not a secret, the site serves it at /<key>.txt; a stack test sets it
+    # empty, so it tells nobody of its pages
+    INDEXNOW_KEY: ${INDEXNOW_KEY-095d8dc57ae6f64f3993fc81770366eb}
     SHOW_ADS: "true"
   healthcheck:
     # PHP-FPM answers its status page over FastCGI.
@@ -141,6 +144,8 @@ services:
       DB_NAME: hhbd
       DB_USER: hhbd
       DB_PASSWORD: ${DB_PASSWORD:?}
+      # What an applied import adds, told to IndexNow (#220), as the app's
+      INDEXNOW_KEY: ${INDEXNOW_KEY-095d8dc57ae6f64f3993fc81770366eb}
     volumes:
       - content:/var/www/html/content
     deploy:

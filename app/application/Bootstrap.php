@@ -43,6 +43,11 @@ class Bootstrap extends Zend_Application_Bootstrap_Bootstrap
             $options['app']['gaMeasurementId'] = getenv('GA_MEASUREMENT_ID');
         }
 
+        // IndexNow, production only (#220)
+        if (getenv('INDEXNOW_KEY') !== false) {
+            $options['app']['indexNowKey'] = getenv('INDEXNOW_KEY');
+        }
+
         // Feature flags
         if (getenv('SHOW_ADS') !== false) {
             $options['app']['showAds'] = filter_var(getenv('SHOW_ADS'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0;

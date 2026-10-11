@@ -210,6 +210,7 @@ Below 992 px the layout is the phones' and tablets' (#149): one column, a header
 - Mail: `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_EMAIL`, `MAIL_FROM_NAME`
 - Passwords: `LEGACY_PASSWORD_SALT`, the salt of the MD5 passwords from before #41, which an account logs in with once before it gets a bcrypt hash (production's in `deploy/ovh/hhbd.enc.env`; the fixtures' is the default in `compose.yaml`)
 - Analytics: `GA_MEASUREMENT_ID`, GA4's measurement id, set in production's compose file only, so nothing local or in CI is measured (#161)
+- IndexNow: `INDEXNOW_KEY`, set in production's compose file only, so nothing local or in CI tells IndexNow of a page (#220); deploy/ovh/README.md has the rest
 - Feature flags: `SHOW_ADS` (true/false)
 
 ### Backoffice
