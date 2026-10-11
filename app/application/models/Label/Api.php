@@ -113,6 +113,12 @@ class Model_Label_Api extends Jkl_Model_Api
         $this->_db->query($query);
     }
 
+    /** Every label's name, as an admin picks one (#199) */
+    public function getNames()
+    {
+        return array_column($this->_db->fetchAll('SELECT name FROM labels ORDER BY name'), 'name');
+    }
+
     public function getRecent($limit = 20)
     {
         $limit = intval($limit);

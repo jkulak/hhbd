@@ -14,13 +14,13 @@ class Model_Review_Api extends Jkl_Model_Api
         'date_disputed'     => array('label' => 'Źródła nie zgadzają się co do daty', 'actions' => array('pick')),
         'type_disputed'     => array('label' => 'Źródła nie zgadzają się co do typu wydania', 'actions' => array('pick')),
         'single_source'     => array('label' => 'Znane tylko z jednego źródła', 'actions' => array('accept')),
-        'incomplete'        => array('label' => 'Niekompletny, nieopublikowany', 'actions' => array('publish')),
+        'incomplete'        => array('label' => 'Niekompletny, nieopublikowany', 'actions' => array('complete', 'publish')),
     );
 
     /** What each action writes as the item's resolution */
     public const RESOLUTIONS = array(
         'merge' => 'merged', 'keep' => 'kept', 'qualifier' => 'qualified', 'accept' => 'accepted', 'pick' => 'picked',
-        'publish' => 'published',
+        'publish' => 'published', 'complete' => 'completed',
     );
 
     /** How the importer closes an incomplete album's item once a batch completes it (#168) */
@@ -151,6 +151,14 @@ class Model_Review_Api extends Jkl_Model_Api
                 // As it is, whatever it lacks; no later import takes it back (#168).
                 $this->_db->query('UPDATE albums SET status = ? WHERE id = ?', array(Model_Album_Api::PUBLISHED, $item->entityId));
                 $this->touch('albums', $item->entityId, $userId);
+            } elseif ('complete' === $action) {
+                // What the admin filled in, journalled; the item stays open while the album
+                // still lacks a part (#199).
+                list($complete, $undo) = $this->complete($item, $value, $note, $userId);
+                if (!$complete) {
+                    $this->_db->commit();
+                    return false;
+                }
             }
             $this->close($item->id, self::RESOLUTIONS[$action], $note, $userId, $undo);
             $this->_db->commit();
@@ -158,6 +166,78 @@ class Model_Review_Api extends Jkl_Model_Api
             $this->_db->rollBack();
             throw $e;
         }
+        return true;
+    }
+
+    /**
+     * Writes what an admin filled in on an unpublished album's page (#199) through the edit
+     * journal, then judges the album again: complete, it is published by a second journalled
+     * edit; short of a part, the item says what is left.
+     *
+     * @param string $value the form as JSON: date (Y-m-d), label (a label's name), self (1 for
+     *                      a self-release)
+     * @return array whether it is complete now, and the journal's operations for undo
+     */
+    private function complete(Model_Review_Container $item, $value, $note, $userId)
+    {
+        $form = json_decode((string) $value, true);
+        $form = is_array($form) ? $form : array();
+        $labelId = null;
+        $label = trim(isset($form['label']) ? (string) $form['label'] : '');
+        if ('' !== $label) {
+            $rows = $this->_db->fetchAll('SELECT id FROM labels WHERE name = ? ORDER BY id', array($label));
+            if (empty($rows)) {
+                throw new RuntimeException(sprintf('hhbd nie ma wytwórni „%s”; wybierz ją z listy.', $label));
+            }
+            $labelId = (int) $rows[0]['id'];
+        }
+        $values = self::completion(isset($form['date']) ? (string) $form['date'] : '', $labelId, !empty($form['self']), date('Y-m-d'));
+        $why = null === $note ? sprintf('review item %d: uzupełnione na stronie albumu', $item->id) : $note;
+        $edits = Model_Edit_Api::getInstance();
+        $operations = array($edits->run('set', array('albums', $item->entityId, json_encode($values)), $userId, $why, 'panel'));
+        $lacks = Model_Album_Api::getInstance()->lacksOf($item->entityId);
+        if (!empty($lacks)) {
+            $this->setDetail($item->id, array('text' => 'brak: ' . implode(', ', $lacks)));
+            return array(false, null);
+        }
+        $operations[] = $edits->run('set', array('albums', $item->entityId, 'status', (string) Model_Album_Api::PUBLISHED), $userId, $why, 'panel');
+        return array(true, array('operations' => $operations));
+    }
+
+    /**
+     * The columns an admin's completion of an album sets (#199): a date, to the day, with its
+     * precision and whether it is still ahead; a label, or being a self-release, never both.
+     * A day in another year than the album has is taken too: an admin may know better.
+     *
+     * @param int|null $labelId a label hhbd has, or null for none given
+     * @return array column => value
+     */
+    public static function completion($date, $labelId, $selfReleased, $today)
+    {
+        $values = array();
+        $date = trim((string) $date);
+        if ('' !== $date) {
+            if (1 !== preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || false === strtotime($date) || date('Y-m-d', strtotime($date)) !== $date) {
+                throw new RuntimeException('Data premiery to dzień, np. 2016-11-03.');
+            }
+            $values['year'] = $date;
+            $values['release_date_precision'] = 'day';
+            $values['announced'] = $date > $today ? 1 : 0;
+        }
+        if (null !== $labelId && $selfReleased) {
+            throw new RuntimeException('Wytwórnia albo wydanie własne, nie jedno i drugie.');
+        }
+        if (null !== $labelId) {
+            $values['labelid'] = (int) $labelId;
+            $values['self_released'] = 0;
+        } elseif ($selfReleased) {
+            $values['labelid'] = null;
+            $values['self_released'] = 1;
+        }
+        if (empty($values)) {
+            throw new RuntimeException('Nic nie wpisano: data, wytwórnia albo wydanie własne.');
+        }
+        return $values;
     }
 
     /** Rewrites an open item's detail, as the importer does when a batch leaves an album lacking less */
