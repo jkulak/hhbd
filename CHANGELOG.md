@@ -27,10 +27,6 @@ which the note leaves out. The sections before, by version, stay as they were.
 - An admin sees how many times each album's, artist's, song's, label's and news item's page was
   viewed, in the last 7 and 30 days, this year and since the site began, with a link to the page's
   report in Google Analytics (#214).
-- An album's and an artist's page open with one sentence of facts under the heading, who, what
-  kind of release, when and by which label, how many tracks; for an artist its other names and
-  its albums over the years (#219). Search engines and the assistants answering from them quote
-  such sentences.
 - `robots.txt` names the crawlers of ChatGPT search, Claude and Perplexity, and those that
   gather text to train models, each with the rules every crawler reads, and `/llms.txt`
   describes hhbd.pl and its addresses to a language model in a few lines (#217).
@@ -38,6 +34,14 @@ which the note leaves out. The sections before, by version, stay as they were.
   the footer says what the site is today instead of dating it to 2005-2007 (#218). The home page
   describes the site, its search and who runs it in JSON-LD and names its canonical address,
   the about page is in the sitemap, and the browser's search box searches hhbd.pl again.
+- A link to hhbd.pl shared on Facebook, Messenger, X, Slack or in a chat previews with its
+  picture, as every page's Open Graph tags now give absolute addresses, the album's cover rather
+  than its thumbnail, the page's canonical address and Open Graph's own types (#177). Songs,
+  labels, news, the home page and the about page have their own previews too.
+- An album's and an artist's page open with one sentence of facts under the heading, who, what
+  kind of release, when and by which label, how many tracks; for an artist its other names and
+  its albums over the years (#219). Search engines and the assistants answering from them quote
+  such sentences.
 
 ### Internal
 - CI builds each image from the layers the last release left in the registry and keeps no

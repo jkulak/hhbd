@@ -218,13 +218,14 @@ class AlbumController extends Zend_Controller_Action
 
         $this->view->headMeta()->setName('description', Jkl_Tools_String::metaDescription($album->artistNames . ' "' . $album->title . '"' . $releaseInfo . '. U nas teksty utworów, tracklista, oraz inne szczegółowe informacje o albumie.'));
 
-        // Open Graph Protocol (see more: http://mgp.me)
+        // Open Graph (#177): the cover the page shows, not the lists' thumbnail
         $og = new Jkl_Og('Hhbd.pl');
         $og->setTitle($album->artistNames . ' - ' . $album->title . ' (' . $album->year . ')');
         $description = empty($album->description) ? $album->autoDescription : $album->description;
         $og->setDescription($description);
-        $og->setImage($album->thumbnail);
-        $og->setType('album');
+        $og->setImage($album->cover);
+        $og->setUrl($this->view->canonicalUrl);
+        $og->setType('music.album');
         $this->view->og = $og->getMetaData();
     }
 
