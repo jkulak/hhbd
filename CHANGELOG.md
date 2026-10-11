@@ -34,6 +34,10 @@ which the note leaves out. The sections before, by version, stay as they were.
   the footer says what the site is today instead of dating it to 2005-2007 (#218). The home page
   describes the site, its search and who runs it in JSON-LD and names its canonical address,
   the about page is in the sitemap, and the browser's search box searches hhbd.pl again.
+- A link to hhbd.pl shared on Facebook, Messenger, X, Slack or in a chat previews with its
+  picture, as every page's Open Graph tags now give absolute addresses, the album's cover rather
+  than its thumbnail, the page's canonical address and Open Graph's own types (#177). Songs,
+  labels, news, the home page and the about page have their own previews too.
 
 ### Internal
 - CI builds each image from the layers the last release left in the registry and keeps no

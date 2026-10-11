@@ -109,6 +109,15 @@ class SongController extends Zend_Controller_Action
 
             Model_Song_Api::getInstance()->getArtists($params['id']);
         }
+
+        // Open Graph (#177): the song's facts, not its lyrics, and the cover of its first album
+        $og = new Jkl_Og('Hhbd.pl');
+        $og->setTitle($song->albumArtist->name . ' - ' . $song->title);
+        $og->setDescription($song->autoDescription);
+        $og->setImage(!empty($song->featured->items) ? $song->featured->items[0]->cover : null);
+        $og->setUrl($this->view->canonicalUrl);
+        $og->setType('music.song');
+        $this->view->og = $og->getMetaData();
     }
 
     /**

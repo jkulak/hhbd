@@ -133,13 +133,14 @@ class ArtistController extends Zend_Controller_Action
             }
         }
 
-        // Open Graph Protocol (see more: http://mgp.me)
+        // Open Graph (#177): Open Graph has no type for an artist or a group; a profile is the nearest
         $og = new Jkl_Og('Hhbd.pl');
         $og->setTitle($artist->qualifiedName);
         $description = empty($artist->profile) ? $artist->autoDescription : $artist->profile;
         $og->setDescription($description);
-        $og->setImage($artist->photos->items[0]->url);
-        $og->setType('musician');
+        $og->setImage(!empty($artist->photos->items) ? $artist->photos->items[0]->url : null);
+        $og->setUrl($this->view->canonicalUrl);
+        $og->setType('profile');
         $this->view->og = $og->getMetaData();
 
         $this->view->headTitle()->headTitle($artist->qualifiedName, 'PREPEND');

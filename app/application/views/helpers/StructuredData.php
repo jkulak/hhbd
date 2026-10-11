@@ -146,10 +146,10 @@ class Zend_View_Helper_StructuredData extends Zend_View_Helper_Abstract
         return $request->getScheme() . '://' . $request->getHttpHost() . $path;
     }
 
-    /** A cover's or a photo's address, or null for none or a stand-in drawing */
+    /** A cover's or a photo's address, or null for none or a stand-in drawing, as Open Graph has it */
     private function image($path)
     {
-        if (empty($path) || false !== strpos($path, '/img/placeholder/') || 'cd.png' === basename($path)) {
+        if (!Jkl_Og::isPicture($path)) {
             return null;
         }
         return 0 === strpos($path, 'http') ? $path : $this->absolute($path);
