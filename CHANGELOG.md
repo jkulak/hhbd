@@ -26,6 +26,10 @@ which the note leaves out. The sections before, by version, stay as they were.
   so `undo` takes it back, and the item says what is still missing until then.
 
 ### Internal
+- CI builds each image from the layers the last release left in the registry and keeps no
+  cache of its own, the coverage upload that failed on every run goes with xdebug, every action
+  is on a current major pinned to a commit, and the smoke test after a deploy checks in seconds
+  what only production can show; the whole suite stays on the pull request (#206).
 - The smoke test checks the home page, the artist list and the premieres by what they are, not
   by a name on their lists, which change with the week's views and the passing announcements: a
   name that dropped off the home page's took v2026.10.19 back with nothing wrong in it (#212).

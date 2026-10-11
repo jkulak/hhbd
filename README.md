@@ -264,7 +264,7 @@ The tests cover:
 
 Tests run on GitHub Actions for every pull request, and not again on the push a merge makes to `main`:
 
-- **Unit Tests**: `.github/workflows/unit-tests.yml` - PHPUnit tests with coverage
+- **Unit Tests**: `.github/workflows/unit-tests.yml` - PHPUnit tests
 - **Smoke Tests**: `.github/workflows/smoke-tests.yml` - Integration tests with Docker
 - **Deploy checks**: `.github/workflows/deploy-checks.yml` - the secrets gate, and the production stack behind a stand-in edge
 
