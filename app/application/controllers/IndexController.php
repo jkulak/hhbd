@@ -44,6 +44,21 @@ class IndexController extends Zend_Controller_Action
     {
     }
 
+    /**
+     * IndexNow's key, at the address its requests name (#220): it shows a request came from this
+     * site. Any other key, and every key where there is none, is a 404.
+     */
+    public function indexNowKeyAction()
+    {
+        $key = Model_IndexNow_Api::getInstance()->key();
+        if (null === $key || $this->getRequest()->getParam('key') !== $key) {
+            throw new Zend_Controller_Action_Exception('No such file', 404);
+        }
+        $this->_helper->layout->disableLayout();
+        $this->_helper->viewRenderer->setNoRender(true);
+        $this->getResponse()->setHeader('Content-Type', 'text/plain; charset=utf-8', true)->setBody($key);
+    }
+
     /** What the site measures and shows through Google, and how to change the choice (#162) */
     public function privacyAction()
     {
