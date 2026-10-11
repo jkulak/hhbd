@@ -45,6 +45,9 @@ which the note leaves out. The sections before, by version, stay as they were.
 - Bing, whose index ChatGPT search and Copilot answer from, and IndexNow's other engines hear
   of hhbd.pl's new pages as an import or an admin publishes them, instead of waiting to read the
   sitemaps again (#220). `make ovh-indexnow` tells them every address in the sitemaps at once.
+- What an import or an admin publishes reaches IndexNow: the app's and the importer's images
+  had no CA certificates, so PHP trusted no certificate and every HTTPS request from them failed
+  (#227). The production stack's test now checks both images have them.
 
 ### Internal
 - CI builds each image from the layers the last release left in the registry and keeps no
