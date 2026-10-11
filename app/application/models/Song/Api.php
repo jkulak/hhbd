@@ -354,6 +354,13 @@ class Model_Song_Api extends Jkl_Model_Api
         return $this->_getList($query);
     }
 
+    /** The songs a visitor can open, those on a shown album, for the about page's figures (#218) */
+    public function getShownCount()
+    {
+        $result = $this->_db->fetchAll('SELECT COUNT(*) AS n FROM songs t1 WHERE t1.id ' . self::SHOWN);
+        return (int) $result[0]['n'];
+    }
+
     public function getRecent($limit = 20)
     {
         $limit = intval($limit);

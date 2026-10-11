@@ -42,6 +42,7 @@ require_once APPLICATION_PATH . '/views/helpers/AddedFor.php';
 require_once APPLICATION_PATH . '/views/helpers/Asset.php';
 require_once APPLICATION_PATH . '/views/helpers/Analytics.php';
 require_once APPLICATION_PATH . '/views/helpers/ViewsFor.php';
+require_once APPLICATION_PATH . '/views/helpers/Figures.php';
 
 // Set up timezone
 date_default_timezone_set('Europe/Warsaw');

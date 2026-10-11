@@ -133,6 +133,50 @@ class Jkl_StructuredData
     }
 
     /**
+     * The site itself, for its home page (#218): what it is, in which language, who runs it,
+     * and how to search it
+     *
+     * @param array $site name, url (the home page's), description, search (the search's address,
+     *                    {search_term_string} where the words go)
+     */
+    public static function website(array $site)
+    {
+        return array(
+            '@type'           => 'WebSite',
+            '@id'             => $site['url'] . '#website',
+            'name'            => $site['name'],
+            'url'             => $site['url'],
+            'description'     => $site['description'],
+            'inLanguage'      => 'pl',
+            'publisher'       => array('@id' => $site['url'] . '#organization'),
+            'potentialAction' => array(
+                '@type'       => 'SearchAction',
+                'target'      => array('@type' => 'EntryPoint', 'urlTemplate' => $site['search']),
+                'query-input' => 'required name=search_term_string',
+            ),
+        );
+    }
+
+    /**
+     * Who runs the site (#218), under the same @id from every page that names it
+     *
+     * @param array $organization name, alternateName, url (the home page's), foundingDate,
+     *                            description
+     */
+    public static function organization(array $organization)
+    {
+        return array(
+            '@type'         => 'Organization',
+            '@id'           => $organization['url'] . '#organization',
+            'name'          => $organization['name'],
+            'alternateName' => $organization['alternateName'],
+            'url'           => $organization['url'],
+            'foundingDate'  => $organization['foundingDate'],
+            'description'   => $organization['description'],
+        );
+    }
+
+    /**
      * The script element, its JSON escaped so no text on the page, a title with "</script>" in
      * it, can end it early
      */

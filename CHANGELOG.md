@@ -27,6 +27,10 @@ which the note leaves out. The sections before, by version, stay as they were.
 - An admin sees how many times each album's, artist's, song's, label's and news item's page was
   viewed, in the last 7 and 30 days, this year and since the site began, with a link to the page's
   report in Google Analytics (#214).
+- The about page opens with what hhbd.pl holds, counted from the database at each visit, and
+  the footer says what the site is today instead of dating it to 2005-2007 (#218). The home page
+  describes the site, its search and who runs it in JSON-LD and names its canonical address,
+  the about page is in the sitemap, and the browser's search box searches hhbd.pl again.
 
 ### Internal
 - CI builds each image from the layers the last release left in the registry and keeps no
