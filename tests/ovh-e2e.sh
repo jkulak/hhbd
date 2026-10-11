@@ -189,6 +189,15 @@ else
     tail -10 "$T/images"
 fi
 
+# An HTTPS request from PHP needs a CA bundle where its OpenSSL looks; without one IndexNow's
+# requests failed on production with no response (#227). Checked offline: the bundle is there
+# and holds certificates.
+echo "> the CA certificates PHP's HTTPS requests are checked against"
+for service in app importer; do
+    check "the $service's image has a CA bundle where PHP looks for one (#227)" "yes" \
+        "$(compose run --rm --no-deps -T --entrypoint php "$service" -r '$f = openssl_get_cert_locations()["default_cert_file"]; echo (is_file($f) && false !== strpos(file_get_contents($f), "BEGIN CERTIFICATE")) ? "yes" : "no: " . $f;' 2>/dev/null)"
+done
+
 echo "> the smoke test, through the edge"
 if SMOKE_CURL_OPTS="--connect-to hhbd.pl:80:127.0.0.1:$PORT" ./tests/smoke-test.sh http://hhbd.pl >"$T/smoke" 2>&1; then
     ok "the smoke test passes through the edge ($(grep -o '[0-9]* passed' "$T/smoke"))"
