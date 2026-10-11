@@ -375,6 +375,10 @@ run_fixture_tests() {
     test_page_absent "The label list has no placeholder label" "/wytwornie.html" ">BRAK<"
     test_page_absent "The 2017 placeholder is gone from the album list" "/albumy.html" "Korzenie"
     test_page "An album dated only by its year shows the year" "/eldo-podmiejski-gwar-a50.html" "Premiera:</span> 2013"
+    test_page "The summary says an EP is one, by its label and day (#219)" "/taco-hemingway-morska-bryza-a46.html" '<p id="lead">Taco Hemingway – „Morska Bryza”, EP-ka wydana 5 września 2009 przez Prosto.</p>'
+    test_page "and a year when only the year is known" "/eldo-podmiejski-gwar-a50.html" '<p id="lead">Eldo – „Podmiejski Gwar”, album wydany w 2013 roku przez EMI Music Poland.</p>'
+    test_page "and a single's tracks" "/pezet-muzyka-powazna-a2.html" '<p id="lead">Pezet – „Muzyka Poważna”, singiel wydany 20 maja 2006 przez Asfalt: 2 utwory.</p>'
+    test_page "and an artist's other names and albums" "/mes-p35.html" '<p id="lead">Mes – wykonawca, znany też jako JŹW; na Hhbd.pl 1 album z 2015 roku.</p>'
     test_page "An album with no known date renders" "/eldo-polskie-karate-a778.html" "Polskie Karate"
     test_page_multi "A two-disc tracklist is numbered by disc" "/eldo-trzecia-czesc-tryptyku-a3.html" "1-01" "2-01"
     # Where the data came from is for an admin's eyes only, at the top of the page (#158)
@@ -1011,6 +1015,12 @@ run_tests() {
     test_page "The about page is in the sitemap" "/sitemap-pages.xml" "<loc>${BASE_URL}/o-nas.html</loc>"
     test_page_absent "No page's footer dates hhbd.pl to 2005-2007" "/" "w latach 2005-2007"
     test_page "The browser's search box searches hhbd.pl's search" "/opensearch.xml" 'template="https://hhbd.pl/szukaj.html?q={searchTerms}"'
+    echo ""
+
+    # The sentence of facts under a heading (#219): read-only, so production too
+    echo "--- Summary ---"
+    test_page "An album's page sums it up under its heading" "/wdowa-superextra-a535.html" '<p id="lead">Wdowa – „Superextra”, album wydany '
+    test_page "and so does an artist's" "/mes-p35.html" '<p id="lead">Mes – wykonawca'
     echo ""
 
     # Popularity over a period (#194)
