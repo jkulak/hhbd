@@ -1,0 +1,34 @@
+# Hhbd.pl
+
+> Hhbd.pl, Hip-Hopowa Baza Danych, is a database of Polish hip-hop, online since 2005: albums with their tracklists, release dates, labels and covers; artists and groups with their discographies, members and other names; songs with who rapped, produced, scratched and featured on them, and their lyrics; record labels with their catalogues; and news. The pages are in Polish.
+
+Each album, artist, song and label has one page at one address, named in its `rel="canonical"` and described in JSON-LD (schema.org `MusicAlbum`, `MusicGroup`, `MusicRecording`). The number before `.html` is the record's id, and the letter before it its kind:
+
+- An album: `https://hhbd.pl/<artist>-<title>-a<id>.html`, for example https://hhbd.pl/wdowa-superextra-a535.html
+- An artist or a group: `https://hhbd.pl/<name>-p<id>.html`, for example https://hhbd.pl/mes-p35.html
+- A song: `https://hhbd.pl/<title>-s<id>.html`
+- A label: `https://hhbd.pl/<name>-l<id>.html`
+- A news item: `https://hhbd.pl/<title>-n<id>.html`
+
+## Lists
+
+- [Albums](https://hhbd.pl/albumy.html): every album, newest first
+- [Albums by year](https://hhbd.pl/albumy/lata.html): each year's albums at `https://hhbd.pl/albumy-<year>.html`
+- [Premieres](https://hhbd.pl/premiery.html): albums announced, not out yet
+- [Artists](https://hhbd.pl/wykonawcy.html): every artist and group
+- [Labels](https://hhbd.pl/wytwornie.html): every record label
+- [Top 10](https://hhbd.pl/top10.html): the most viewed albums, artists and songs, and the best rated albums
+
+## Rankings
+
+- [Most viewed albums, last 7 days](https://hhbd.pl/albumy/popularne-tydzien.html), also `-miesiac` (30 days), `-rok` (this year) and without a suffix (all time)
+- [Most viewed artists, last 7 days](https://hhbd.pl/wykonawcy/popularni-tydzien.html), with the same periods
+
+## Search
+
+- [Search](https://hhbd.pl/szukaj.html?q=peja): `https://hhbd.pl/szukaj.html?q=<words>` finds artists, albums, songs and labels
+
+## Optional
+
+- [Sitemap index](https://hhbd.pl/sitemap-index.xml): every page above, one sitemap per kind
+- [About](https://hhbd.pl/o-nas.html)

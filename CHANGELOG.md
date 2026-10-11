@@ -27,6 +27,9 @@ which the note leaves out. The sections before, by version, stay as they were.
 - An admin sees how many times each album's, artist's, song's, label's and news item's page was
   viewed, in the last 7 and 30 days, this year and since the site began, with a link to the page's
   report in Google Analytics (#214).
+- `robots.txt` names the crawlers of ChatGPT search, Claude and Perplexity, and those that
+  gather text to train models, each with the rules every crawler reads, and `/llms.txt`
+  describes hhbd.pl and its addresses to a language model in a few lines (#217).
 
 ### Internal
 - CI builds each image from the layers the last release left in the registry and keeps no
