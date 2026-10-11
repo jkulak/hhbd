@@ -20,6 +20,10 @@ which the note leaves out. The sections before, by version, stay as they were.
 - The text after a page's heading starts below it on a desktop screen, as on the years, Top 10
   and the admin's review list, where it stood beside it (#208). The heading floats for the share
   buttons on an album's, artist's, song's and label's page, which stay where they are.
+- An admin fills in an unpublished album's release day and label on its own page, and the album
+  is published once nothing is missing (#199). The form asks only for what the review item
+  names, takes a label hhbd has or "wydanie własne", never both, writes through the edit journal
+  so `undo` takes it back, and the item says what is still missing until then.
 
 ### Internal
 - The smoke test checks the home page, the artist list and the premieres by what they are, not
