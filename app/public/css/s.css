@@ -186,6 +186,13 @@ ul.list {
   clear: both;
 }
 
+/* The sentence of facts under an album's or an artist's heading (#219), below the heading and
+   the share buttons, above the picture */
+#lead {
+  clear: both;
+  margin: 0 0 8px;
+}
+
 #share {
   float: right;
   
