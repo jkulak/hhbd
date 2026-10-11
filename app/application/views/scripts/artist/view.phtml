@@ -60,6 +60,9 @@
       <?php if ('' !== ($added = $this->AddedFor('artist', $this->artist->id))): ?>
         <li>Dodano: <?php echo $added ?></li>
       <?php endif ?>
+      <?php if ('' !== ($views = $this->ViewsFor('artist', $this->artist->id, parse_url($this->canonicalUrl, PHP_URL_PATH)))): ?>
+        <li>Wyświetlenia: <?php echo $views ?></li>
+      <?php endif ?>
   	</ul>
   </div> <!-- brief -->
 
