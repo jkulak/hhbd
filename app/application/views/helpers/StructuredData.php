@@ -2,11 +2,15 @@
 
 /**
  * schema.org JSON-LD for an album's, an artist's or a song's page (#195): what the page is, and
- * the path to it, from the containers the page shows, at absolute addresses. Jkl_StructuredData
- * builds the JSON; a view prints $this->StructuredData()->album($this->album).
+ * the path to it, from the containers the page shows, at absolute addresses; and for the home
+ * and about pages, what the site is and who runs it (#218). Jkl_StructuredData builds the
+ * JSON; a view prints $this->StructuredData()->album($this->album).
  */
 class Zend_View_Helper_StructuredData extends Zend_View_Helper_Abstract
 {
+    /** What hhbd.pl is, in one sentence, as the footer of every page tells it too */
+    public const DESCRIPTION = 'Encyklopedia polskiego hip-hopu prowadzona od 2005 roku: albumy z tracklistami, datami premier i wytwórniami, wykonawcy i składy z dyskografiami, utwory z tekstami i twórcami, wytwórnie i aktualności.';
+
     public function StructuredData()
     {
         return $this;
@@ -99,6 +103,39 @@ class Zend_View_Helper_StructuredData extends Zend_View_Helper_Abstract
                 'album'   => null !== $album ? array('name' => $album->title, 'url' => $this->absolute($album->getUrl())) : null,
             )),
             Jkl_StructuredData::breadcrumbs($trail),
+        ));
+    }
+
+    /** What hhbd.pl is, and how to search it, for its home page (#218) */
+    public function site()
+    {
+        $home = $this->absolute('/');
+        return Jkl_StructuredData::script(array(
+            Jkl_StructuredData::website(array(
+                'name'        => 'Hhbd.pl',
+                'url'         => $home,
+                'description' => self::DESCRIPTION,
+                'search'      => $this->absolute('/szukaj.html') . '?q={search_term_string}',
+            )),
+            $this->organizationData($home),
+        ));
+    }
+
+    /** Who runs hhbd.pl, for the about page (#218) */
+    public function organization()
+    {
+        return Jkl_StructuredData::script(array($this->organizationData($this->absolute('/'))));
+    }
+
+    private function organizationData($home)
+    {
+        return Jkl_StructuredData::organization(array(
+            'name'          => 'Hhbd.pl',
+            'alternateName' => 'Hip-Hopowa Baza Danych',
+            'url'           => $home,
+            // The launch the about page tells of
+            'foundingDate'  => '2005-10',
+            'description'   => self::DESCRIPTION,
         ));
     }
 

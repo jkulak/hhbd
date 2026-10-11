@@ -26,10 +26,16 @@ class IndexController extends Zend_Controller_Action
         $week = Model_PageView_Api::since('tydzien', date('Y-m-d'));
         list($this->view->popularArtists) = Model_Artist_Api::getInstance()->popularSince($week, 10);
         list($this->view->popularAlbums) = Model_Album_Api::getInstance()->popularSince($week, 5);
+        $this->view->canonicalUrl = $this->site() . '/';
     }
 
+    /** What hhbd.pl is and how much it holds, counted now, for people and for search (#218) */
     public function aboutAction()
     {
+        $this->view->headTitle()->set('O nas - Hhbd.pl');
+        $this->view->figures = $this->view->Figures();
+        $this->view->headMeta()->setName('description', $this->view->figures);
+        $this->view->canonicalUrl = $this->site() . $this->view->url(array(), 'about');
     }
 
     public function contactAction()
@@ -41,5 +47,11 @@ class IndexController extends Zend_Controller_Action
     {
         $this->view->headTitle()->set('Prywatność - Hhbd.pl');
         $this->view->headMeta()->setName('description', 'Jakie dane zbiera Hhbd.pl, po co, jak długo je przechowuje i jak zmienić zgodę na ciasteczka.');
+    }
+
+    /** The site's origin as the request reached it, https:// behind the edge (#147) */
+    private function site()
+    {
+        return $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost();
     }
 }
