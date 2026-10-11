@@ -131,6 +131,21 @@ ssh, so no copy is left on the host. Progress comes back on stderr, the report o
 run's row in `import_runs` keeps the report too. A batch applied twice changes nothing the
 second time. A release from before the importer has no importer image to pull.
 
+### IndexNow
+
+Bing, whose index ChatGPT search and Copilot answer from, and IndexNow's other engines hear of
+new pages as they appear (#220): an applied import tells IndexNow the artists and labels it
+added or changed and every published album with its songs, and an admin publishing an album
+tells it that album's. The key is `INDEXNOW_KEY` in `compose.yaml`, for the app and the
+importer: not a secret, since the site serves it at `https://hhbd.pl/<key>.txt` for IndexNow to
+check, and set nowhere else, so nothing local, in CI or in a stack test sends anything. A
+failed request is a `logger=indexnow` line, never a failed import.
+
+```bash
+make ovh-indexnow DRY_RUN=1   # count every address in the sitemaps, send nothing
+make ovh-indexnow             # send them all: the first time, and after a gap
+```
+
 ### How production moved
 
 On 2026-10-08, following CONTRACT.md §10, with no failed request:

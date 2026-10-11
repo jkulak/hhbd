@@ -89,6 +89,10 @@ class AdminController extends Zend_Controller_Action
         $value = 'complete' === $do
             ? json_encode(array('date' => (string) $request->getPost('date'), 'label' => (string) $request->getPost('label'), 'self' => (string) $request->getPost('self')))
             : (string) $request->getPost('value');
+        // An album the settling publishes is told to IndexNow (#220), only then.
+        $item = Model_Review_Api::getInstance()->find((int) $request->getPost('id'));
+        $album = null !== $item && 'album' === $item->entityType ? $item->entityId : null;
+        $wasPublished = null !== $album && Model_Album_Api::getInstance()->isPublished($album);
         try {
             $closed = Model_Review_Api::getInstance()->settle(
                 (int) $request->getPost('id'),
@@ -98,6 +102,10 @@ class AdminController extends Zend_Controller_Action
                 (int) Zend_Auth::getInstance()->getIdentity()->usr_id
             );
             $this->_helper->flashMessenger->addMessage($closed ? 'Rozstrzygnięte.' : 'Zapisane; albumowi wciąż czegoś brakuje.');
+            if (null !== $album && !$wasPublished && Model_Album_Api::getInstance()->isPublished($album)) {
+                $indexNow = Model_IndexNow_Api::getInstance();
+                $indexNow->submit($indexNow->albumPaths($album), 'album ' . $album . ' published by an admin');
+            }
         } catch (RuntimeException $e) {
             $this->_helper->flashMessenger->addMessage('Nie udało się: ' . $e->getMessage());
         }

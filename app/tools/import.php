@@ -47,6 +47,13 @@ try {
     exit(2);
 }
 
+// The pages the run made or changed, told to IndexNow as they appear (#220); a failure is a log
+// line, never the import's.
+$indexNow = Model_IndexNow_Api::getInstance();
+if ('apply' === $mode && null !== $indexNow->key()) {
+    $indexNow->submit($indexNow->importPaths($report), 'import run ' . $report['run']);
+}
+
 $json = json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n";
 if (null === $reportFile) {
     echo $json;
