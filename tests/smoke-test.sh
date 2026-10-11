@@ -498,6 +498,7 @@ run_fixture_tests() {
     test_header "The script at its bare address is read fresh, never from a kept copy (#182)" "/js/s.js" "^cache-control: no-cache"
     test_header "and so is the stylesheet" "/css/s.css" "^cache-control: no-cache"
     test_header "and robots.txt" "/robots.txt" "^cache-control: no-cache"
+    test_header "and llms.txt (#217)" "/llms.txt" "^cache-control: no-cache"
     test_header "while the script at the address the pages link may be kept" "$(linked_address /js/s.js)" "^cache-control: no-cache" absent
     echo ""
 }
@@ -565,6 +566,25 @@ test_page_status() {
         return 0
     fi
     local error="$name - HTTP $status (expected $expected_status with '$expected')"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
+}
+
+# test_robots_one_group <name>: robots.txt has a single group, every User-agent line before the
+# first rule, so a crawler it names reads the rules everyone does: one named in a group of its
+# own would read that group alone (#217)
+test_robots_one_group() {
+    local name="$1" late
+    late=$(curl -s --max-time 10 $CURL_OPTS "${BASE_URL}/robots.txt" 2>/dev/null | tr -d '\r' |
+        awk 'tolower($0) ~ /^(dis)?allow:/ { rules = 1 } rules && tolower($0) ~ /^user-agent:/ { print }')
+    if [[ -z "$late" ]]; then
+        echo -e "${GREEN}✓${NC} $name"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - after the first rule: $(tr '\n' ' ' <<<"$late")"
     echo -e "${RED}✗${NC} $error"
     ERRORS+=("$error")
     ((FAILED++))
@@ -926,6 +946,13 @@ run_tests() {
     echo "--- Search Engines ---"
     test_page "robots.txt names the sitemap index" "/robots.txt" "^Sitemap: https://hhbd.pl/sitemap-index.xml$"
     test_page_absent "robots.txt keeps no search engine out of the whole site" "/robots.txt" "^Disallow: /$"
+    local crawler
+    for crawler in OAI-SearchBot ChatGPT-User Claude-SearchBot Claude-User PerplexityBot Perplexity-User GPTBot ClaudeBot Google-Extended CCBot; do
+        test_page "robots.txt names $crawler (#217)" "/robots.txt" "^User-agent: $crawler$"
+    done
+    test_robots_one_group "and every crawler it names reads the same rules as *"
+    test_page "llms.txt describes hhbd.pl (#217)" "/llms.txt" "^> Hhbd.pl, Hip-Hopowa Baza Danych, is a database of Polish hip-hop"
+    test_header "as text" "/llms.txt" "^content-type: text/plain"
     test_sitemap "The sitemap index" "/sitemap-index.xml" sitemapindex
     test_page "The sitemap index names the song sitemap at an absolute address" "/sitemap-index.xml" "<loc>${BASE_URL}/sitemap-songs.xml</loc>"
     test_sitemap "The album sitemap" "/sitemap-albums.xml" urlset
@@ -1116,6 +1143,7 @@ run_release_tests() {
     test_page "An album's canonical address is the https one" "/wdowa-superextra-a535.html" "rel=\"canonical\" href=\"${BASE_URL}/wdowa-superextra-a535.html\""
     test_page "The sitemap index names its sitemaps at that origin" "/sitemap-index.xml" "<loc>${BASE_URL}/sitemap-albums.xml</loc>"
     test_page "robots.txt names the sitemap index" "/robots.txt" "^Sitemap: https://hhbd.pl/sitemap-index.xml$"
+    test_page "llms.txt describes hhbd.pl" "/llms.txt" "^# Hhbd.pl$"
     test_page "ads.txt names hhbd's AdSense account" "/ads.txt" "google.com, pub-6149271850793027, DIRECT, f08c47fec0942fa0"
     test_asset "The stylesheet, at the address the pages link, is the one they name" "/css/s.css"
     test_asset "and the script" "/js/s.js"
