@@ -1024,6 +1024,8 @@ run_tests() {
         "<meta property=\"og:type\" content=\"music.song\"" "<meta property=\"og:url\" content=\"${BASE_URL}/pogoda-s7329.html\"" "<meta property=\"og:description\""
     test_page_multi "A label's page has its own preview" "/alkopoligamia-l58.html" \
         "<meta property=\"og:type\" content=\"website\"" "<meta property=\"og:url\" content=\"${BASE_URL}/alkopoligamia-l58.html\""
+    test_page_multi "The home page has its own preview" "/" \
+        "<meta property=\"og:type\" content=\"website\"" "<meta property=\"og:url\" content=\"${BASE_URL}/\"" "<meta property=\"og:description\" content=\"Encyklopedia polskiego hip-hopu"
     test_page_multi "A news item has its own preview" "/onar-jak-na-pierwszej-plycie-wideo-n1877.html" \
         "<meta property=\"og:type\" content=\"article\"" "<meta property=\"og:url\" content=\"${BASE_URL}/onar-jak-na-pierwszej-plycie-wideo-n1877.html\""
     echo ""
