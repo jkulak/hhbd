@@ -87,6 +87,51 @@ class Model_PageView_Api extends Jkl_Model_Api
         return array_map('intval', array_column($rows, 'id'));
     }
 
+    /**
+     * A page's views for an admin (#214): the last 7 days, the last 30, this year, by the
+     * periods' first days, and the total since the site began
+     *
+     * @return array tydzien, miesiac, rok, and '' for all time
+     */
+    public function viewsOf($type, $id, $today)
+    {
+        if (!isset(self::TYPES[$type])) {
+            throw new InvalidArgumentException(sprintf('No page type "%s"', $type));
+        }
+        $since = array();
+        foreach (array('tydzien', 'miesiac', 'rok') as $period) {
+            $since[$period] = self::since($period, $today);
+        }
+        $rows = $this->_db->fetchAll(
+            'SELECT day, views FROM page_views WHERE entity_type = ? AND entity_id = ? AND day >= ?',
+            array($type, (int) $id, min($since))
+        );
+        $views = self::sumSince($rows, $since);
+        $total = $this->_db->fetchAll('SELECT viewed FROM `' . self::TYPES[$type] . '` WHERE id = ?', array((int) $id));
+        $views[''] = empty($total) ? 0 : (int) $total[0]['viewed'];
+        return $views;
+    }
+
+    /**
+     * Days' rows summed into each period from its first day
+     *
+     * @param array $rows  of array('day' => Y-m-d, 'views' => n)
+     * @param array $since period => its first day
+     * @return array period => views
+     */
+    public static function sumSince(array $rows, array $since)
+    {
+        $sums = array_fill_keys(array_keys($since), 0);
+        foreach ($rows as $row) {
+            foreach ($since as $period => $first) {
+                if ($row['day'] >= $first) {
+                    $sums[$period] += (int) $row['views'];
+                }
+            }
+        }
+        return $sums;
+    }
+
     /** Whether a request with this method and user agent, from an admin or not, is a view to count */
     public static function counts($method, $userAgent, $isAdmin)
     {
