@@ -35,5 +35,14 @@ class NewsController extends Zend_Controller_Action
         $this->view->headTitle()->headTitle($news->title, 'PREPEND');
         $this->view->headMeta()->setName('description', Jkl_Tools_String::metaDescription($news->content));
         $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . '/' . $canonicalSlug;
+
+        // Open Graph (#177)
+        $og = new Jkl_Og('Hhbd.pl');
+        $og->setTitle($news->title);
+        $og->setDescription($news->content);
+        $og->setImage(!empty($news->attachment) ? $news->attachment->url : null);
+        $og->setUrl($this->view->canonicalUrl);
+        $og->setType('article');
+        $this->view->og = $og->getMetaData();
     }
 }
