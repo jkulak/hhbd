@@ -38,6 +38,10 @@ which the note leaves out. The sections before, by version, stay as they were.
   picture, as every page's Open Graph tags now give absolute addresses, the album's cover rather
   than its thumbnail, the page's canonical address and Open Graph's own types (#177). Songs,
   labels, news, the home page and the about page have their own previews too.
+- An album's and an artist's page open with one sentence of facts under the heading, who, what
+  kind of release, when and by which label, how many tracks; for an artist its other names and
+  its albums over the years (#219). Search engines and the assistants answering from them quote
+  such sentences.
 
 ### Internal
 - CI builds each image from the layers the last release left in the registry and keeps no

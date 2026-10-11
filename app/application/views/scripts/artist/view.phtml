@@ -4,6 +4,8 @@
   <?php if ($this->IsAdmin()): ?><?php echo $this->partial('review/_panel.phtml', array('items' => $this->reviewItems, 'messages' => $this->reviewMessages, 'back' => strtok($_SERVER['REQUEST_URI'], '?'))) ?><?php endif ?>
   <?php if ($this->IsAdmin()): ?><?php echo $this->partial('common/_sources.phtml', array('provenance' => $this->provenance, 'externalIds' => $this->externalIds, 'discogsKinds' => array('artist'), 'photos' => $this->artist->photos->items)) ?><?php endif ?>
   <?php echo $this->partial('common/_share.phtml', array('currentUrl' => $this->currentUrl, 'title' => $this->title)) ?>
+  <?php // V/A stands for the various artists of a compilation, no artist to sum up ?>
+  <?php if ($this->artist->name != 'V/A'): ?><p id="lead"><?php echo $this->Summary()->artist($this->artist) ?></p><?php endif ?>
 	<?php if ($this->artist->name != 'V/A'): ?>
 	  <div id="picture">
   	  <?php $photo = $this->artist->photos->items[0] ?>
