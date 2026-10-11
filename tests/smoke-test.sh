@@ -1001,6 +1001,18 @@ run_tests() {
         '[.["@graph"][] | select(.["@type"] == "MusicRecording")][0] | .name == "Pogoda" and .inAlbum.name == "Superextra"'
     echo ""
 
+    # What hhbd.pl is, to whatever reads it for a person (#218): read-only, so production too
+    echo "--- The site itself ---"
+    test_json_ld "The home page describes the site, how to search it and who runs it" "/" \
+        '([.["@graph"][] | select(.["@type"] == "WebSite")][0] | .publisher["@id"] == "'"${BASE_URL}"'/#organization" and .potentialAction.target.urlTemplate == "'"${BASE_URL}"'/szukaj.html?q={search_term_string}") and ([.["@graph"][] | select(.["@type"] == "Organization")][0]["@id"] == "'"${BASE_URL}"'/#organization")'
+    test_page "and names its canonical address" "/" "rel=\"canonical\" href=\"${BASE_URL}/\""
+    test_page_multi "The about page counts what hhbd.pl holds" "/o-nas.html" "<h1>O nas</h1>" "<title>O nas - Hhbd.pl</title>" "Hhbd.pl opisuje dziś [0-9]" "rel=\"canonical\" href=\"${BASE_URL}/o-nas.html\""
+    test_json_ld "and says who runs it" "/o-nas.html" '.["@graph"][0] | .["@type"] == "Organization" and .foundingDate == "2005-10"'
+    test_page "The about page is in the sitemap" "/sitemap-pages.xml" "<loc>${BASE_URL}/o-nas.html</loc>"
+    test_page_absent "No page's footer dates hhbd.pl to 2005-2007" "/" "w latach 2005-2007"
+    test_page "The browser's search box searches hhbd.pl's search" "/opensearch.xml" 'template="https://hhbd.pl/szukaj.html?q={searchTerms}"'
+    echo ""
+
     # Popularity over a period (#194)
     echo "--- Rankings ---"
     test_page_multi "The albums of the last 7 days" "/albumy/popularne-tydzien.html" "<h1>Najpopularniejsze albumy z ostatnich 7 dni</h1>" 'href="/albumy/popularne-miesiac.html"' 'rel="canonical" href="'"${BASE_URL}"'/albumy/popularne-tydzien.html"'
@@ -1144,6 +1156,7 @@ run_release_tests() {
     test_page "The sitemap index names its sitemaps at that origin" "/sitemap-index.xml" "<loc>${BASE_URL}/sitemap-albums.xml</loc>"
     test_page "robots.txt names the sitemap index" "/robots.txt" "^Sitemap: https://hhbd.pl/sitemap-index.xml$"
     test_page "llms.txt describes hhbd.pl" "/llms.txt" "^# Hhbd.pl$"
+    test_page "The home page's canonical address is the https one" "/" "rel=\"canonical\" href=\"${BASE_URL}/\""
     test_page "ads.txt names hhbd's AdSense account" "/ads.txt" "google.com, pub-6149271850793027, DIRECT, f08c47fec0942fa0"
     test_asset "The stylesheet, at the address the pages link, is the one they name" "/css/s.css"
     test_asset "and the script" "/js/s.js"

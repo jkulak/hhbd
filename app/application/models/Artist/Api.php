@@ -348,6 +348,13 @@ class Model_Artist_Api extends Jkl_Model_Api
         $this->_db->query($query);
     }
 
+    /** All the artists and groups, each with a page, for the about page's figures (#218) */
+    public function getCount()
+    {
+        $result = $this->_db->fetchAll('SELECT COUNT(*) AS n FROM artists');
+        return (int) $result[0]['n'];
+    }
+
     public function getLikeCount($like = '')
     {
         $like = Jkl_Db::escape($like);
