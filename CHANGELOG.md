@@ -30,6 +30,10 @@ which the note leaves out. The sections before, by version, stay as they were.
 - `robots.txt` names the crawlers of ChatGPT search, Claude and Perplexity, and those that
   gather text to train models, each with the rules every crawler reads, and `/llms.txt`
   describes hhbd.pl and its addresses to a language model in a few lines (#217).
+- The about page opens with what hhbd.pl holds, counted from the database at each visit, and
+  the footer says what the site is today instead of dating it to 2005-2007 (#218). The home page
+  describes the site, its search and who runs it in JSON-LD and names its canonical address,
+  the about page is in the sitemap, and the browser's search box searches hhbd.pl again.
 
 ### Internal
 - CI builds each image from the layers the last release left in the registry and keeps no

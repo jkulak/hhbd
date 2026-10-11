@@ -96,6 +96,13 @@ class Model_Label_Api extends Jkl_Model_Api
         return $this->getList($query);
     }
 
+    /** All the labels, each with a page, for the about page's figures (#218) */
+    public function getCount()
+    {
+        $result = $this->_db->fetchAll('SELECT COUNT(*) AS n FROM labels');
+        return (int) $result[0]['n'];
+    }
+
     public function getLikeCount($like = '')
     {
         $like = Jkl_Db::escape($like);
