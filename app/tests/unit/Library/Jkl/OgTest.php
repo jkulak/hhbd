@@ -2,6 +2,9 @@
 
 use PHPUnit\Framework\TestCase;
 
+/**
+ * Open Graph tags (#177): absolute addresses, no stand-in pictures, every value escaped.
+ */
 class Jkl_OgTest extends TestCase
 {
     private Jkl_Og $og;
@@ -114,5 +117,59 @@ class Jkl_OgTest extends TestCase
         // site_name and fb:app_id are always included
         $this->assertStringContainsString('og:site_name', $metadata);
         $this->assertStringContainsString('fb:app_id', $metadata);
+    }
+
+    public function testAPathIsMadeAnAddressOnTheOrigin(): void
+    {
+        $og = new Jkl_Og('Hhbd.pl', 'https://hhbd.pl');
+        $og->setImage('/content/a/600/abc.jpg');
+        $og->setUrl('/wdowa-superextra-a535.html');
+
+        $metadata = $og->getMetaData();
+
+        $this->assertStringContainsString('<meta property="og:image" content="https://hhbd.pl/content/a/600/abc.jpg" />', $metadata);
+        $this->assertStringContainsString('<meta property="og:url" content="https://hhbd.pl/wdowa-superextra-a535.html" />', $metadata);
+    }
+
+    public function testAnAddressIsKeptAsItIs(): void
+    {
+        $og = new Jkl_Og('Hhbd.pl', 'https://hhbd.pl');
+        $og->setUrl('https://hhbd.pl/mes-p35.html');
+
+        $this->assertStringContainsString('content="https://hhbd.pl/mes-p35.html"', $og->getMetaData());
+    }
+
+    /**
+     * @dataProvider standIns
+     */
+    public function testAStandInDrawingIsNoPicture(?string $path): void
+    {
+        $og = new Jkl_Og('Hhbd.pl', 'https://hhbd.pl');
+        $og->setImage($path);
+
+        $this->assertStringNotContainsString('og:image', $og->getMetaData());
+    }
+
+    public static function standIns(): array
+    {
+        return array(
+            'no picture' => array(null),
+            'an album without a cover' => array('/content/a/cd.png'),
+            'an artist without a photo' => array('/content/p/no.png'),
+            'a placeholder' => array('/img/placeholder/cover.png'),
+        );
+    }
+
+    public function testEveryValueIsEscaped(): void
+    {
+        $og = new Jkl_Og('Hhbd.pl', 'https://hhbd.pl');
+        $og->setTitle('Tede & Sir Mich <3');
+
+        $this->assertStringContainsString('content="Tede &amp; Sir Mich &lt;3"', $og->getMetaData());
+    }
+
+    public function testThePageIsInPolish(): void
+    {
+        $this->assertStringContainsString('<meta property="og:locale" content="pl_PL" />', $this->og->getMetaData());
     }
 }

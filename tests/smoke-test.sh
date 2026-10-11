@@ -1001,6 +1001,21 @@ run_tests() {
         '[.["@graph"][] | select(.["@type"] == "MusicRecording")][0] | .name == "Pogoda" and .inAlbum.name == "Superextra"'
     echo ""
 
+    # What a shared link previews (#177): read-only, so production too
+    echo "--- Open Graph ---"
+    test_page_multi "An album's page previews its cover at an absolute address" "/wdowa-superextra-a535.html" \
+        "<meta property=\"og:image\" content=\"${BASE_URL}/content/a/" "<meta property=\"og:type\" content=\"music.album\"" "<meta property=\"og:url\" content=\"${BASE_URL}/wdowa-superextra-a535.html\""
+    test_page_absent "and not the lists' thumbnail" "/wdowa-superextra-a535.html" "<meta property=\"og:image\" content=\"[^\"]*/content/a/\\(th\\|75\\)/"
+    test_page_multi "An artist's page previews its photo at an absolute address" "/mes-p35.html" \
+        "<meta property=\"og:image\" content=\"${BASE_URL}/content/p/" "<meta property=\"og:type\" content=\"profile\"" "<meta property=\"og:url\" content=\"${BASE_URL}/mes-p35.html\""
+    test_page_multi "A song's page has its own preview" "/pogoda-s7329.html" \
+        "<meta property=\"og:type\" content=\"music.song\"" "<meta property=\"og:url\" content=\"${BASE_URL}/pogoda-s7329.html\"" "<meta property=\"og:description\""
+    test_page_multi "A label's page has its own preview" "/alkopoligamia-l58.html" \
+        "<meta property=\"og:type\" content=\"website\"" "<meta property=\"og:url\" content=\"${BASE_URL}/alkopoligamia-l58.html\""
+    test_page_multi "A news item has its own preview" "/onar-jak-na-pierwszej-plycie-wideo-n1877.html" \
+        "<meta property=\"og:type\" content=\"article\"" "<meta property=\"og:url\" content=\"${BASE_URL}/onar-jak-na-pierwszej-plycie-wideo-n1877.html\""
+    echo ""
+
     # Popularity over a period (#194)
     echo "--- Rankings ---"
     test_page_multi "The albums of the last 7 days" "/albumy/popularne-tydzien.html" "<h1>Najpopularniejsze albumy z ostatnich 7 dni</h1>" 'href="/albumy/popularne-miesiac.html"' 'rel="canonical" href="'"${BASE_URL}"'/albumy/popularne-tydzien.html"'
@@ -1144,6 +1159,7 @@ run_release_tests() {
     test_page "The sitemap index names its sitemaps at that origin" "/sitemap-index.xml" "<loc>${BASE_URL}/sitemap-albums.xml</loc>"
     test_page "robots.txt names the sitemap index" "/robots.txt" "^Sitemap: https://hhbd.pl/sitemap-index.xml$"
     test_page "llms.txt describes hhbd.pl" "/llms.txt" "^# Hhbd.pl$"
+    test_page "An album's preview picture is at an https address" "/wdowa-superextra-a535.html" "<meta property=\"og:image\" content=\"${BASE_URL}/content/a/"
     test_page "ads.txt names hhbd's AdSense account" "/ads.txt" "google.com, pub-6149271850793027, DIRECT, f08c47fec0942fa0"
     test_asset "The stylesheet, at the address the pages link, is the one they name" "/css/s.css"
     test_asset "and the script" "/js/s.js"
