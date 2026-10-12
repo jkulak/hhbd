@@ -9,8 +9,8 @@
  * fills width, height, SHA-256 and MIME type. A file the volume lacks keeps its row empty (#47).
  * Running it again changes nothing. A dry run makes the same changes in a transaction it rolls
  * back, so it reports exactly what a run would, duplicates included. It reads DB_HOST, DB_NAME, DB_USER and DB_PASSWORD from the
- * environment and the files under CONTENT_DIR (/var/www/html/content by default), and needs no
- * GD: getimagesize() is in PHP's core.
+ * environment, with DB_ADAPTER and DB_PORT for PostgreSQL (pdo_pgsql, #234), and the files under
+ * CONTENT_DIR (/var/www/html/content by default), and needs no GD: getimagesize() is in PHP's core.
  */
 
 $mode = isset($argv[1]) ? $argv[1] : '';
@@ -27,7 +27,9 @@ if (!is_dir($contentDir . '/p')) {
 }
 
 $db = new PDO(
-    sprintf('mysql:host=%s;dbname=%s;charset=utf8mb4', getenv('DB_HOST'), getenv('DB_NAME')),
+    'pdo_pgsql' === strtolower((string) getenv('DB_ADAPTER'))
+        ? sprintf('pgsql:host=%s;port=%s;dbname=%s', getenv('DB_HOST'), getenv('DB_PORT') ?: '5432', getenv('DB_NAME'))
+        : sprintf('mysql:host=%s;dbname=%s;charset=utf8mb4', getenv('DB_HOST'), getenv('DB_NAME')),
     getenv('DB_USER'),
     getenv('DB_PASSWORD'),
     array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION)
@@ -53,10 +55,18 @@ foreach ($rows as $row) {
         fwrite(STDERR, "  not an image: content/p/{$row['filename']}\n");
         continue;
     }
+    // On PostgreSQL a refused statement spoils the dry run's whole transaction, unless it goes
+    // back to a savepoint taken before it.
+    if ($dryRun) {
+        $db->exec('SAVEPOINT photo');
+    }
     try {
         $update->execute(array($size[0], $size[1], hash_file('sha256', $file), $size['mime'], (int) $row['id']));
         $counts['filled'] += $update->rowCount();
     } catch (PDOException $e) {
+        if ($dryRun) {
+            $db->exec('ROLLBACK TO SAVEPOINT photo');
+        }
         // The same file twice for one artist: the unique key keeps the first, and says so.
         $counts['duplicate']++;
         fwrite(STDERR, "  the same file as another photo of artist {$row['artistid']}: content/p/{$row['filename']}\n");

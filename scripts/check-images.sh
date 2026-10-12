@@ -11,7 +11,8 @@
 # Where it looks, DB_TARGET: local (this checkout's compose project, the default; the files
 # in its nginx container) or ovh (production's database over ssh, and the files in a running
 # container of hhbd's that mounts the content volume: the live colour's nginx, or both while a
-# deploy overlaps them, which see the same files).
+# deploy overlaps them, which see the same files). DB_ENGINE=postgresql reads the catalogue from
+# PostgreSQL's database instead (#234); the SQL below runs on both.
 #
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
@@ -48,11 +49,11 @@ missing=$(printf '%s\n' "$files" | content_sh 'while IFS="	" read -r kind path; 
 # Every album_covers row (#60): its file is there and still has the hash the row recorded.
 # Before migration 0019 there is no such table, and nothing to check.
 covers=
-if [ "$(printf '%s\n' "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'album_covers';" | db_sql)" = 1 ]; then
+if [ "$(printf '%s\n' "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = $SCHEMA_SQL AND table_name = 'album_covers';" | db_sql)" = 1 ]; then
     covers=$(printf '%s\n' "SELECT 'cover file', path, sha256 FROM album_covers;" | db_sql)
 fi
 # And every artist photo with a recorded hash (#61), from 0020 on.
-if [ "$(printf '%s\n' "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'artists_photos' AND column_name = 'sha256';" | db_sql)" = 1 ]; then
+if [ "$(printf '%s\n' "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = $SCHEMA_SQL AND table_name = 'artists_photos' AND column_name = 'sha256';" | db_sql)" = 1 ]; then
     covers=$(printf '%s\n%s\n' "$covers" "$(printf '%s\n' "SELECT 'photo file', CONCAT('p/', filename), sha256 FROM artists_photos WHERE sha256 IS NOT NULL;" | db_sql)" | grep . || true)
 fi
 changed=$(printf '%s\n' "$covers" | content_sh 'while IFS="	" read -r kind path sum; do [ -n "$path" ] || continue; f="/var/www/html/content/$path"; if [ ! -f "$f" ]; then printf "%s\t%s\t%s\n" "$kind" "$path" "missing"; elif [ "$(sha256sum "$f" | cut -d" " -f1)" != "$sum" ]; then printf "%s\t%s\t%s\n" "$kind" "$path" "changed"; fi; done')

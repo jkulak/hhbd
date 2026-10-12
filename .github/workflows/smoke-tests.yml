@@ -25,13 +25,13 @@ jobs:
       matrix:
         # Two halves at once, each on its own runner with its own stack and database: the site's
         # pages, and the tools that change the database. One after the other they took eight
-        # minutes. And the site's pages on PostgreSQL, copied from MariaDB's fixtures, on the
-        # way to it (#229, #232); the tools' tests follow there with #234.
-        part: [site, tools, site-postgresql]
+        # minutes. And both halves again on PostgreSQL, its database copied from MariaDB's
+        # fixtures, on the way to it (#229, #232, #234).
+        part: [site, tools, site-postgresql, tools-postgresql]
     env:
       COMPOSE_PROJECT_NAME: hhbd
-      COMPOSE_FILE: ${{ matrix.part == 'site-postgresql' && 'compose.yaml:compose.ci.yaml:compose.postgresql.yaml' || 'compose.yaml:compose.ci.yaml' }}
-      DB_ENGINE: ${{ matrix.part == 'site-postgresql' && 'postgresql' || 'mariadb' }}
+      COMPOSE_FILE: ${{ endsWith(matrix.part, '-postgresql') && 'compose.yaml:compose.ci.yaml:compose.postgresql.yaml' || 'compose.yaml:compose.ci.yaml' }}
+      DB_ENGINE: ${{ endsWith(matrix.part, '-postgresql') && 'postgresql' || 'mariadb' }}
       HAS_DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN != '' }}
 
     steps:
@@ -134,32 +134,32 @@ jobs:
       # The site's half
 
       - name: Describe the covers and photos, and check the backfills
-        if: matrix.part == 'site'
+        if: startsWith(matrix.part, 'site')
         run: |
           # As production's existing covers and photos get described (#60, #61), so the pages
           # read the tables; the test checks the dry run and a second run on the way.
           ./tests/backfill-test.sh
 
       - name: Run smoke tests
-        if: matrix.part == 'site' || matrix.part == 'site-postgresql'
+        if: startsWith(matrix.part, 'site')
         run: |
           bash ./tests/smoke-test.sh http://localhost:8080
 
       - name: Check the images the catalogue names
-        if: matrix.part == 'site'
+        if: startsWith(matrix.part, 'site')
         run: |
           # Every cover, thumbnail, photo and logo the fixtures name is in content/ (#47).
           ./scripts/check-images.sh
 
       - name: Check the schema rules
-        if: matrix.part == 'site'
+        if: startsWith(matrix.part, 'site')
         run: |
           # Every table InnoDB (#45); added never changes on update, the catalog's added has a
           # default, no zero-date defaults, and a page view leaves added and updated alone (#48).
           ./tests/schema-test.sh http://localhost:8080
 
       - name: Check settling what an import left
-        if: matrix.part == 'site'
+        if: startsWith(matrix.part, 'site')
         run: |
           # As the fixtures' admin, through the site's forms: a merge, keep, qualifier, cover,
           # date and type, and forms that must not count; it ends with a reset (#103).
@@ -168,28 +168,28 @@ jobs:
       # The tools' half
 
       - name: Check make reset-db
-        if: matrix.part == 'tools'
+        if: startsWith(matrix.part, 'tools')
         run: |
           # Resets, row counts, the kept result against a build from the migrations, and the
           # cases it must refuse.
           ./tests/reset-db-test.sh
 
       - name: Check the migration runner
-        if: matrix.part == 'tools'
+        if: startsWith(matrix.part, 'tools')
         run: |
           # Up, down, a failing migration, the baseline, the refusals, and the ssh path through
           # a stand-in, all on the same stack; it ends with a reset.
           ./tests/migrate-test.sh
 
       - name: Check the importer
-        if: matrix.part == 'tools'
+        if: startsWith(matrix.part, 'tools')
         run: |
           # The test batch: a dry run, an apply, the same apply again, and a batch with
           # documents that do not hold up; it ends with a reset (#56).
           ./tests/import-test.sh http://localhost:8080
 
       - name: Check an admin's edits and their undo
-        if: matrix.part == 'tools'
+        if: startsWith(matrix.part, 'tools')
         run: |
           # make edit's merges, deletes and set, each applied and undone, the data compared
           # before and after; it ends with a reset (#115).
