@@ -23,6 +23,11 @@ which the note leaves out. The sections before, by version, stay as they were.
   logged-in account change the query; a percent sign searched for is no longer a wildcard.
 
 ### Internal
+- Every database test runs on PostgreSQL as well as MariaDB, DB_ENGINE choosing, and CI runs
+  both halves on each (#234): one sql() for both engines in tests/lib-test-db.sh, PostgreSQL's
+  own promises checked where MariaDB's do not apply (Polish order, names unique without case,
+  byte-exact external ids, a failed migration leaving nothing behind, two resets alike), and the
+  cover and photo backfills able to reach PostgreSQL.
 - The application's SQL is written so MariaDB and PostgreSQL both run it, the first step of the
   move to PostgreSQL (#231, #229). Its MariaDB sessions run with ANSI_QUOTES and
   ONLY_FULL_GROUP_BY, so SQL PostgreSQL would refuse fails a test on MariaDB too, and the few
