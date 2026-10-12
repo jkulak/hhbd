@@ -10,13 +10,13 @@ day, and with it every script that deployed there.
 
 | In this repo | On the host | What |
 |---|---|---|
-| `deploy/ovh/compose.yaml` | `/srv/hhbd/compose.yaml` | the stack: nginx, app, db, and the importer job; nothing published |
+| `deploy/ovh/compose.yaml` | `/srv/hhbd/compose.yaml` | the stack: nginx, app, db (MariaDB), postgres beside it until the move (#236), and the importer job; nothing published |
 | `deploy/ovh/hhbd.enc.env` | `/srv/hhbd/hhbd.enc.env` | the secrets, SOPS-encrypted to the host and personal age keys |
 | `deploy/ovh/hhbd.pl.caddyfile` | `/srv/edge/sites/hhbd.pl.caddyfile` | how the shared edge reaches nginx: through the live upstream below |
 | | `/srv/edge/live/hhbd.caddyfile` | the live colour's nginx (`hhbd-blue-web:80` or `hhbd-green-web:80`), which `ci-deploy` rewrites at each switch |
 | `deploy/ovh/service.env` | | what the shared scripts and the deploy workflow read: the service, its images, and the containers whose log format is still to come |
 | | `/srv/hhbd/.env` | `IMAGE_TAG=<running tag>`, written by the host's `ci-deploy` |
-| | volumes `hhbd_db_data`, `hhbd_content` | the database and `content/` |
+| | volumes `hhbd_db_data`, `hhbd_pg_data`, `hhbd_content` | MariaDB's database, PostgreSQL's, and `content/` |
 
 Configuration goes in with `make ovh-install`. Images go out with a release, and every merge to
 `main` is one (#193): `.github/workflows/release.yml` refuses a merge whose pull request did not
@@ -168,13 +168,13 @@ runs one engine. Rehearsed on 2026-10-13 on a dump of production (#235), in a th
 The move, in this order. Writes made on MariaDB between step 4 and step 5 are lost: page views
 and logins of about a minute, at night; no import or edit runs then.
 
-1. Ahead of the night: `deploy/ovh/compose.yaml` gains the `postgres` service beside `db`, with
-   the backup's labels, the app still on MariaDB; `make ovh-install`, then its pull request
-   merged. Then `DB_ENGINE=postgresql make ovh-migrate` builds the schema, and `make
-   ovh-pg-copy` copies production's data once, as the rehearsal on production itself.
-2. On the night, PostgreSQL emptied for the real copy:
-   `DB_ENGINE=postgresql MIGRATE_ASSUME_YES=1 make ovh-migrate-down N=all`, then
-   `DB_ENGINE=postgresql make ovh-migrate`.
+1. Ahead of it: `deploy/ovh/compose.yaml` gains the `postgres` service beside `db`, with the
+   backup's labels and the whole database in memory (128 MB of shared buffers, `pg_prewarm`),
+   the app still on MariaDB; `make ovh-install`, then `make ovh-pg-up`, as a deploy starts the
+   request path's colours alone, and its pull request merged.
+2. `DB_ENGINE=postgresql make ovh-migrate` builds the schema in the empty database. A copy made
+   before, to try it, is emptied first: `DB_ENGINE=postgresql MIGRATE_ASSUME_YES=1 make
+   ovh-migrate-down N=all`.
 3. `make ovh-install` with the compose file whose app and importer say `DB_ADAPTER: pdo_pgsql`,
    `DB_HOST: postgres`, `DB_PORT: "5432"`. The running containers keep MariaDB until the next
    deploy.

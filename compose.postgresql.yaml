@@ -25,6 +25,9 @@ services:
 
   postgres:
     image: postgres:17-alpine
+    # The same flags as production (deploy/ovh/compose.yaml has the reasoning)
+    command: >
+      postgres -c shared_buffers=128MB -c effective_cache_size=192MB -c random_page_cost=1.1 -c shared_preload_libraries=pg_prewarm -c max_connections=40
     environment:
       POSTGRES_USER: hhbd
       POSTGRES_PASSWORD: hhbd_password
