@@ -5,8 +5,10 @@
 # NULL printed as NULL on both. Sourced, never run.
 #
 # What the engines write differently is a fragment from here, so a test's SQL reads the same
-# for both: json_get for a JSON field, agg for GROUP_CONCAT / string_agg. A test that checks
-# what one engine alone has (MariaDB's storage engines, PostgreSQL's collations) asks is_pg.
+# for both: json_get for a JSON field, json_len for a JSON array's length, agg for
+# GROUP_CONCAT / string_agg, txt for a number as text, SCHEMA_SQL for information_schema's
+# table_schema. A test that checks what one engine alone has (MariaDB's storage engines,
+# PostgreSQL's collations) asks is_pg.
 
 DB_ENGINE=${DB_ENGINE:-mariadb}
 case "$DB_ENGINE" in
@@ -53,3 +55,19 @@ agg() {
         printf "GROUP_CONCAT(%s ORDER BY %s SEPARATOR '%s')" "$1" "$2" "$sep"
     fi
 }
+
+# json_len <column> <key>: how many elements a top-level array field of a JSON column holds
+json_len() {
+    if is_pg; then printf "json_array_length(%s->'%s')" "$1" "$2"; else printf "JSON_LENGTH(%s, '\$.%s')" "$1" "$2"; fi
+}
+
+# txt <expression>: the expression as text, for a COALESCE or a CASE that gives a number a
+# text stand-in, such as '-' for NULL: PostgreSQL wants every branch of one type
+txt() {
+    if is_pg; then printf 'CAST(%s AS text)' "$1"; else printf 'CAST(%s AS CHAR)' "$1"; fi
+}
+
+# The schema information_schema's table_schema names this database by: the database itself on
+# MariaDB, the schema its tables are in on PostgreSQL
+# shellcheck disable=SC2034 # read by the tests that source this file
+if is_pg; then SCHEMA_SQL='current_schema()'; else SCHEMA_SQL='DATABASE()'; fi

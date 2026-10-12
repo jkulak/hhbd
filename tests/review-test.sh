@@ -18,8 +18,13 @@
 #
 # Usage: tests/review-test.sh [base URL of the running site, default http://localhost:8080]
 #
+# DB_ENGINE=postgresql runs it against the stack on PostgreSQL (compose.postgresql.yaml, #234):
+# the same checks, the resets through DB_ENGINE=postgresql make reset-db.
+#
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
+# shellcheck source=tests/lib-test-db.sh
+. tests/lib-test-db.sh
 
 URL=${1:-http://localhost:8080}
 T=$(mktemp -d "${TMPDIR:-/tmp}/hhbd-reviewtest.XXXXXX")
@@ -30,9 +35,6 @@ ok()  { echo "ok   $1"; pass=$((pass + 1)); }
 bad() { echo "x    $1"; fail=$((fail + 1)); }
 check() { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1"; echo "     expected: $2"; echo "     got:      $3"; fi; }
 
-sql() { # sql <statement>: in this project's database, as root
-    docker compose exec -T db sh -c 'MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?}" exec mariadb -uroot -N -B --default-character-set=utf8mb4 "${MYSQL_DATABASE:?}" -e "$1"' -- "$1"
-}
 # settle <item> <action> <value> <note> [token]: the panel's form, as the admin; prints the status
 settle() {
     curl -s -o /dev/null -w '%{http_code}' --max-time 20 -b "$T/jar" -c "$T/jar" \
@@ -40,10 +42,10 @@ settle() {
         --data-urlencode "value=$3" --data-urlencode "note=$4" --data-urlencode "back=/admin/do-przejrzenia.html" \
         "$URL/admin/do-przejrzenia/rozstrzygnij.html"
 }
-item() { sql "SELECT CONCAT_WS(' ', IFNULL(resolution, 'open'), IFNULL(resolved_by, '-'), resolved IS NOT NULL, IFNULL(note, '-')) FROM review_items WHERE id = $1"; }
+item() { sql "SELECT CONCAT_WS(' ', COALESCE(resolution, 'open'), COALESCE($(txt resolved_by), '-'), CASE WHEN resolved IS NULL THEN 0 ELSE 1 END, COALESCE(note, '-')) FROM review_items WHERE id = $1"; }
 # Every column that may hold an artist's id, and how many rows name artist $1 there.
 references() {
-    sql "SELECT CONCAT_WS(' ', $(sql "SELECT GROUP_CONCAT(CONCAT('(SELECT COUNT(*) FROM \`', table_name, '\` WHERE \`', column_name, '\` = $1)') SEPARATOR ', ') FROM information_schema.columns WHERE table_schema = DATABASE() AND column_name IN ('artistid', 'bandid', 'aid')"), (SELECT COUNT(*) FROM external_ids WHERE entity_type = 'artist' AND entity_id = $1), (SELECT COUNT(*) FROM import_provenance WHERE entity_type = 'artist' AND entity_id = $1), (SELECT COUNT(*) FROM hhb_comments WHERE com_object_type = 'p' AND com_object_id = $1))" | tr ' ' '\n' | awk '{ s += $1 } END { print s }'
+    sql "SELECT CONCAT_WS(' ', $(sql "SELECT $(agg "CONCAT('(SELECT COUNT(*) FROM ', table_name, ' WHERE ', column_name, ' = $1)')" "table_name, column_name" ', ') FROM information_schema.columns WHERE table_schema = $SCHEMA_SQL AND column_name IN ('artistid', 'bandid', 'aid')"), (SELECT COUNT(*) FROM external_ids WHERE entity_type = 'artist' AND entity_id = $1), (SELECT COUNT(*) FROM import_provenance WHERE entity_type = 'artist' AND entity_id = $1), (SELECT COUNT(*) FROM hhb_comments WHERE com_object_type = 'p' AND com_object_id = $1))" | tr ' ' '\n' | awk '{ s += $1 } END { print s }'
 }
 
 cleanup() {
@@ -77,14 +79,14 @@ check "from someone not logged in: sent to log in" "302" \
 check "and the item still open" "open - 0 -" "$(item 3)"
 check "an action the reason does not have changes nothing" "302 open - 0 -" "$(settle 3 merge 64 '') $(item 3)"
 check "a value that is no date is refused, the item left open" "302 open - 0 - 2013" \
-    "$(settle 3 pick '2013-02-30' '') $(item 3) $(sql "SELECT YEAR(year) FROM albums WHERE id = 50")"
+    "$(settle 3 pick '2013-02-30' '') $(item 3) $(sql "SELECT EXTRACT(YEAR FROM year) FROM albums WHERE id = 50")"
 
 echo "> merging Solar from Poznań into the SBM one"
 # The merge's list against the schema: a column that may hold an artist's id and is not on it
 # would be left naming an artist that is gone.
 covered=$(docker compose exec -T app php -r 'class Jkl_Model_Api {} require "/var/www/html/app/application/models/Edit/Api.php"; foreach (Model_Edit_Api::ARTIST_COLUMNS as $t => $cs) { foreach ($cs as $c) { echo "$t.$c\n"; } }' | sort | paste -sd' ' -)
 check "every column that may hold an artist's id is one the merge moves" \
-    "$(sql "SELECT CONCAT(table_name, '.', column_name) FROM information_schema.columns WHERE table_schema = DATABASE() AND column_name IN ('artistid', 'bandid', 'aid') ORDER BY 1" | sort | paste -sd' ' -)" "$covered"
+    "$(sql "SELECT CONCAT(table_name, '.', column_name) FROM information_schema.columns WHERE table_schema = $SCHEMA_SQL AND column_name IN ('artistid', 'bandid', 'aid') ORDER BY 1" | sort | paste -sd' ' -)" "$covered"
 # References of every kind for the duplicate, one of them a band membership the kept artist
 # has already.
 sql "INSERT INTO album_artist_lookup (albumid, artistid, role, position) VALUES (1, 65, 'featured', 3)"
@@ -105,12 +107,12 @@ check "the duplicate is gone, and its URL redirects to the kept one" "0 301 /sol
 check "the item closed by the admin, with the note" "merged 10 1 ten sam, inna wytwórnia" "$(item 1)"
 # The same merge as make edit's, journalled the same way (#115), through the panel.
 check "it is journalled as the command line's merges are, by the admin, through the panel" "merge-artists 10 panel ten sam, inna wytwórnia" \
-    "$(sql "SELECT CONCAT_WS(' ', o.operation, o.user_id, o.path, o.why) FROM edit_operations o JOIN review_items r ON o.id = JSON_VALUE(r.undo_data, '$.operation') WHERE r.id = 1")"
+    "$(sql "SELECT CONCAT_WS(' ', o.operation, o.user_id, o.path, o.why) FROM edit_operations o JOIN review_items r ON o.id = CAST($(json_get r.undo_data operation) AS INTEGER) WHERE r.id = 1")"
 check "with the artist deleted, every row moved, and the membership it had already dropped" "1 7 1" \
-    "$(sql "SELECT CONCAT_WS(' ', SUM(table_name = 'artists' AND action = 'deleted' AND JSON_VALUE(row_before, '$.disambiguation') = 'raper z Poznania'), SUM(action = 'changed' AND table_name <> 'artists'), SUM(table_name = 'band_lookup' AND action = 'deleted')) FROM edit_journal WHERE operation_id = (SELECT JSON_VALUE(undo_data, '$.operation') FROM review_items WHERE id = 1)")"
+    "$(sql "SELECT CONCAT_WS(' ', SUM(CASE WHEN table_name = 'artists' AND action = 'deleted' AND $(json_get row_before disambiguation) = 'raper z Poznania' THEN 1 ELSE 0 END), SUM(CASE WHEN action = 'changed' AND table_name <> 'artists' THEN 1 ELSE 0 END), SUM(CASE WHEN table_name = 'band_lookup' AND action = 'deleted' THEN 1 ELSE 0 END)) FROM edit_journal WHERE operation_id = (SELECT CAST($(json_get undo_data operation) AS INTEGER) FROM review_items WHERE id = 1)")"
 # updatedby names users, the table the catalogue's history is in; the admin's account (10) gets
 # a row there, linked by hhb_usr_id, the first time it edits (#132)
-admin_row=$(sql "SELECT ID FROM users WHERE hhb_usr_id = 10")
+admin_row=$(sql "SELECT id FROM users WHERE hhb_usr_id = 10")
 check "the admin's account has a users row of its own, under its name" "Admin" "$(sql "SELECT login FROM users WHERE hhb_usr_id = 10")"
 check "the kept artist is recorded as changed by the admin's users row, not the account's id" "$admin_row" "$(sql "SELECT updatedby FROM artists WHERE id = 64")"
 
@@ -135,18 +137,20 @@ complete() { # complete <item> <date> <label> <self>: the album page's form, as 
         --data-urlencode "date=$2" --data-urlencode "label=$3" --data-urlencode "self=$4" \
         --data-urlencode "note=" --data-urlencode "back=/admin/do-przejrzenia.html" "$URL/admin/do-przejrzenia/rozstrzygnij.html"
 }
-album782() { sql "SELECT CONCAT_WS(' ', status, IFNULL(labelid, '-'), self_released, year, release_date_precision) FROM albums WHERE id = 782"; }
+album782() { sql "SELECT CONCAT_WS(' ', status, COALESCE($(txt labelid), '-'), self_released, year, release_date_precision) FROM albums WHERE id = 782"; }
 check "the album's page gives the admin the form, with the labels to pick from" "3" \
     "$(curl -s --max-time 10 -b "$T/jar" "$URL/mes-bez-daty-a782.html" | grep -cE 'name="date"|name="label" list=|<option value="Alkopoligamia">')"
 check "a label and a self-release at once are refused, nothing changed" "302 open 0 - 0 2017-01-01 year" \
-    "$(complete 9 '' 'Alkopoligamia' 1) $(sql "SELECT IFNULL(resolution, 'open') FROM review_items WHERE id = 9") $(album782)"
+    "$(complete 9 '' 'Alkopoligamia' 1) $(sql "SELECT COALESCE(resolution, 'open') FROM review_items WHERE id = 9") $(album782)"
 check "a label it does not have is refused" "302 0 - 0" "$(complete 9 '' 'Nie Ma Takiej' '') $(album782 | cut -d' ' -f1-3)"
 check "the label alone is written, and the item says the day is still missing" "302 open brak: data dzienna 0 58 0" \
-    "$(complete 9 '' 'Alkopoligamia' '') $(sql "SELECT CONCAT_WS(' ', IFNULL(resolution, 'open'), JSON_VALUE(detail, '$.text')) FROM review_items WHERE id = 9") $(album782 | cut -d' ' -f1-3)"
+    "$(complete 9 '' 'Alkopoligamia' '') $(sql "SELECT CONCAT_WS(' ', COALESCE(resolution, 'open'), $(json_get detail text)) FROM review_items WHERE id = 9") $(album782 | cut -d' ' -f1-3)"
 check "the day, in another year than it had, completes it: published, the item closed by the admin" "302 completed 10 1 999 58 0 2016-11-03 day" \
-    "$(complete 9 '2016-11-03' '' '') $(sql "SELECT CONCAT_WS(' ', resolution, resolved_by, resolved IS NOT NULL) FROM review_items WHERE id = 9") $(album782)"
+    "$(complete 9 '2016-11-03' '' '') $(sql "SELECT CONCAT_WS(' ', resolution, resolved_by, CASE WHEN resolved IS NULL THEN 0 ELSE 1 END) FROM review_items WHERE id = 9") $(album782)"
+# The text of the id, whether the journal wrote it as a number or a string: JSON_VALUE and ->>
+# give both as '782'
 check "every change went through the edit journal, from the panel, with its reason" "3 panel review item 9: uzupełnione na stronie albumu" \
-    "$(sql "SELECT CONCAT_WS(' ', COUNT(*), MIN(path), MIN(why)) FROM edit_operations WHERE JSON_VALUE(args, '$.id') = '782' OR JSON_VALUE(args, '$.id') = 782")"
+    "$(sql "SELECT CONCAT_WS(' ', COUNT(*), MIN(path), MIN(why)) FROM edit_operations WHERE $(json_get args id) = '782'")"
 check "and a visitor opens it" "200" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL/mes-bez-daty-a782.html")"
 
 echo "> an album an import left unpublished, published as it is (#168)"
