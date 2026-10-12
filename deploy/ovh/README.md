@@ -10,13 +10,13 @@ day, and with it every script that deployed there.
 
 | In this repo | On the host | What |
 |---|---|---|
-| `deploy/ovh/compose.yaml` | `/srv/hhbd/compose.yaml` | the stack: nginx, app, db, and the importer job; nothing published |
+| `deploy/ovh/compose.yaml` | `/srv/hhbd/compose.yaml` | the stack: nginx, app, db (MariaDB), postgres beside it until the move (#236), and the importer job; nothing published |
 | `deploy/ovh/hhbd.enc.env` | `/srv/hhbd/hhbd.enc.env` | the secrets, SOPS-encrypted to the host and personal age keys |
 | `deploy/ovh/hhbd.pl.caddyfile` | `/srv/edge/sites/hhbd.pl.caddyfile` | how the shared edge reaches nginx: through the live upstream below |
 | | `/srv/edge/live/hhbd.caddyfile` | the live colour's nginx (`hhbd-blue-web:80` or `hhbd-green-web:80`), which `ci-deploy` rewrites at each switch |
 | `deploy/ovh/service.env` | | what the shared scripts and the deploy workflow read: the service, its images, and the containers whose log format is still to come |
 | | `/srv/hhbd/.env` | `IMAGE_TAG=<running tag>`, written by the host's `ci-deploy` |
-| | volumes `hhbd_db_data`, `hhbd_content` | the database and `content/` |
+| | volumes `hhbd_db_data`, `hhbd_pg_data`, `hhbd_content` | MariaDB's database, PostgreSQL's, and `content/` |
 
 Configuration goes in with `make ovh-install`. Images go out with a release, and every merge to
 `main` is one (#193): `.github/workflows/release.yml` refuses a merge whose pull request did not

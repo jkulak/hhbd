@@ -192,9 +192,43 @@ services:
         limits:
           memory: 320M
 
+  # PostgreSQL 17, hhbd's database once production moves to it (#229, #236): the one engine
+  # the host's services run, bankdata's version. Beside MariaDB until the move; the app reads
+  # it once its environment says DB_ADAPTER=pdo_pgsql. The schema comes from
+  # database/migrations-postgresql (DB_ENGINE=postgresql make ovh-migrate), the data from
+  # make ovh-pg-copy; the cluster sorts in Polish, ICU's pl, set when it is made. The role is the
+  # image's superuser, hhbd, with the password the app uses, which the host's nightly backup
+  # dumps as (its CONTRACT.md §8).
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    labels:
+      backup.postgres: hhbd
+      backup.user: hhbd
+    environment:
+      POSTGRES_USER: hhbd
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?}
+      POSTGRES_DB: hhbd
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=pl-PL --locale=C.UTF-8"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      # Accepts connections to hhbd's database.
+      test: ["CMD", "pg_isready", "-U", "hhbd", "-d", "hhbd"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
 volumes:
   # The database. Backed up as a dump, as db's labels say, not as a volume.
   db_data:
+  # PostgreSQL's (#236). Backed up as a dump too, as postgres's labels say.
+  pg_data:
   # Covers, photos and logos, hhbd_content on the host. nginx reads it, and the importer job is
   # the one thing that writes it since the backoffice was archived. Backed up as a volume.
   content:

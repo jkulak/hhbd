@@ -6,6 +6,8 @@
 #
 # What it proves:
 #   - every container becomes healthy (`up --wait`, which is how ci-deploy judges a deploy)
+#   - PostgreSQL beside MariaDB sorts in Polish, carries the backup's labels, takes its schema
+#     from its migration and the copy as make ovh-pg-copy makes it (#236)
 #   - nothing is published on the host, and the database runs the cache sizes chosen in #67,
 #     which compose.yaml and compose.ci.yaml share
 #   - the importer's image writes the fixtures' images into the content volume, and the smoke
@@ -170,6 +172,22 @@ check "the database runs with production's cache sizes (buffer pool, key cache, 
     "$(docker exec "$PROJECT-db-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -uroot -N -B -e "SELECT CONCAT_WS(\" \", @@innodb_buffer_pool_size, @@key_buffer_size, @@aria_pagecache_buffer_size)"')"
 check "the database runs with NO_ZERO_IN_DATE and NO_ZERO_DATE (#88)" "1 1" \
     "$(docker exec "$PROJECT-db-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -uroot -N -B -e "SELECT CONCAT_WS(\" \", FIND_IN_SET(\"NO_ZERO_IN_DATE\", @@GLOBAL.sql_mode) > 0, FIND_IN_SET(\"NO_ZERO_DATE\", @@GLOBAL.sql_mode) > 0)"')"
+# PostgreSQL beside MariaDB, on the way to it (#236): its cluster sorts in Polish, the host's
+# backup finds it by its labels, the schema comes from its migration, and the copy the move
+# makes runs as make ovh-pg-copy runs it, in a one-off app container of this stack.
+check "PostgreSQL's database sorts in Polish (ICU pl-PL)" "i pl-PL" \
+    "$(docker exec "$PROJECT-postgres-1" psql -U hhbd -d hhbd -Atc "SELECT datlocprovider || ' ' || datlocale FROM pg_database WHERE datname = 'hhbd'")"
+check "the host's backup dumps it as hhbd (CONTRACT.md §8)" "hhbd hhbd" \
+    "$(docker inspect "$PROJECT-postgres-1" --format '{{index .Config.Labels "backup.postgres"}} {{index .Config.Labels "backup.user"}}')"
+DB_ENGINE=postgresql MIGRATE_TARGET=container MIGRATE_CONTAINER="$PROJECT-postgres-1" ./scripts/migrate.sh up >/dev/null
+if compose run --rm --no-deps -T app php /var/www/html/app/tools/mariadb-to-postgres.php copy >"$T/pg-copy" 2>&1 \
+    && grep -q 'every one the same on both sides' "$T/pg-copy"; then
+    ok "the copy into PostgreSQL runs in the stack's app container and proves every table"
+else
+    bad "the copy into PostgreSQL runs in the stack's app container and proves every table"
+    tail -5 "$T/pg-copy"
+fi
+
 db_flags() { sed -n '/^  db:/,/^  [a-z]/p' "$1" | sed -n '/command: >/{n;p;}' | sed 's/^ *//'; }
 check "compose.yaml and compose.ci.yaml run the database with production's flags" \
     "$(db_flags deploy/ovh/compose.yaml) | $(db_flags deploy/ovh/compose.yaml)" "$(db_flags compose.yaml) | $(db_flags compose.ci.yaml)"
