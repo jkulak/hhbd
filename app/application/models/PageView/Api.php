@@ -73,13 +73,13 @@ class Model_PageView_Api extends Jkl_Model_Api
      *
      * @return int[]
      */
-    public function mostViewedSince($type, $since, $count, $shown = '1')
+    public function mostViewedSince($type, $since, $count, $shown = '1 = 1')
     {
         if (!isset(self::TYPES[$type])) {
             throw new InvalidArgumentException(sprintf('No page type "%s"', $type));
         }
         $rows = $this->_db->fetchAll(
-            'SELECT t3.id FROM page_views pv JOIN `' . self::TYPES[$type] . '` t3 ON t3.id = pv.entity_id
+            'SELECT t3.id FROM page_views pv JOIN ' . self::TYPES[$type] . ' t3 ON t3.id = pv.entity_id
               WHERE pv.entity_type = ? AND pv.day >= ? AND ' . $shown . '
               GROUP BY t3.id ORDER BY SUM(pv.views) DESC, t3.id LIMIT ' . (int) $count,
             array($type, $since)
@@ -107,7 +107,7 @@ class Model_PageView_Api extends Jkl_Model_Api
             array($type, (int) $id, min($since))
         );
         $views = self::sumSince($rows, $since);
-        $total = $this->_db->fetchAll('SELECT viewed FROM `' . self::TYPES[$type] . '` WHERE id = ?', array((int) $id));
+        $total = $this->_db->fetchAll('SELECT viewed FROM ' . self::TYPES[$type] . ' WHERE id = ?', array((int) $id));
         $views[''] = empty($total) ? 0 : (int) $total[0]['viewed'];
         return $views;
     }
@@ -166,10 +166,12 @@ class Model_PageView_Api extends Jkl_Model_Api
         $session->day = $day;
         $session->seen = $seen;
 
-        $this->_db->query('UPDATE `' . self::TYPES[$type] . '` SET viewed = viewed + 1 WHERE id = ?', array($id));
-        $this->_db->query(
-            'INSERT INTO page_views (entity_type, entity_id, day, views) VALUES (?, ?, ?, 1) ON DUPLICATE KEY UPDATE views = views + 1',
-            array($type, $id, $day)
+        $this->_db->query('UPDATE ' . self::TYPES[$type] . ' SET viewed = viewed + 1 WHERE id = ?', array($id));
+        $this->_db->upsert(
+            'page_views',
+            array('entity_type' => $type, 'entity_id' => $id, 'day' => $day, 'views' => 1),
+            array('views' => 'page_views.views + 1'),
+            array('entity_type', 'day', 'entity_id')
         );
         return true;
     }

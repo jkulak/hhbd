@@ -74,8 +74,7 @@ class Model_Image_Api extends Jkl_Model_Api
 
     public function getArtistPhoto($id)
     {
-        $query = 'SELECT * FROM artists_photos WHERE (artistid=' . $id . ' AND main="y")';
-        $result = $this->_db->fetchAll($query);
+        $result = $this->_db->fetchAll("SELECT * FROM artists_photos WHERE artistid = ? AND main = 'y'", array((int) $id));
         $pictures = new Jkl_List('Picture list');
         if (sizeof($result) != 0) {
             foreach ($result as $key => $value) {
@@ -91,8 +90,9 @@ class Model_Image_Api extends Jkl_Model_Api
 
     public function getArtistPhotos($id)
     {
-        // The main photo first, then the others in the order they came (#61).
-        $query = 'SELECT * FROM artists_photos WHERE (artistid=' . intval($id) . ') ORDER BY main, id';
+        // The main photo first, then the others in the order they came (#61). Said with a CASE:
+        // MariaDB sorts the enum by its order, 'y' first, PostgreSQL would sort the letters (#231).
+        $query = 'SELECT * FROM artists_photos WHERE (artistid=' . intval($id) . ") ORDER BY CASE main WHEN 'y' THEN 0 ELSE 1 END, id";
         $result = $this->_db->fetchAll($query);
         $pictures = new Jkl_List('Picture list');
         if (sizeof($result) != 0) {

@@ -19,6 +19,13 @@ which the note leaves out. The sections before, by version, stay as they were.
   lyrics no longer puts the song's id from the address into a query as it came, which let a
   logged-in account change the query; a percent sign searched for is no longer a wildcard.
 
+### Internal
+- The application's SQL is written so MariaDB and PostgreSQL both run it, the first step of the
+  move to PostgreSQL (#231, #229). Its MariaDB sessions run with ANSI_QUOTES and
+  ONLY_FULL_GROUP_BY, so SQL PostgreSQL would refuse fails a test on MariaDB too, and the few
+  things the engines say differently, an upsert, the search's LIKE, one row of several alike, a
+  table's unique keys, a duplicate key's error, go through Jkl_Db.
+
 ## 2026-10-11
 
 - Every merge to `main` now releases and deploys itself, so a finished change reaches hhbd.pl

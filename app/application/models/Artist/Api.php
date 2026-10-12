@@ -69,7 +69,7 @@ class Model_Artist_Api extends Jkl_Model_Api
 
         foreach ($result as $params) {
             $params['aka'] = $this->_getAka($params['art_id']);
-            $params['albumCount'] = Model_Album_Api::getInstance()->getArtistsAlbumsCount($params['art_id']);
+            $params['album_count'] = Model_Album_Api::getInstance()->getArtistsAlbumsCount($params['art_id']);
             $artists->add(new Model_Artist_Container($params));
         }
 
@@ -84,7 +84,7 @@ class Model_Artist_Api extends Jkl_Model_Api
 
         $query = "SELECT *, t1.id as art_id
               FROM artists AS t1
-              WHERE (t1.name LIKE ? COLLATE " . self::SEARCH_COLLATION . ")
+              WHERE (" . $this->_db->searchLike('t1.name') . ")
               ORDER BY t1.viewed DESC" .
                   (($limit != null) ? ' LIMIT ' . $limit . ' OFFSET ' . ($page * $limit) : '');
 
@@ -93,7 +93,7 @@ class Model_Artist_Api extends Jkl_Model_Api
 
         foreach ($result as $params) {
             $params['aka'] = $this->_getAka($params['art_id']);
-            $params['albumCount'] = Model_Album_Api::getInstance()->getArtistsAlbumsCount($params['art_id']);
+            $params['album_count'] = Model_Album_Api::getInstance()->getArtistsAlbumsCount($params['art_id']);
             $artists->add(new Model_Artist_Container($params));
         }
 
@@ -107,8 +107,8 @@ class Model_Artist_Api extends Jkl_Model_Api
         $page = ($page < 1) ? 0 : $page;
 
         $query = "SELECT *, t1.id AS art_id 
-              FROM `artists` t1, `altnames_lookup` t2
-              WHERE (t1.id=t2.`artistid` AND t2.`altname` LIKE ? COLLATE " . self::SEARCH_COLLATION . ")" .
+              FROM artists t1, altnames_lookup t2
+              WHERE (t1.id=t2.artistid AND " . $this->_db->searchLike('t2.altname') . ")" .
                   "ORDER BY t1.viewed DESC" .
                   (($limit != null) ? ' LIMIT ' . $limit : '') .
                   ' OFFSET ' . ($page * $limit);
@@ -118,7 +118,7 @@ class Model_Artist_Api extends Jkl_Model_Api
 
         foreach ($result as $params) {
             $params['aka'] = $this->_getAka($params['art_id']);
-            $params['albumCount'] = Model_Album_Api::getInstance()->getArtistsAlbumsCount($params['art_id']);
+            $params['album_count'] = Model_Album_Api::getInstance()->getArtistsAlbumsCount($params['art_id']);
             $artists->add(new Model_Artist_Container($params));
         }
 
@@ -129,7 +129,7 @@ class Model_Artist_Api extends Jkl_Model_Api
     {
         $limit = intval($limit);
         $query = 'SELECT *, t1.id as art_id, ' .
-          '(SELECT COUNT(*) FROM hhb_comments WHERE com_object_id = t1.id AND com_object_type = "p") as comment_count ' .
+          '(SELECT COUNT(*) FROM hhb_comments WHERE com_object_id = t1.id AND com_object_type = \'p\') as comment_count ' .
           'FROM artists AS t1 ' .
           'ORDER BY t1.viewed DESC ' .
           (($limit) ? 'LIMIT ' . $limit : '');
@@ -159,8 +159,8 @@ class Model_Artist_Api extends Jkl_Model_Api
         }
         $rows = $this->_db->fetchAll(
             'SELECT *, t1.id as art_id, ' .
-            '(SELECT COUNT(*) FROM hhb_comments WHERE com_object_id = t1.id AND com_object_type = "p") as comment_count ' .
-            'FROM artists AS t1 WHERE t1.id IN (' . implode(', ', $ids) . ') ORDER BY FIELD(t1.id, ' . implode(', ', $ids) . ')'
+            '(SELECT COUNT(*) FROM hhb_comments WHERE com_object_id = t1.id AND com_object_type = \'p\') as comment_count ' .
+            'FROM artists AS t1 WHERE t1.id IN (' . implode(', ', $ids) . ') ORDER BY ' . Jkl_Db::inOrder('t1.id', $ids)
         );
         return array($this->_popularList($rows), $counted);
     }
@@ -172,7 +172,7 @@ class Model_Artist_Api extends Jkl_Model_Api
 
         foreach ($result as $params) {
             $params['aka'] = $this->_getAka($params['art_id']);
-            $params['albumCount'] = Model_Album_Api::getInstance()->getArtistsAlbumsCount($params['art_id']);
+            $params['album_count'] = Model_Album_Api::getInstance()->getArtistsAlbumsCount($params['art_id']);
             $params['photo'] = Model_Image_Api::getInstance()->getArtistPhoto($params['art_id']);
             $artists->add(new Model_Artist_Container($params));
         }
@@ -255,11 +255,11 @@ class Model_Artist_Api extends Jkl_Model_Api
         $id = intval($id);
         // Sorting a join needs a temporary table, which goes to disk when it holds a TEXT
         // column (#69): the role's name is cut to the length a role has.
-        $query = 'SELECT t1.id as art_id, CAST(t3.feattype AS CHAR(64)) AS feattype ' .
+        $query = 'SELECT t1.id as art_id, LEFT(t3.feattype, 64) AS feattype ' .
           'FROM artists t1, feature_lookup t2, feattypes t3 ' .
-          'WHERE (t2.artistid=t1.id AND t3.id=t2.feattype AND t2.songid="' . $id . '") ' .
+          'WHERE (t2.artistid=t1.id AND t3.id=t2.feattype AND t2.songid = ?) ' .
           'ORDER BY t1.name';
-        $result = $this->_db->fetchAll($query);
+        $result = $this->_db->fetchAll($query, array($id));
         $featuring = new Jkl_List();
         foreach ($result as $params) {
             $artist = $this->find($params['art_id']);
@@ -306,11 +306,11 @@ class Model_Artist_Api extends Jkl_Model_Api
     public function getWithMostProjectAlbums($limit = 10)
     {
         $limit = intval($limit);
-        $query = "SELECT t4.`id` AS art_id, t4.`name`, t4.`disambiguation`, count(*) AS albumCount
+        $query = "SELECT t4.id AS art_id, t4.name, t4.disambiguation, count(*) AS album_count
      FROM albums t1, album_artist_lookup t2, band_lookup t3, artists t4
-     WHERE (t3.`bandid`=t2.`artistid` AND t3.`artistid`=t4.`id` AND t1.`id`=t2.`albumid` AND t1.`status`=" . Model_Album_Api::PUBLISHED . ")
-     GROUP BY t4.id
-     ORDER BY albumCount DESC" .
+     WHERE (t3.bandid=t2.artistid AND t3.artistid=t4.id AND t1.id=t2.albumid AND t1.status=" . Model_Album_Api::PUBLISHED . ")
+     GROUP BY t4.id, t4.name, t4.disambiguation
+     ORDER BY album_count DESC" .
         (($limit != null) ? ' LIMIT ' . $limit : '');
 
         return $this->getList($query);
@@ -320,11 +320,11 @@ class Model_Artist_Api extends Jkl_Model_Api
     {
         $limit = intval($limit);
 
-        $query = "SELECT t3.`id` AS art_id, t3.`name`, t3.`disambiguation`, count(*) AS albumCount
+        $query = "SELECT t3.id AS art_id, t3.name, t3.disambiguation, count(*) AS album_count
      FROM albums t1, album_artist_lookup t2, artists t3
-     WHERE (t3.`id`=t2.`artistid` AND t1.`id`=t2.`albumid` AND t3.`id`<>190 AND t1.`status`=" . Model_Album_Api::PUBLISHED . ")
-     GROUP BY t3.id
-     ORDER BY albumCount DESC" .
+     WHERE (t3.id=t2.artistid AND t1.id=t2.albumid AND t3.id<>190 AND t1.status=" . Model_Album_Api::PUBLISHED . ")
+     GROUP BY t3.id, t3.name, t3.disambiguation
+     ORDER BY album_count DESC" .
         (($limit != null) ? ' LIMIT ' . $limit : '');
 
         return $this->getList($query);
@@ -333,9 +333,9 @@ class Model_Artist_Api extends Jkl_Model_Api
     public function getRecentlyAdded($limit = 10)
     {
         $limit = intval($limit);
-        $query = "SELECT t1.id AS art_id, t1.`name`, t1.`disambiguation`
+        $query = "SELECT t1.id AS art_id, t1.name, t1.disambiguation
     FROM artists t1
-    ORDER BY t1.`added` DESC" .
+    ORDER BY t1.added DESC" .
         (($limit != null) ? ' LIMIT ' . $limit : '');
 
         return $this->getList($query);
@@ -359,7 +359,7 @@ class Model_Artist_Api extends Jkl_Model_Api
     {
         $query = "SELECT count(*) as count
               FROM artists AS t1
-              WHERE t1.name LIKE ? COLLATE " . self::SEARCH_COLLATION;
+              WHERE " . $this->_db->searchLike('t1.name');
         $result = $this->_db->fetchAll($query, array(Jkl_Db::contains($like)));
         return intval($result[0]['count']);
     }

@@ -298,7 +298,7 @@ class Model_Review_Api extends Jkl_Model_Api
             throw new RuntimeException(sprintf('%s is not a date.', $value));
         }
         $this->_db->query(
-            'UPDATE albums SET year = ?, release_date_precision = ?, announced = (? > CURDATE()) WHERE id = ?',
+            'UPDATE albums SET year = ?, release_date_precision = ?, announced = CASE WHEN ? > CURRENT_DATE THEN 1 ELSE 0 END WHERE id = ?',
             array($date, $precision, $date, $albumId)
         );
         $this->touch('albums', $albumId, $userId);
@@ -317,7 +317,7 @@ class Model_Review_Api extends Jkl_Model_Api
     private function touch($table, $id, $userId)
     {
         $this->_db->query(
-            "UPDATE `$table` SET updatedby = ?, updated = NOW() WHERE id = ?",
+            "UPDATE $table SET updatedby = ?, updated = NOW() WHERE id = ?",
             array(Model_Audit_Api::getInstance()->userIdFor($userId), (int) $id)
         );
     }

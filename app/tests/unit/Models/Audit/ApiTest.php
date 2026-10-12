@@ -44,7 +44,7 @@ class Model_Audit_ApiTest extends TestCase
 
     public function testALinkedAccountWritesAsItsRow(): void
     {
-        $db = $this->db(array('SELECT ID FROM users' => array(array('ID' => '1'))));
+        $db = $this->db(array('SELECT ID AS id FROM users' => array(array('id' => '1'))));
 
         $this->assertSame(1, (new Model_Audit_Api($db))->userIdFor(67));
         $this->assertSame(array(), $db->writes);

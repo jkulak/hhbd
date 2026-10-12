@@ -30,7 +30,7 @@ class Model_City_Api extends Jkl_Model_Api
     public function getArtistCities($id)
     {
         $query = 'SELECT t1.name AS city FROM cities AS t1, artists AS t2, artist_city_lookup AS t3 ' .
-               'WHERE (t3.cityid=t1.id AND t3.artistid=t2.id AND t2.id=' . $id . ')';
+               'WHERE (t3.cityid=t1.id AND t3.artistid=t2.id AND t2.id=' . intval($id) . ') ORDER BY t1.name';
         $result = $this->_db->fetchAll($query);
         $list = new Jkl_List('Also known as list');
         foreach ($result as $key => $value) {

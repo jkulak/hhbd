@@ -53,6 +53,6 @@ class SearchControllerTest extends TestCase
 
     public function testEverySearchComparesWithoutCaseOrPolishLetters(): void
     {
-        $this->assertSame('utf8mb4_uca1400_ai_ci', Jkl_Model_Api::SEARCH_COLLATION);
+        $this->assertSame('utf8mb4_uca1400_ai_ci', Jkl_Db::SEARCH_COLLATION);
     }
 }

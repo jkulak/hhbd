@@ -42,8 +42,7 @@ class Model_Rating_Api extends Jkl_Model_Api
 
     public function getAlbumVoteCount($id)
     {
-        $query = 'SELECT COUNT(id) as votecount FROM ratings WHERE albumid="' . $id . '"';
-        $result = $this->_db->fetchAll($query);
+        $result = $this->_db->fetchAll('SELECT COUNT(id) as votecount FROM ratings WHERE albumid = ?', array((int) $id));
         return $result[0]['votecount'];
     }
 }
