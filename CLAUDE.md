@@ -241,6 +241,7 @@ Production itself runs `deploy/ovh/compose.yaml` on the shared OVH host, behind 
   - Models: `Model_Album_Api`, `Model_Album_Container`
   - Library: `Jkl_Tools_String`, `Jkl_Db`
 - File paths match class names (e.g., `Jkl_Tools_String` → `library/Jkl/Tools/String.php`)
+- A value from a request reaches SQL as a bound parameter, `$this->_db->fetchAll($sql, $bind)`, never concatenated or escaped into the query; a LIKE pattern is `Jkl_Db::contains()` or `startsWith()` (#230)
 
 ## CI/CD
 

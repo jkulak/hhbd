@@ -50,10 +50,9 @@ class Model_Song_Api extends Jkl_Model_Api
     /**
      * Creates object and fetches the list from database result
      */
-    private function _getList($query)
+    private function _getList($query, array $bind = array())
     {
-        $result = $this->_db->fetchAll($query);
-        ;
+        $result = $this->_db->fetchAll($query, $bind);
         $list = new Jkl_List();
         foreach ($result as $params) {
             $list->add(new Model_Song_Container($params));
@@ -272,27 +271,25 @@ class Model_Song_Api extends Jkl_Model_Api
 
     public function getLike($like, $limit = 25, $page = 1)
     {
-        $like = Jkl_Db::escape($like);
         $limit = intval($limit);
         $page = intval($page - 1);
         $page = ($page < 1) ? 0 : $page;
 
         $query = "SELECT *, t1.id as song_id
               FROM songs t1
-              WHERE t1.title LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION . " AND t1.id " . self::SHOWN . "
+              WHERE t1.title LIKE ? COLLATE " . self::SEARCH_COLLATION . " AND t1.id " . self::SHOWN . "
               ORDER BY t1.viewed DESC" .
                   (($limit != null) ? ' LIMIT ' . $limit : '') .
                   ' OFFSET ' . ($page * $limit);
-        return $this->_getList($query);
+        return $this->_getList($query, array(Jkl_Db::contains($like)));
     }
 
     public function getLikeCount($like = '')
     {
-        $like = Jkl_Db::escape($like);
         $query = "SELECT count(*) as count
               FROM songs AS t1
-              WHERE t1.title LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION . " AND t1.id " . self::SHOWN;
-        $result = $this->_db->fetchAll($query);
+              WHERE t1.title LIKE ? COLLATE " . self::SEARCH_COLLATION . " AND t1.id " . self::SHOWN;
+        $result = $this->_db->fetchAll($query, array(Jkl_Db::contains($like)));
         return intval($result[0]['count']);
     }
 
@@ -315,18 +312,17 @@ class Model_Song_Api extends Jkl_Model_Api
             $action = self::LYRICS_ACTION_DELETE;
         }
 
+        // Bound, never escaped into the query: the id came straight from the request and went
+        // into the INSERT as it was, and the lyrics were escaped the way only MySQL reads (#230).
         $id = intval($songId);
-        $lyrics = addslashes($lyrics);
-        $userId = intval($userId);
-
-        $query = 'UPDATE songs SET lyrics="' . $lyrics . '" WHERE id=' . $id;
-        $result = $this->_db->query($query);
+        $result = $this->_db->query('UPDATE songs SET lyrics = ? WHERE id = ?', array($lyrics, $id));
 
         // if 1 row was updated save information who did the lyrics editing
         if ($result->rowCount() == 1) {
-            $query = 'INSERT INTO hhb_user_lyrics_edit
-        SET ule_lyrics_id="' . $songId . '", ule_user_id="' . $userId . '", ule_action_type="' . $action . '", ule_lyrics="' . $lyrics . '", ule_action_timestamp="' . date("Y-m-d H:i:s") . '"';
-            $subResult = $this->_db->query($query);
+            $this->_db->query(
+                'INSERT INTO hhb_user_lyrics_edit (ule_lyrics_id, ule_user_id, ule_action_type, ule_lyrics, ule_action_timestamp) VALUES (?, ?, ?, ?, ?)',
+                array($id, intval($userId), $action, $lyrics, date('Y-m-d H:i:s'))
+            );
         }
 
         /*

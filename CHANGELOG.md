@@ -12,6 +12,13 @@ merge names the release. Each change is a bullet whose first sentence stands alo
 the release's note; changes to the build, the tests, CI or the deploy go under `### Internal`,
 which the note leaves out. The sections before, by version, stay as they were.
 
+## 2026-10-13
+
+- Searches, comments and lyrics reach the database as bound values, never escaped into the SQL
+  text, so a quote or a backslash in them is stored and searched for as typed (#230). Saving
+  lyrics no longer puts the song's id from the address into a query as it came, which let a
+  logged-in account change the query; a percent sign searched for is no longer a wildcard.
+
 ## 2026-10-11
 
 - Every merge to `main` now releases and deploys itself, so a finished change reaches hhbd.pl

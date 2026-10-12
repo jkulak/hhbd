@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Comment Api
  *
@@ -10,65 +11,59 @@
 
 class Model_Comment_Api extends Jkl_Model_Api
 {
-  
-  static private $_instance;
-  
-  /**
-   * Singleton instance
-   *
-   * @return Model_Comment_Api
-   */
-  public static function getInstance()
-  {
-      if (null === self::$_instance) {
-          self::$_instance = new self();
-      }
-      return self::$_instance;
-  }
+    private static $_instance;
 
-  /**
-   * Creates object and fetches the list from database result
-   */
-  private function _getList($query)
-  {
-    $result = $this->_db->fetchAll($query);
-    $list = new Jkl_List(); 
-    foreach ($result as $params) {
-      $list->add(new Model_Comment_Container($params));
+    /**
+     * Singleton instance
+     *
+     * @return Model_Comment_Api
+     */
+    public static function getInstance()
+    {
+        if (null === self::$_instance) {
+            self::$_instance = new self();
+        }
+        return self::$_instance;
     }
-    return $list;
-  }
-  
-  public function postComment($content, $author, $authorIp, $objectId, $objectType, $authorId = null)
-  {
-    $content = addslashes($content);
-    $author = addslashes($author);
-    $authorIp = addslashes($authorIp);
-    $objectType = addslashes($objectType);
-    $objectId = intval($objectId);
-    $authorId = intval($authorId);
-  
-    $query = "INSERT INTO hhb_comments
+
+    /**
+     * Creates object and fetches the list from database result
+     */
+    private function _getList($query)
+    {
+        $result = $this->_db->fetchAll($query);
+        $list = new Jkl_List();
+        foreach ($result as $params) {
+            $list->add(new Model_Comment_Container($params));
+        }
+        return $list;
+    }
+
+    /** A comment as its author wrote it, every value bound rather than escaped (#230) */
+    public function postComment($content, $author, $authorIp, $objectId, $objectType, $authorId = null)
+    {
+        $this->_db->query(
+            'INSERT INTO hhb_comments
               (com_content, com_author, com_author_ip, com_author_id, com_object_type, com_object_id, com_added)
-              VALUES ('$content', '$author', '$authorIp', '$authorId', '$objectType', '$objectId', '" . date("Y-m-d H:i:s") . "')";
-              
-    $result = $this->_db->query($query);
-    return true;
-  }
-  
-  
-  public function getComments($id, $type, $page = 0, $limit = 250) {
-    $id = intval($id);
-    $type = strval($type[0]);
-    $page = intval($page);
-    $limit = intval($limit);
-    
-    $query = "SELECT *
+              VALUES (?, ?, ?, ?, ?, ?, ?)',
+            array((string) $content, (string) $author, (string) $authorIp, intval($authorId), (string) $objectType, intval($objectId), date('Y-m-d H:i:s'))
+        );
+        return true;
+    }
+
+    public function getComments($id, $type, $page = 0, $limit = 250)
+    {
+        $id = intval($id);
+        $type = strval($type[0]);
+        $page = intval($page);
+        $limit = intval($limit);
+
+        $query = "SELECT *
               FROM hhb_comments
               WHERE (com_object_id='$id' AND com_object_type='$type')
               ORDER BY com_added DESC" .
-              (($limit != null)?' LIMIT ' . $limit:'') .
-              ' OFFSET ' . ($page*$limit);
-    return $this->_getList($query);
-  }
+                  (($limit != null) ? ' LIMIT ' . $limit : '') .
+                  ' OFFSET ' . ($page * $limit);
+        return $this->_getList($query);
+    }
 }
