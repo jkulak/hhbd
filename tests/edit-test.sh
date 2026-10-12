@@ -14,12 +14,15 @@
 #   - an operation is undone once, and an undo is not undone
 #   - the merges and deletes know every albumid and labelid column the schema has
 #
-# It ends with make reset-db, so the database ends as a reset leaves it.
+# It ends with make reset-db, so the database ends as a reset leaves it. DB_ENGINE=postgresql
+# runs it all on PostgreSQL, on the stack compose.postgresql.yaml makes (#234).
 #
 # Usage: tests/edit-test.sh [base URL of the running site, default http://localhost:8080]
 #
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
+# shellcheck source=tests/lib-test-db.sh
+. tests/lib-test-db.sh
 
 URL=${1:-http://localhost:8080}
 T=$(mktemp -d "${TMPDIR:-/tmp}/hhbd-edittest.XXXXXX")
@@ -30,14 +33,21 @@ ok()  { echo "ok   $1"; pass=$((pass + 1)); }
 bad() { echo "x    $1"; fail=$((fail + 1)); }
 check() { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1"; echo "     expected: $2"; echo "     got:      $3"; fi; }
 
-sql() { # sql <statement>: in this project's database, as root
-    docker compose exec -T db sh -c 'MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?}" exec mariadb -uroot -N -B "${MYSQL_DATABASE:?}" -e "$1"' -- "$1"
-}
-# Every row of every table but the journal's own, one INSERT a line, sorted: a table without a
+# The database's own schema, for information_schema
+if is_pg; then SCHEMA='current_schema()'; else SCHEMA='DATABASE()'; fi
+# Every row of every table but the journal's own, one line a row, sorted: a table without a
 # primary key gives its rows back in another order after an undo, and that is no difference.
+# MariaDB's dump has one INSERT a line. PostgreSQL's is in COPY's form, a row a line with its
+# table put in front: its INSERTs would carry a value's line breaks onto lines of their own.
 dump() {
-    # shellcheck disable=SC2016 # expanded in the container
-    docker compose exec -T db sh -c 'MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?}" exec mariadb-dump -uroot --no-create-info --skip-extended-insert --skip-comments --skip-dump-date --ignore-table="$MYSQL_DATABASE.edit_operations" --ignore-table="$MYSQL_DATABASE.edit_journal" "$MYSQL_DATABASE"' | grep '^INSERT' | sort
+    if is_pg; then
+        # shellcheck disable=SC2016 # expanded in the container
+        docker compose exec -T postgres sh -c 'exec pg_dump -U "${POSTGRES_USER:?}" --data-only --exclude-table-data=edit_operations --exclude-table-data=edit_journal "${POSTGRES_DB:?}"' \
+            | awk '/^COPY / { table = $2; next } /^\\\.$/ { table = ""; next } table != "" { print table "\t" $0 }' | sort
+    else
+        # shellcheck disable=SC2016 # expanded in the container
+        docker compose exec -T db sh -c 'MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?}" exec mariadb-dump -uroot --no-create-info --skip-extended-insert --skip-comments --skip-dump-date --ignore-table="$MYSQL_DATABASE.edit_operations" --ignore-table="$MYSQL_DATABASE.edit_journal" "$MYSQL_DATABASE"' | grep '^INSERT' | sort
+    fi
 }
 # edit <name> <DO> [MODE] [VALUE]: make edit as the fixtures' admin; output in $T/<name>, make's
 # status echoed (2 for any failure of the tool)
@@ -62,7 +72,7 @@ naming() {
         artist) columns="'artistid', 'bandid', 'aid'"; type_a=artist; type_p=p ;;
         label)  columns="'labelid'"; type_a=label; type_p=l ;;
     esac
-    sql "SELECT $(sql "SELECT GROUP_CONCAT(CONCAT('(SELECT COUNT(*) FROM \`', table_name, '\` WHERE \`', column_name, '\` = $id)') SEPARATOR ' + ') FROM information_schema.columns WHERE table_schema = DATABASE() AND column_name IN ($columns)") + (SELECT COUNT(*) FROM external_ids WHERE entity_type = '$type_a' AND entity_id = $id) + (SELECT COUNT(*) FROM import_provenance WHERE entity_type = '$type_a' AND entity_id = $id) + (SELECT COUNT(*) FROM review_items WHERE entity_type = '$type_a' AND entity_id = $id) + (SELECT COUNT(*) FROM hhb_comments WHERE com_object_type = '$type_p' AND com_object_id = $id)"
+    sql "SELECT $(sql "SELECT $(agg "CONCAT('(SELECT COUNT(*) FROM ', table_name, ' WHERE ', column_name, ' = $id)')" "table_name, column_name" ' + ') FROM information_schema.columns WHERE table_schema = $SCHEMA AND column_name IN ($columns)") + (SELECT COUNT(*) FROM external_ids WHERE entity_type = '$type_a' AND entity_id = $id) + (SELECT COUNT(*) FROM import_provenance WHERE entity_type = '$type_a' AND entity_id = $id) + (SELECT COUNT(*) FROM review_items WHERE entity_type = '$type_a' AND entity_id = $id) + (SELECT COUNT(*) FROM hhb_comments WHERE com_object_type = '$type_p' AND com_object_id = $id)"
 }
 # apply <name> <DO>: the operation applied, and its journal checked against what it printed
 apply() {
@@ -98,7 +108,7 @@ sql "INSERT INTO users (login, urlname, added, status, hhb_usr_id) VALUES ('Admi
 echo "> the merges and deletes know every column that names an album or a label"
 covered=$(docker compose exec -T app php -r 'class Jkl_Model_Api {} require "/var/www/html/app/application/models/Edit/Api.php"; foreach (array_merge(Model_Edit_Api::ALBUM_COLUMNS, Model_Edit_Api::LABEL_COLUMNS) as $t => $cs) { foreach ($cs as $c) { echo "$t.$c\n"; } } echo "albums.epfor\nalbums.labelid\n";' | sort | paste -sd' ' -)
 check "every albumid and labelid column, and albums.epfor" \
-    "$(sql "SELECT CONCAT(table_name, '.', column_name) FROM information_schema.columns WHERE table_schema = DATABASE() AND (column_name IN ('albumid', 'labelid') OR (table_name = 'albums' AND column_name = 'epfor')) AND table_name NOT IN ('album_merges')" | sort | paste -sd' ' -)" "$covered"
+    "$(sql "SELECT CONCAT(table_name, '.', column_name) FROM information_schema.columns WHERE table_schema = $SCHEMA AND (column_name IN ('albumid', 'labelid') OR (table_name = 'albums' AND column_name = 'epfor')) AND table_name NOT IN ('album_merges')" | sort | paste -sd' ' -)" "$covered"
 
 echo "> calls that do not count"
 check "without BY: refused" "2 every edit says who makes it and why" \
@@ -134,7 +144,7 @@ echo "> merging an album into one with a cover of its own"
 sql "INSERT INTO album_covers (albumid, variant, path, width, height, sha256, mime, source) VALUES (535, '600', 'a/600/kept.jpg', 600, 600, REPEAT('a', 64), 'image/jpeg', 'test'), (47, '600', 'a/600/merged.jpg', 600, 600, REPEAT('b', 64), 'image/jpeg', 'test')"
 apply merge-covers "merge-albums 47 535"
 check "merge-covers: the kept album still shows its own cover, the merged one's kept behind it" "a/600/kept.jpg:y a/600/merged.jpg:n" \
-    "$(sql "SELECT GROUP_CONCAT(CONCAT(path, ':', main) ORDER BY path SEPARATOR ' ') FROM album_covers WHERE albumid = 535")"
+    "$(sql "SELECT $(agg "CONCAT(path, ':', main)" path ' ') FROM album_covers WHERE albumid = 535")"
 undo merge-covers
 sql "DELETE FROM album_covers WHERE sha256 IN (REPEAT('a', 64), REPEAT('b', 64))"
 
@@ -162,40 +172,42 @@ check "set: applied" "0" "$(DO="set albums 1 title" VALUE='Jestem "Hip Hopem"' M
 # updatedby names the admin's row in users, linked to the account (10) by hhb_usr_id (#132)
 check "set: the value went in as given, with the admin's users row as updatedby" "Jestem \"Hip Hopem\" $(sql "SELECT ID FROM users WHERE hhb_usr_id = 10")" "$(sql "SELECT CONCAT(title, ' ', updatedby) FROM albums WHERE id = 1")"
 check "set: undone" "0" "$(edit set-undo "undo $(last_operation)" apply)"
-check "set: NULL without VALUE" "0 NULL" "$(DO="set artists 2 realname" MODE=apply BY=Admin WHY="edit-test: null" make -s edit >/dev/null 2>&1; echo "$? $(sql "SELECT IFNULL(realname, 'NULL') FROM artists WHERE id = 2")")"
+check "set: NULL without VALUE" "0 NULL" "$(DO="set artists 2 realname" MODE=apply BY=Admin WHY="edit-test: null" make -s edit >/dev/null 2>&1; echo "$? $(sql "SELECT COALESCE(realname, 'NULL') FROM artists WHERE id = 2")")"
 check "set: undone too" "0" "$(edit set-null-undo "undo $(last_operation)" apply)"
 dump >"$T/set.after"
 check "set: the data as it was before" "same" "$(diff -q "$T/set.before" "$T/set.after" >/dev/null && echo same)"
 check "set refuses the id, and a column the row lacks" "2 2" \
     "$(edit set-id "set albums 1 id" apply x) $(edit set-none "set albums 1 nope" apply x)"
 check "set: an empty VALUE is an empty string, not NULL" "0 ''" \
-    "$(edit set-empty "set albums 1 notes" apply '') $(sql "SELECT QUOTE(notes) FROM albums WHERE id = 1")"
+    "$(edit set-empty "set albums 1 notes" apply '') $(sql "SELECT CASE WHEN notes IS NULL THEN 'NULL' ELSE CONCAT('''', notes, '''') END FROM albums WHERE id = 1")"
 check "set: undone" "0" "$(edit set-empty-undo "undo $(last_operation)" apply)"
 dump >"$T/set.after"
 check "set: the data as it was before, again" "same" "$(diff -q "$T/set.before" "$T/set.after" >/dev/null && echo same)"
 
 echo "> setting several columns at once"
+# album_1 <columns>: those of album 1, "|" between them, NULL as NULL on both engines
+album_1() { sql "SELECT $1 FROM albums WHERE id = 1" | tr '\t' '|'; }
+# catalog_cd where edit_operations keeps it in the arguments, under values: deeper than json_get
+if is_pg; then kept="args->'values'->>'catalog_cd'"; else kept="JSON_VALUE(args, '\$.values.catalog_cd')"; fi
 columns='{"title": "Żółć \"na odmułę\"", "catalog_cd": "ALK 003", "notes": "z okładki", "year": null}'
-before=$(sql "SELECT CONCAT_WS('|', title, IFNULL(catalog_cd, 'NULL'), IFNULL(year, 'NULL')) FROM albums WHERE id = 1")
+before=$(album_1 'title, catalog_cd, year')
 edit set-many-dry "set albums 1" "" "$columns" >/dev/null
 check "set with JSON: the dry run shows each column's value before and after" "4" \
     "$(grep -oE 'title "[^"]*" → "Żółć "na odmułę""|catalog_cd [^,]* → "ALK 003"|notes [^,]* → "z okładki"|year [^,]* → NULL' "$T/set-many-dry" | wc -l | tr -d ' ')"
-check "set with JSON: the dry run wrote nothing" "$before" \
-    "$(sql "SELECT CONCAT_WS('|', title, IFNULL(catalog_cd, 'NULL'), IFNULL(year, 'NULL')) FROM albums WHERE id = 1")"
+check "set with JSON: the dry run wrote nothing" "$before" "$(album_1 'title, catalog_cd, year')"
 dump >"$T/set-many.before"
 check "set with JSON: applied" "0" "$(edit set-many "set albums 1" apply "$columns")"
 operation=$(last_operation)
 check "set with JSON: every column in, NULL for null, the admin's row as updatedby" \
     "Żółć \"na odmułę\"|ALK 003|z okładki|NULL|$(sql "SELECT ID FROM users WHERE hhb_usr_id = 10")" \
-    "$(sql "SELECT CONCAT_WS('|', title, catalog_cd, notes, IFNULL(year, 'NULL'), updatedby) FROM albums WHERE id = 1")"
+    "$(album_1 'title, catalog_cd, notes, year, updatedby')"
 check "set with JSON: one operation, one journal row, the object kept as the arguments" "1 1 ALK 003" \
-    "$(changes set-many) $(journalled "$operation") $(sql "SELECT JSON_VALUE(args, '\$.values.catalog_cd') FROM edit_operations WHERE id = $operation")"
+    "$(changes set-many) $(journalled "$operation") $(sql "SELECT $kept FROM edit_operations WHERE id = $operation")"
 undo set-many
 for refused in '{"title": "x", "nope": "y"}' '{"title": "x", "id": 2}' '{"title": "x", "updated": "2020-01-01 00:00:00"}' \
     '{"title": "x", "updatedby": 1}' '{"title": ["x"]}' '{}' '["x"]' 'title=x'; do
     status=$(edit set-refused "set albums 1" apply "$refused")
-    check "set with JSON refuses $refused, and writes nothing" "2 $before" \
-        "$status $(sql "SELECT CONCAT_WS('|', title, IFNULL(catalog_cd, 'NULL'), IFNULL(year, 'NULL')) FROM albums WHERE id = 1")"
+    check "set with JSON refuses $refused, and writes nothing" "2 $before" "$status $(album_1 'title, catalog_cd, year')"
 done
 check "set with JSON refuses a call without VALUE" "2" "$(edit set-no-value "set albums 1" apply)"
 dump >"$T/set-many.refused"
