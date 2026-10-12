@@ -5,22 +5,16 @@
 */
 abstract class Jkl_Model_Api
 {
-    /**
-     * How a search compares (#151): case and Polish letters do not count, so "wzgorze" finds
-     * "Wzgórze" and "lona" finds "Łona", as people type on a phone. The columns' own
-     * utf8mb4_polish_ci, right for sorting, tells ó from o and ł from l.
-     */
-    public const SEARCH_COLLATION = 'utf8mb4_uca1400_ai_ci';
-
     protected $_db;
 
     public function __construct()
     {
         $dbRes = Zend_Registry::get('Config_Resources');
 
-        // utf8mb4, so names with characters outside the Basic Multilingual Plane survive the
-        // trip both ways (#71); utf8 is MariaDB's three-byte utf8mb3.
-        $pdoParams = array( 'MYSQL_ATTR_INIT_COMMAND' => 'SET NAMES utf8mb4' );
+        // utf8mb4, from the DSN's charset, so names with characters outside the Basic
+        // Multilingual Plane survive the trip both ways (#71); utf8 is MariaDB's three-byte
+        // utf8mb3. The session starts in the SQL modes that keep the SQL portable (#231).
+        $pdoParams = Jkl_Db::MARIADB_SESSION;
         $params = array(
           'host'      => $dbRes['db']['params']['host'],
           'dbname'    => $dbRes['db']['params']['dbname'],
@@ -45,6 +39,6 @@ abstract class Jkl_Model_Api
      */
     protected function has($table, $id)
     {
-        return !empty($this->_db->fetchAll("SELECT 1 FROM `$table` WHERE id = ?", array((int) $id)));
+        return !empty($this->_db->fetchAll("SELECT 1 FROM $table WHERE id = ?", array((int) $id)));
     }
 }

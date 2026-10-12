@@ -530,12 +530,15 @@ class Model_Import_Importer extends Jkl_Model_Api
         $title = trim($doc['title']);
         $year = !empty($doc['release_date']) ? (int) substr($doc['release_date'], 0, 4) : null;
         $id = $this->match('album', $doc, function () use ($title, $year, $main) {
-            // The first main artist's album of that title, its year one either side at most.
+            // The first main artist's album of that title, its year one either side at most. The
+            // year's test is left out without a year rather than bound as NULL, whose type
+            // PostgreSQL cannot tell.
             $rows = $this->_db->fetchAll(
                 'SELECT a.id FROM albums a JOIN album_artist_lookup l ON l.albumid = a.id
-                  WHERE l.artistid = ? AND a.title = ? AND (? IS NULL OR a.year IS NULL OR ABS(YEAR(a.year) - ?) <= 1)
-                  ORDER BY a.id',
-                array($main[0]['id'], $title, $year, $year)
+                  WHERE l.artistid = ? AND a.title = ?'
+                  . (null === $year ? '' : ' AND (a.year IS NULL OR ABS(EXTRACT(YEAR FROM a.year) - ?) <= 1)')
+                  . ' ORDER BY a.id',
+                null === $year ? array($main[0]['id'], $title) : array($main[0]['id'], $title, $year)
             );
             return empty($rows) ? null : (int) $rows[0]['id'];
         });
@@ -917,12 +920,7 @@ class Model_Import_Importer extends Jkl_Model_Api
      */
     private function link($group, $table, array $values)
     {
-        $statement = $this->_db->query(
-            'INSERT INTO ' . $table . ' (' . implode(', ', array_keys($values)) . ', status) VALUES (' .
-                str_repeat('?, ', count($values)) . '999) ON DUPLICATE KEY UPDATE status = status',
-            array_values($values)
-        );
-        if ($statement->rowCount() > 0) {
+        if ($this->_db->upsert($table, $values + array('status' => 999))) {
             $this->touched[$group] = true;
         }
     }

@@ -7,7 +7,9 @@ class Bootstrap extends Zend_Application_Bootstrap_Bootstrap
     {
         $options = $this->getOptions();
 
-        // Database configuration
+        // Database configuration. The default adapter, Zend_Db_Table's, starts its sessions as
+        // Jkl_Db's do (#231).
+        $options['resources']['db']['params']['driver_options'] = Jkl_Db::MARIADB_SESSION;
         if (getenv('DB_HOST')) {
             $options['resources']['db']['params']['host'] = getenv('DB_HOST');
         }

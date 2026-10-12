@@ -49,8 +49,8 @@ class Model_Artist_Container
             $this->ended = ($params['till'] != '0000-00-00') ? $params['till'] : null;
         }
 
-        if (!empty($params['albumCount'])) {
-            $this->albumCount = $params['albumCount'];
+        if (!empty($params['album_count'])) {
+            $this->albumCount = $params['album_count'];
         }
 
         // also known as
