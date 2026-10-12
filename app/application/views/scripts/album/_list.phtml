@@ -14,6 +14,9 @@
           <?php echo $value->label->name ?>, 
         <?php endif ?>
       <?php echo $value->releaseDateNormalized ?></span>
+      <?php if (!empty($this->showAdded) && !empty($value->added)): ?>
+        <span class="added">dodano <?php echo Jkl_Tools_Date::getNormalDate(substr($value->added, 0, 10), 'day') ?></span>
+      <?php endif ?>
       <?php if (!empty($this->showViews)): ?>
         <span class="views"><?php echo number_format($value->views, 0, ',', ' ') ?> wyświetleń</span>
       <?php endif ?>

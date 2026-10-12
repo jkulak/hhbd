@@ -14,6 +14,9 @@ which the note leaves out. The sections before, by version, stay as they were.
 
 ## 2026-10-13
 
+- The home page opens with the albums the catalogue gained last, each with the day it was added,
+  and the news, the newest from 2016, follow under "Archiwum aktualności" instead of opening the
+  page as current (#242).
 - The ad unit stands only beside hhbd.pl's own content, as AdSense asks: no longer on the login,
   registration and "log in first" pages, the lyrics form, search results or users' profiles,
   nor on a song's page that shows lyrics, which hhbd.pl holds no licence for (#244).

@@ -16,16 +16,23 @@
 
   <!-- left column -->
   <div class="column">
-    <!-- news -->
-    <div id="news">
-      <h2>Aktualności</h2>
-      <?php echo $this->partial('news/_list.phtml', array('list' => $this->news->items)) ?>
+    <!-- what the catalogue gained lately (#242) -->
+    <div id="recently-added" class="albums">
+      <h2>Nowe w bazie</h2>
+      <?php echo $this->partial('album/_list.phtml', array('items' => $this->recentlyAdded->items, 'showAdded' => true)) ?>
+      <a href="<?php echo $this->url(array(), 'albums') ?>">Pokaż wszystkie albumy</a>
     </div>
 
     <div id="intro">
     <h2>Polski hip-hop w pigułce</h2>
     <p>Od 2005 roku zbieramy informacje o wydawanych płytach i zapowiedziach polskiego hip-hopu: daty premier, wytwórnie, tracklisty, raperów, producentów i gości każdego utworu.</p>
     <p>Do wielu utworów mamy też teksty i teledyski. Więcej o nas i o tym, ile już opisaliśmy, na stronie <a href="<?php echo $this->url(array(), 'about') ?>">O nas</a>.</p>
+    </div>
+
+    <!-- news, the newest from 2016: an archive, and called one (#242) -->
+    <div id="news">
+      <h2>Archiwum aktualności</h2>
+      <?php echo $this->partial('news/_list.phtml', array('list' => $this->news->items)) ?>
     </div>
   </div>
 

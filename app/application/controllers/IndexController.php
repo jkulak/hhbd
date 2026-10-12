@@ -10,6 +10,9 @@ class IndexController extends Zend_Controller_Action
 
     public function indexAction()
     {
+        // What the catalogue gained lately opens the page; the news, the newest from 2016, follow
+        // as the archive they are (#242)
+        $this->view->recentlyAdded = Model_Album_Api::getInstance()->getRecentlyAdded(8);
         $this->view->news = Model_News_Api::getInstance()->getRecent(9);
         $this->view->newestList = Model_Album_Api::getInstance()->getNewest(7);
         // Warsaw's day, as the application's timezone has it, not the database's UTC (#197)
