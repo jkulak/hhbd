@@ -134,7 +134,7 @@ class AdminController extends Zend_Controller_Action
 
         // Albums
         $stats['totalAlbums'] = $db->fetchOne('SELECT COUNT(*) FROM albums WHERE status = 999');
-        $stats['albumsWithCovers'] = $db->fetchOne('SELECT COUNT(*) FROM albums WHERE status = 999 AND cover IS NOT NULL AND cover != ""');
+        $stats['albumsWithCovers'] = $db->fetchOne('SELECT COUNT(*) FROM albums WHERE status = 999 AND cover IS NOT NULL AND cover <> \'\'');
         $stats['albumCoverPercentage'] = $stats['totalAlbums'] > 0 ? round(($stats['albumsWithCovers'] / $stats['totalAlbums']) * 100, 1) : 0;
 
         // Artists
@@ -146,7 +146,7 @@ class AdminController extends Zend_Controller_Action
 
         // Labels
         $stats['totalLabels'] = $db->fetchOne('SELECT COUNT(*) FROM labels WHERE status = 999');
-        $stats['labelsWithLogos'] = $db->fetchOne('SELECT COUNT(*) FROM labels WHERE status = 999 AND logo IS NOT NULL AND logo != ""');
+        $stats['labelsWithLogos'] = $db->fetchOne('SELECT COUNT(*) FROM labels WHERE status = 999 AND logo IS NOT NULL AND logo <> \'\'');
         $stats['labelLogoPercentage'] = $stats['totalLabels'] > 0 ? round(($stats['labelsWithLogos'] / $stats['totalLabels']) * 100, 1) : 0;
 
         // News
@@ -173,16 +173,16 @@ class AdminController extends Zend_Controller_Action
         $stats['total'] = $db->fetchOne('SELECT COUNT(*) FROM hhb_users');
 
         // Total admins
-        $stats['admins'] = $db->fetchOne('SELECT COUNT(*) FROM hhb_users WHERE usr_is_admin = "yes"');
+        $stats['admins'] = $db->fetchOne('SELECT COUNT(*) FROM hhb_users WHERE usr_is_admin = \'yes\'');
 
         // Users registered this month
         $stats['thisMonth'] = $db->fetchOne(
-            'SELECT COUNT(*) FROM hhb_users WHERE YEAR(usr_added) = YEAR(CURDATE()) AND MONTH(usr_added) = MONTH(CURDATE())'
+            'SELECT COUNT(*) FROM hhb_users WHERE EXTRACT(YEAR FROM usr_added) = EXTRACT(YEAR FROM CURRENT_DATE) AND EXTRACT(MONTH FROM usr_added) = EXTRACT(MONTH FROM CURRENT_DATE)'
         );
 
         // Users registered this year
         $stats['thisYear'] = $db->fetchOne(
-            'SELECT COUNT(*) FROM hhb_users WHERE YEAR(usr_added) = YEAR(CURDATE())'
+            'SELECT COUNT(*) FROM hhb_users WHERE EXTRACT(YEAR FROM usr_added) = EXTRACT(YEAR FROM CURRENT_DATE)'
         );
 
         // Most active users (by login count)
@@ -212,17 +212,17 @@ class AdminController extends Zend_Controller_Action
         $stats['total'] = $db->fetchOne('SELECT COUNT(*) FROM albums WHERE status = 999');
 
         // Albums with covers
-        $stats['withCovers'] = $db->fetchOne('SELECT COUNT(*) FROM albums WHERE status = 999 AND cover IS NOT NULL AND cover != ""');
+        $stats['withCovers'] = $db->fetchOne('SELECT COUNT(*) FROM albums WHERE status = 999 AND cover IS NOT NULL AND cover <> \'\'');
 
         // Albums without covers
         $stats['withoutCovers'] = $stats['total'] - $stats['withCovers'];
 
         // Albums by year
         $stats['byYear'] = $db->fetchAll(
-            'SELECT YEAR(year) as yr, COUNT(*) as count 
+            'SELECT EXTRACT(YEAR FROM year) as yr, COUNT(*) as count
              FROM albums 
              WHERE status = 999 AND year IS NOT NULL 
-             GROUP BY YEAR(year) 
+             GROUP BY EXTRACT(YEAR FROM year) 
              ORDER BY yr DESC 
              LIMIT 20'
         );
@@ -314,13 +314,13 @@ class AdminController extends Zend_Controller_Action
         $stats['total'] = $db->fetchOne('SELECT COUNT(*) FROM songs WHERE status = 999');
 
         // Songs with lyrics
-        $stats['withLyrics'] = $db->fetchOne('SELECT COUNT(*) FROM songs WHERE status = 999 AND lyrics IS NOT NULL AND lyrics != ""');
+        $stats['withLyrics'] = $db->fetchOne('SELECT COUNT(*) FROM songs WHERE status = 999 AND lyrics IS NOT NULL AND lyrics <> \'\'');
 
         // Songs without lyrics
         $stats['withoutLyrics'] = $stats['total'] - $stats['withLyrics'];
 
         // Songs with YouTube links
-        $stats['withYoutube'] = $db->fetchOne('SELECT COUNT(*) FROM songs WHERE status = 999 AND youtube_url IS NOT NULL AND youtube_url != ""');
+        $stats['withYoutube'] = $db->fetchOne('SELECT COUNT(*) FROM songs WHERE status = 999 AND youtube_url IS NOT NULL AND youtube_url <> \'\'');
 
         // Most viewed songs
         $stats['mostViewed'] = $db->fetchAll(
@@ -345,7 +345,7 @@ class AdminController extends Zend_Controller_Action
         $stats['total'] = $db->fetchOne('SELECT COUNT(*) FROM labels WHERE status = 999');
 
         // Labels with logos
-        $stats['withLogos'] = $db->fetchOne('SELECT COUNT(*) FROM labels WHERE status = 999 AND logo IS NOT NULL AND logo != ""');
+        $stats['withLogos'] = $db->fetchOne('SELECT COUNT(*) FROM labels WHERE status = 999 AND logo IS NOT NULL AND logo <> \'\'');
 
         // Labels with most albums
         $stats['mostAlbums'] = $db->fetchAll(
@@ -371,14 +371,14 @@ class AdminController extends Zend_Controller_Action
         // Comments this month
         $stats['thisMonth'] = $db->fetchOne(
             'SELECT COUNT(*) FROM hhb_comments 
-             WHERE YEAR(com_added) = YEAR(CURDATE()) AND MONTH(com_added) = MONTH(CURDATE())'
+             WHERE EXTRACT(YEAR FROM com_added) = EXTRACT(YEAR FROM CURRENT_DATE) AND EXTRACT(MONTH FROM com_added) = EXTRACT(MONTH FROM CURRENT_DATE)'
         );
 
         // Most commented albums
         $stats['mostCommentedAlbums'] = $db->fetchAll(
             'SELECT a.id, a.title, COUNT(c.com_id) as comment_count
              FROM albums a
-             JOIN hhb_comments c ON a.id = c.com_object_id AND c.com_object_type = "a"
+             JOIN hhb_comments c ON a.id = c.com_object_id AND c.com_object_type = \'a\'
              WHERE a.status = 999
              GROUP BY a.id, a.title
              ORDER BY comment_count DESC
@@ -416,25 +416,29 @@ class AdminController extends Zend_Controller_Action
 
         // Highest rated albums (minimum 5 ratings)
         $stats['highestRatedAlbums'] = $db->fetchAll(
-            'SELECT ra.albumid, a.title, ra.rating, 
-                    (SELECT COUNT(*) FROM ratings r WHERE r.albumid = ra.albumid) as howmany
-             FROM ratings_avg ra
-             JOIN albums a ON ra.albumid = a.id
-             WHERE a.status = 999
-             HAVING howmany >= 5
-             ORDER BY ra.rating DESC
+            'SELECT * FROM (
+                SELECT ra.albumid, a.title, ra.rating,
+                       (SELECT COUNT(*) FROM ratings r WHERE r.albumid = ra.albumid) as howmany
+                FROM ratings_avg ra
+                JOIN albums a ON ra.albumid = a.id
+                WHERE a.status = 999
+             ) rated
+             WHERE howmany >= 5
+             ORDER BY rating DESC
              LIMIT 10'
         );
 
         // Lowest rated albums (minimum 5 ratings)
         $stats['lowestRatedAlbums'] = $db->fetchAll(
-            'SELECT ra.albumid, a.title, ra.rating,
-                    (SELECT COUNT(*) FROM ratings r WHERE r.albumid = ra.albumid) as howmany
-             FROM ratings_avg ra
-             JOIN albums a ON ra.albumid = a.id
-             WHERE a.status = 999
-             HAVING howmany >= 5
-             ORDER BY ra.rating ASC
+            'SELECT * FROM (
+                SELECT ra.albumid, a.title, ra.rating,
+                       (SELECT COUNT(*) FROM ratings r WHERE r.albumid = ra.albumid) as howmany
+                FROM ratings_avg ra
+                JOIN albums a ON ra.albumid = a.id
+                WHERE a.status = 999
+             ) rated
+             WHERE howmany >= 5
+             ORDER BY rating ASC
              LIMIT 10'
         );
 
@@ -475,7 +479,7 @@ class AdminController extends Zend_Controller_Action
         $gaps['albumsWithoutComments'] = $db->fetchOne(
             'SELECT COUNT(*) FROM albums a 
              WHERE a.status = 999 
-             AND a.id NOT IN (SELECT DISTINCT com_object_id FROM hhb_comments WHERE com_object_type = "a")'
+             AND a.id NOT IN (SELECT DISTINCT com_object_id FROM hhb_comments WHERE com_object_type = \'a\')'
         );
 
         // Albums without ratings

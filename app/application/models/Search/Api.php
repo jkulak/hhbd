@@ -41,9 +41,10 @@ class Model_Search_Api extends Jkl_Model_Api
     public function getMostPopular($limit = 15)
     {
         $limit = intval($limit);
-        // Grouped as a VARCHAR, so the temporary table stays in memory; searchstring is a
-        // MEDIUMTEXT, which sent it to disk on every page that shows these (#69).
-        $query = "SELECT CAST(t1.searchstring AS CHAR(100)) AS sea_query, count(*) AS sea_count
+        // Grouped on its first 100 characters, a VARCHAR, so the temporary table stays in
+        // memory; searchstring is a MEDIUMTEXT, which sent it to disk on every page that shows
+        // these (#69). LEFT() rather than a CAST to CHAR(100), which PostgreSQL pads (#231).
+        $query = "SELECT LEFT(t1.searchstring, 100) AS sea_query, count(*) AS sea_count
               FROM searches t1
               GROUP BY sea_query
               ORDER BY sea_count DESC" .

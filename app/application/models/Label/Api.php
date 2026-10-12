@@ -11,6 +11,9 @@
 
 class Model_Label_Api extends Jkl_Model_Api
 {
+    /** Each label's published albums, counted: labelid, album_count */
+    private const ALBUM_COUNTS = 'SELECT labelid, COUNT(*) AS album_count FROM albums WHERE status = ' . Model_Album_Api::PUBLISHED . ' GROUP BY labelid';
+
     private static $_instance;
 
     /**
@@ -56,23 +59,20 @@ class Model_Label_Api extends Jkl_Model_Api
 
     public function getFullList()
     {
-        // The website as a VARCHAR, so grouping keeps its temporary table in memory (#69).
-        $query = "SELECT t1.id AS lab_id, t1.`name`, CAST(t1.`website` AS CHAR(255)) AS website, count(t2.id) AS album_count
-              FROM labels t1, albums t2
-              WHERE (t2.`labelid`=t1.id AND t2.`status`=" . Model_Album_Api::PUBLISHED . ")
-              GROUP BY t1.`id`
-              ORDER BY t1.`name`";
+        // The albums counted per label alone, then joined: no label's TEXT column goes through
+        // the grouping's temporary table (#69), and the grouping is by what it counts (#231).
+        $query = "SELECT t1.id AS lab_id, t1.name, t1.website, c.album_count
+              FROM labels t1 JOIN (" . self::ALBUM_COUNTS . ") c ON c.labelid = t1.id
+              ORDER BY t1.name";
         return $this->getList($query);
     }
 
     public function getWithMostAlbums($limit = 10)
     {
         $limit = intval($limit);
-        $query = "SELECT count(t2.id) AS album_count, t1.`id` AS lab_id, t1.`name`
-              FROM labels t1, albums t2
-              WHERE (t2.`labelid`=t1.`id` AND t2.`status`=" . Model_Album_Api::PUBLISHED . ")
-              GROUP BY t1.`id`
-              ORDER BY album_count DESC" .
+        $query = "SELECT c.album_count, t1.id AS lab_id, t1.name
+              FROM labels t1 JOIN (" . self::ALBUM_COUNTS . ") c ON c.labelid = t1.id
+              ORDER BY c.album_count DESC" .
                   (isset($limit) ? " LIMIT $limit" : '');
 
         return $this->getList($query);
@@ -84,11 +84,10 @@ class Model_Label_Api extends Jkl_Model_Api
         $page = intval($page - 1);
         $page = ($page < 1) ? 0 : $page;
 
-        $query = "SELECT count(t2.id) AS album_count, t1.`id` AS lab_id, t1.`name`
-              FROM labels t1, albums t2
-              WHERE (t2.`labelid`=t1.`id` AND t2.`status`=" . Model_Album_Api::PUBLISHED . " AND t1.`name` LIKE ? COLLATE " . self::SEARCH_COLLATION . ")
-              GROUP BY t1.`id`
-              ORDER BY t1.`viewed` DESC" .
+        $query = "SELECT c.album_count, t1.id AS lab_id, t1.name
+              FROM labels t1 JOIN (" . self::ALBUM_COUNTS . ") c ON c.labelid = t1.id
+              WHERE " . $this->_db->searchLike('t1.name') . "
+              ORDER BY t1.viewed DESC" .
                   (($limit != null) ? ' LIMIT ' . $limit : '') .
                   ' OFFSET ' . ($page * $limit);
 
@@ -106,7 +105,7 @@ class Model_Label_Api extends Jkl_Model_Api
     {
         $query = "SELECT count(*) as count
               FROM labels AS t1
-              WHERE t1.name LIKE ? COLLATE " . self::SEARCH_COLLATION;
+              WHERE " . $this->_db->searchLike('t1.name');
         $result = $this->_db->fetchAll($query, array(Jkl_Db::contains($like)));
         return intval($result[0]['count']);
     }

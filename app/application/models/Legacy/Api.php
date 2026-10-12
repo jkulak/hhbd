@@ -37,7 +37,7 @@ class Model_Legacy_Api extends Jkl_Model_Api
             return array();
         }
         $rows = $this->_db->fetchAll(
-            'SELECT id FROM `' . self::TABLES[$kind] . "` WHERE urlname <> '' AND REPLACE(urlname, '-', '_') = REPLACE(?, '-', '_') ORDER BY id LIMIT 2",
+            'SELECT id FROM ' . self::TABLES[$kind] . " WHERE urlname <> '' AND REPLACE(urlname, '-', '_') = REPLACE(?, '-', '_') ORDER BY id LIMIT 2",
             array($slug)
         );
         return array_map('intval', array_column($rows, 'id'));

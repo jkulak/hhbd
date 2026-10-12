@@ -44,7 +44,7 @@ class Model_Captcha_Api extends Jkl_Model_Api
      */
     public function create()
     {
-        $this->_db->query('DELETE FROM captcha_challenges WHERE created < NOW() - INTERVAL ' . self::LIFETIME_MINUTES . ' MINUTE');
+        $this->_db->query('DELETE FROM captcha_challenges WHERE created < NOW() - INTERVAL \'' . self::LIFETIME_MINUTES . '\' MINUTE');
         $a = random_int(1, 10);
         $b = random_int(1, 10);
         $token = bin2hex(random_bytes(16));
@@ -65,7 +65,7 @@ class Model_Captcha_Api extends Jkl_Model_Api
         }
         // Read past Jkl_Db's cache: an answer must be the row as it is now
         $rows = $this->_db->query(
-            'SELECT answer FROM captcha_challenges WHERE token = ? AND created >= NOW() - INTERVAL ' . self::LIFETIME_MINUTES . ' MINUTE',
+            'SELECT answer FROM captcha_challenges WHERE token = ? AND created >= NOW() - INTERVAL \'' . self::LIFETIME_MINUTES . '\' MINUTE',
             array($token)
         )->fetchAll();
         $deleted = $this->_db->query('DELETE FROM captcha_challenges WHERE token = ?', array($token))->rowCount();

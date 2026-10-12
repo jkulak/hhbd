@@ -71,10 +71,10 @@ class Model_Song_Api extends Jkl_Model_Api
     {
         $ids = array_map('intval', $ids);
         if (empty($ids)) {
-            return $query . ' WHERE 0';
+            return $query . ' WHERE 1 = 0';
         }
         $list = implode(', ', $ids);
-        return $query . ' WHERE t1.id IN (' . $list . ') ORDER BY FIELD(t1.id, ' . $list . ')';
+        return $query . ' WHERE t1.id IN (' . $list . ') ORDER BY ' . Jkl_Db::inOrder('t1.id', $ids);
     }
 
     /**
@@ -151,8 +151,7 @@ class Model_Song_Api extends Jkl_Model_Api
             $rep = array('/', '&', '?', '-');
             $searchTerms = str_replace($rep, ' ', $searchTerms);
             $url = $this->_getYouTubeUrl($searchTerms);
-            $query = 'UPDATE songs SET youtube_url="' . $url . '" WHERE id=' . $id;
-            $this->_db->query($query);
+            $this->_db->query('UPDATE songs SET youtube_url = ? WHERE id = ?', array(false === $url ? '' : (string) $url, (int) $id));
             $params['youtube_url'] = $url;
             // Zend_Registry::get('Logger')->info('Save YouTube ' . $params['title'] . '(' . $id . '): ' . $url);
         }
@@ -252,7 +251,7 @@ class Model_Song_Api extends Jkl_Model_Api
         // catalogue through a temporary table on disk on each call (#69).
         $ids = array_column($this->_db->fetchAll('SELECT t1.id FROM songs t1 WHERE t1.id ' . self::SHOWN . ' ORDER BY t1.viewed DESC' . (($limit) ? ' LIMIT ' . $limit : '')), 'id');
         $query = 'SELECT *, t1.id as song_id, t1.title as song_title, t1.viewed as song_views, t3.id as alb_id, t3.cover as alb_cover, t3.title as alb_title, t5.id as art_id, t5.name as art_name, t5.disambiguation as art_disambiguation, ' .
-                  '(SELECT COUNT(*) FROM hhb_comments WHERE com_object_id = t1.id AND com_object_type = "s") as comment_count ' .
+                  '(SELECT COUNT(*) FROM hhb_comments WHERE com_object_id = t1.id AND com_object_type = \'s\') as comment_count ' .
                   'FROM songs t1 ' .
                   'LEFT JOIN albums t3 ON t3.id = (SELECT MIN(l.albumid) FROM album_lookup l WHERE l.songid = t1.id) ' .
                   'LEFT JOIN artists t5 ON t5.id = (SELECT MIN(c.artistid) FROM album_artist_lookup c WHERE c.albumid = t3.id)';
@@ -277,7 +276,7 @@ class Model_Song_Api extends Jkl_Model_Api
 
         $query = "SELECT *, t1.id as song_id
               FROM songs t1
-              WHERE t1.title LIKE ? COLLATE " . self::SEARCH_COLLATION . " AND t1.id " . self::SHOWN . "
+              WHERE " . $this->_db->searchLike('t1.title') . " AND t1.id " . self::SHOWN . "
               ORDER BY t1.viewed DESC" .
                   (($limit != null) ? ' LIMIT ' . $limit : '') .
                   ' OFFSET ' . ($page * $limit);
@@ -288,7 +287,7 @@ class Model_Song_Api extends Jkl_Model_Api
     {
         $query = "SELECT count(*) as count
               FROM songs AS t1
-              WHERE t1.title LIKE ? COLLATE " . self::SEARCH_COLLATION . " AND t1.id " . self::SHOWN;
+              WHERE " . $this->_db->searchLike('t1.title') . " AND t1.id " . self::SHOWN;
         $result = $this->_db->fetchAll($query, array(Jkl_Db::contains($like)));
         return intval($result[0]['count']);
     }
