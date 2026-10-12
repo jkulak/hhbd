@@ -79,6 +79,10 @@ ovh-import: ## Read an import batch into production's catalogue: make ovh-import
 ovh-edit: ## Edit production's catalogue, journalled: make ovh-edit DO="merge-albums 850 841" BY=<admin> WHY="..." (a dry run without MODE=apply); DO="undo <operation>" takes one back
 	@./scripts/edit.sh ovh
 
+.PHONY: ovh-dump
+ovh-dump: ## Dump production's database to ~/Developer/hhbd-dumps/hhbd-prod-<date>.sql.gz, outside every repository (read-only on production)
+	@./scripts/ovh-dump.sh
+
 .PHONY: ovh-import-runs
 ovh-import-runs: ## List the last import runs on production's database, newest first; N=50 for more
 	DB_TARGET=ovh ./scripts/import-runs.sh $(or $(N),20)

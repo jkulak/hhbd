@@ -30,6 +30,8 @@ which the note leaves out. The sections before, by version, stay as they were.
   DB_ADAPTER says so, the migration runner and make reset-db run it with DB_ENGINE=postgresql,
   and app/tools/mariadb-to-postgres.php copies a MariaDB database into it and proves the copy
   table by table. CI runs the site's smoke test on it too.
+- `make ovh-dump` dumps production's database to ~/Developer/hhbd-dumps, outside every
+  repository, for the rehearsal of the move to PostgreSQL on production's data (#235).
 
 ## 2026-10-11
 
