@@ -1,0 +1,5 @@
+-- 0039 postgresql: down. Drops everything the up created: the database is empty after it,
+-- as a MariaDB database is before its baseline.
+
+DROP TABLE IF EXISTS albums, album_artist_lookup, album_covers, album_lookup, album_merges, album_prices, album_promomixes, album_ratings, album_reviews, altnames_lookup, artists, artists_everyweek, artists_photos, artist_city_lookup, artist_concert_lookup, artist_lookup, artist_merges, band_lookup, captcha_challenges, cities, city_label_lookup, collection, edit_journal, edit_operations, external_ids, feattypes, feature_lookup, hhb_comments, hhb_users, hhb_user_lyrics_edit, import_provenance, import_runs, labels, migration_archive, music_lookup, news, news_album_lookup, news_artist_lookup, news_city_lookup, news_concert_lookup, news_label_lookup, page_views, ratings, ratings_avg, remix_lookup, review_items, scratch_lookup, searches, songs, song_samples, submision_errors, submision_recommendations, users, users_activations, users_admins, wishlist CASCADE;
+DROP EXTENSION IF EXISTS unaccent;

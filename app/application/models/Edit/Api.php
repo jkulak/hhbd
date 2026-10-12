@@ -122,7 +122,7 @@ class Model_Edit_Api extends Jkl_Model_Api
     /** The usr_id of the admin of that name, or null for a name that is no admin's */
     public function adminId($name)
     {
-        $rows = $this->_db->fetchAll("SELECT usr_id FROM hhb_users WHERE usr_display_name = ? AND usr_is_admin = 'yes'", array((string) $name));
+        $rows = $this->_db->fetchAll("SELECT usr_id FROM hhb_users WHERE lower(usr_display_name) = lower(?) AND usr_is_admin = 'yes'", array((string) $name));
         return 1 === count($rows) ? (int) $rows[0]['usr_id'] : null;
     }
 

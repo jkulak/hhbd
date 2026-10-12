@@ -23,11 +23,40 @@
 #
 # Usage: make reset-db      (with the local stack up: docker compose up -d)
 #
+# DB_ENGINE=postgresql (#232) builds the PostgreSQL database too, on the way to it (#229): the
+# MariaDB one as above first, then PostgreSQL's dropped and made again by its migrations, and
+# the MariaDB one copied into it by app/tools/mariadb-to-postgres.php, which proves the copy.
+# The fixtures stay MariaDB's until MariaDB goes, so every reset tests the copy as well.
+#
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 # shellcheck source=scripts/lib-db.sh
 . scripts/lib-db.sh
 REFUSE_AS=reset-db
+
+if [ "$DB_ENGINE" = postgresql ]; then
+    started=$(date +%s)
+    DB_ENGINE=mariadb ./scripts/reset-db.sh
+    cid=$(local_db_container) || exit 1
+    project=$(docker compose config 2>/dev/null | sed -n 's/^name: //p' | head -1)
+    database=$(docker exec "$cid" sh -c 'printf %s "${POSTGRES_DB:?}"')
+    echo "> 1/3 dropping and creating $database in $project's postgres"
+    # The cluster was made with ICU's pl (compose.postgresql.yaml), and template0 carries it.
+    printf 'DROP DATABASE IF EXISTS "%s" WITH (FORCE);\nCREATE DATABASE "%s" TEMPLATE template0;\n' "$database" "$database" | container_sql "$cid"
+    echo "> 2/3 the schema, from the migrations"
+    MIGRATE_TARGET=container MIGRATE_CONTAINER=$cid ./scripts/migrate.sh up | sed 's/^/  /'
+    echo "> 3/3 MariaDB's rows, copied and verified"
+    # A line per table goes unprinted unless the copy fails, when every line counts.
+    if ! copied=$(docker compose exec -T app php /var/www/html/app/tools/mariadb-to-postgres.php copy 2>&1); then
+        printf '%s\n' "$copied" | sed 's/^/  /' >&2
+        refuse "the copy into PostgreSQL failed"
+    fi
+    printf '%s\n' "$copied" | tail -1 | sed 's/^/  /'
+    tables=$(printf "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_type = 'BASE TABLE' AND table_name <> 'schema_migrations'\n" | container_sql "$cid" db)
+    rows=$(printf "SELECT 'SELECT ' || string_agg(format('(SELECT COUNT(*) FROM %%I)', table_name), ' + ') FROM information_schema.tables WHERE table_schema = current_schema() AND table_type = 'BASE TABLE' AND table_name <> 'schema_migrations'\n" | container_sql "$cid" db | container_sql "$cid" db)
+    echo "ok $database in $project's postgres: $tables tables, $rows rows, copied from MariaDB, in $(( $(date +%s) - started ))s"
+    exit 0
+fi
 
 FIXTURES=database/tests/fixtures.sql
 # Rows for tables the migrations add (external ids, provenance, ...), which the baseline-era
