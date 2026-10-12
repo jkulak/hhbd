@@ -112,10 +112,14 @@ run_file() {
         { printf '%s\n' "$LEGACY_DATES_SESSION"; cat "$1"; } | db_sql && query "$2"
     fi
 }
+# What a failed file left, and what a database with tables but no record takes instead of up:
+# baseline on MariaDB, and on PostgreSQL, which refuses baseline, an empty database (#234)
 if [ "$DB_ENGINE" = postgresql ]; then
     FAILED_NOTE="nothing of it took effect, as it ran in one transaction"
+    UNRECORDED_NOTE="baseline is MariaDB's alone: a PostgreSQL database is built by up from empty"
 else
     FAILED_NOTE="MariaDB commits DDL as it goes, so check what of it took effect before running again"
+    UNRECORDED_NOTE="a database that already has the schema takes 'baseline' first"
 fi
 
 [ "$(query 'SELECT 1' 2>/dev/null)" = 1 ] || refuse "cannot reach the database at $where"
@@ -181,7 +185,7 @@ up() {
         # A database with tables but no record is one that predates the migrations: production,
         # or a dump loaded by hand. Running the baseline on it would recreate its tables.
         tables=$(app_tables)
-        [ "$tables" = 0 ] || refuse "$where has $tables tables but no migration is recorded; a database that already has the schema takes 'baseline' first"
+        [ "$tables" = 0 ] || refuse "$where has $tables tables but no migration is recorded; $UNRECORDED_NOTE"
         ensure_table
     fi
     [ -z "$to" ] || [ -n "$(name_of "$to")" ] || refuse "no migration $to in $DIR"
