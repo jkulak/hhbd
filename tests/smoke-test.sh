@@ -412,6 +412,14 @@ run_fixture_tests() {
     test_page "while one without lyrics has it" "/domowa-produkcja-s9102.html" 'class="adsbygoogle"'
     test_page_absent "A user's profile has none" "/testuser1-u1.html" 'class="adsbygoogle"'
     test_admin_page "nor the lyrics form" "/pogoda-s7329/edytuj-tekst.html" "<textarea" '!class="adsbygoogle"'
+    # A page with nothing of its own stays out of search engines' index and the sitemap (#243)
+    test_page "A song with no lyrics and no credits asks not to be indexed (#243)" "/domowa-produkcja-s9102.html" 'name="robots" content="noindex,follow"'
+    test_page_absent "and the song sitemap leaves it out" "/sitemap-songs.xml" "-s9102.html<"
+    test_page "A song with credits is indexed" "/pogoda-s7329.html" 'name="robots" content="index,follow"'
+    test_page "An artist with no album, credit, group or profile asks not to be indexed" "/enemis-p2258.html" 'name="robots" content="noindex,follow"'
+    test_page_absent "and the artist sitemap leaves it out" "/sitemap-artists.xml" "-p2258.html<"
+    test_page "An artist with albums is indexed" "/mes-p35.html" 'name="robots" content="index,follow"'
+    test_page "and in the artist sitemap" "/sitemap-artists.xml" "/mes-p35.html<"
     test_page "A search with Polish letters finds the name (#151)" "/szukaj.html?q=Sok%C3%B3%C5%82" 'href="/sokol-p10.html"'
     test_page "and so does one without them" "/szukaj.html?q=sokol" 'href="/sokol-p10.html"'
     test_page "and one in capitals" "/szukaj.html?q=SOK%C3%93%C5%81" 'href="/sokol-p10.html"'
