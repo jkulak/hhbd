@@ -35,9 +35,9 @@ class Model_Artist_Api extends Jkl_Model_Api
     /**
      * Creates object and fetches the list from database result
      */
-    public function getList($query)
+    public function getList($query, array $bind = array())
     {
-        $result = $this->_db->fetchAll($query);
+        $result = $this->_db->fetchAll($query, $bind);
         $artists = new Jkl_List();
 
         foreach ($result as $params) {
@@ -54,17 +54,17 @@ class Model_Artist_Api extends Jkl_Model_Api
 
     public function getLikeLetter($like = '', $limit = 15, $page = 1)
     {
-        $like = Jkl_Db::escape($like);
+        $limit = intval($limit);
         $page = intval($page - 1);
         $page = ($page < 1) ? 0 : $page;
 
         $query = "SELECT *, t1.id as art_id
               FROM artists AS t1
-              WHERE (t1.name LIKE '$like%' )
+              WHERE (t1.name LIKE ?)
               ORDER BY t1.viewed DESC" .
                   (($limit != null) ? ' LIMIT ' . $limit . ' OFFSET ' . ($page * $limit) : '');
 
-        $result = $this->_db->fetchAll($query);
+        $result = $this->_db->fetchAll($query, array(Jkl_Db::startsWith($like)));
         $artists = new Jkl_List();
 
         foreach ($result as $params) {
@@ -78,17 +78,17 @@ class Model_Artist_Api extends Jkl_Model_Api
 
     public function getLike($like = '', $limit = 15, $page = 1)
     {
-        $like = Jkl_Db::escape($like);
+        $limit = intval($limit);
         $page = intval($page - 1);
         $page = ($page < 1) ? 0 : $page;
 
         $query = "SELECT *, t1.id as art_id
               FROM artists AS t1
-              WHERE (t1.name LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION . ")
+              WHERE (t1.name LIKE ? COLLATE " . self::SEARCH_COLLATION . ")
               ORDER BY t1.viewed DESC" .
                   (($limit != null) ? ' LIMIT ' . $limit . ' OFFSET ' . ($page * $limit) : '');
 
-        $result = $this->_db->fetchAll($query);
+        $result = $this->_db->fetchAll($query, array(Jkl_Db::contains($like)));
         $artists = new Jkl_List();
 
         foreach ($result as $params) {
@@ -102,18 +102,18 @@ class Model_Artist_Api extends Jkl_Model_Api
 
     public function getNicknamesLike($like = '', $limit = 15, $page = 1)
     {
-        $like = Jkl_Db::escape($like);
+        $limit = intval($limit);
         $page = intval($page - 1);
         $page = ($page < 1) ? 0 : $page;
 
         $query = "SELECT *, t1.id AS art_id 
               FROM `artists` t1, `altnames_lookup` t2
-              WHERE (t1.id=t2.`artistid` AND t2.`altname` LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION . ")" .
+              WHERE (t1.id=t2.`artistid` AND t2.`altname` LIKE ? COLLATE " . self::SEARCH_COLLATION . ")" .
                   "ORDER BY t1.viewed DESC" .
                   (($limit != null) ? ' LIMIT ' . $limit : '') .
                   ' OFFSET ' . ($page * $limit);
 
-        $result = $this->_db->fetchAll($query);
+        $result = $this->_db->fetchAll($query, array(Jkl_Db::contains($like)));
         $artists = new Jkl_List();
 
         foreach ($result as $params) {
@@ -357,11 +357,10 @@ class Model_Artist_Api extends Jkl_Model_Api
 
     public function getLikeCount($like = '')
     {
-        $like = Jkl_Db::escape($like);
         $query = "SELECT count(*) as count
               FROM artists AS t1
-              WHERE t1.name LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION;
-        $result = $this->_db->fetchAll($query);
+              WHERE t1.name LIKE ? COLLATE " . self::SEARCH_COLLATION;
+        $result = $this->_db->fetchAll($query, array(Jkl_Db::contains($like)));
         return intval($result[0]['count']);
     }
 }

@@ -29,9 +29,9 @@ class Model_Label_Api extends Jkl_Model_Api
     /**
      * Creates object and fetches the list from database result
      */
-    public function getList($query)
+    public function getList($query, array $bind = array())
     {
-        $result = $this->_db->fetchAll($query);
+        $result = $this->_db->fetchAll($query, $bind);
         $list = new Jkl_List();
         foreach ($result as $params) {
             $list->add(new Model_Label_Container($params));
@@ -80,20 +80,19 @@ class Model_Label_Api extends Jkl_Model_Api
 
     public function getLike($like, $limit = 10, $page = 1)
     {
-        $like = Jkl_Db::escape($like);
         $limit = intval($limit);
         $page = intval($page - 1);
         $page = ($page < 1) ? 0 : $page;
 
         $query = "SELECT count(t2.id) AS album_count, t1.`id` AS lab_id, t1.`name`
               FROM labels t1, albums t2
-              WHERE (t2.`labelid`=t1.`id` AND t2.`status`=" . Model_Album_Api::PUBLISHED . " AND t1.`name` LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION . ")
+              WHERE (t2.`labelid`=t1.`id` AND t2.`status`=" . Model_Album_Api::PUBLISHED . " AND t1.`name` LIKE ? COLLATE " . self::SEARCH_COLLATION . ")
               GROUP BY t1.`id`
               ORDER BY t1.`viewed` DESC" .
                   (($limit != null) ? ' LIMIT ' . $limit : '') .
                   ' OFFSET ' . ($page * $limit);
 
-        return $this->getList($query);
+        return $this->getList($query, array(Jkl_Db::contains($like)));
     }
 
     /** All the labels, each with a page, for the about page's figures (#218) */
@@ -105,11 +104,10 @@ class Model_Label_Api extends Jkl_Model_Api
 
     public function getLikeCount($like = '')
     {
-        $like = Jkl_Db::escape($like);
         $query = "SELECT count(*) as count
               FROM labels AS t1
-              WHERE t1.name LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION;
-        $result = $this->_db->fetchAll($query);
+              WHERE t1.name LIKE ? COLLATE " . self::SEARCH_COLLATION;
+        $result = $this->_db->fetchAll($query, array(Jkl_Db::contains($like)));
         return intval($result[0]['count']);
     }
 

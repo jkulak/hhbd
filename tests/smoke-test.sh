@@ -402,6 +402,11 @@ run_fixture_tests() {
     test_login "A wrong password logs nobody in" "legacy@example.com" "wrongpass" refused
     test_login "The admin logs in with a password hash" "admin@example.com" "adminpass"
     test_captcha_once "A comment's question is answered once, and the same answer again is refused"
+    # What a request sends reaches SQL bound, as it was typed, never escaped into the query (#230)
+    test_page_absent "A percent sign searched for is no wildcard (#230)" "/szukaj.html?q=%25" 'href="/pezet-p1.html"'
+    test_page "A quote and a backslash are searched for as typed" "/szukaj.html?q=O%27Rety%5C" "Szukałeś: O'Rety\\\\</h1>"
+    test_comment_as_written "A comment with a quote and a backslash is stored and shown as written" "Smoke #230: it's a \\backslash"
+    test_lyrics_as_written "Lyrics with a quote and a backslash are saved as written, and a quote in the song's id breaks no query"
     test_page "A search with Polish letters finds the name (#151)" "/szukaj.html?q=Sok%C3%B3%C5%82" 'href="/sokol-p10.html"'
     test_page "and so does one without them" "/szukaj.html?q=sokol" 'href="/sokol-p10.html"'
     test_page "and one in capitals" "/szukaj.html?q=SOK%C3%93%C5%81" 'href="/sokol-p10.html"'
@@ -804,6 +809,62 @@ test_captcha_once() {
         return 0
     fi
     local error="$name - question '$challenge', the answer answered $first, the replay $again"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
+}
+
+# comment_with_question <content>: a comment on Superextra with the server's question answered,
+# as the page's script sends it; prints the status
+comment_with_question() {
+    local xhr="X-Requested-With: XMLHttpRequest" challenge token sum
+    challenge=$(curl -s --max-time 10 $CURL_OPTS -X POST -H "$xhr" "${BASE_URL}/comments/captcha" 2>/dev/null)
+    token=$(sed -nE 's/.*"token":"([0-9a-f]{32})".*/\1/p' <<<"$challenge")
+    sum=$(sed -nE 's/.*Ile to ([0-9]+) \\?\+ ([0-9]+).*/\1 \2/p' <<<"$challenge" | awk '{print $1 + $2}')
+    curl -s -o /dev/null -w "%{http_code}" --max-time 10 $CURL_OPTS -X POST -H "$xhr" \
+        --data-urlencode "content=$1" --data-urlencode "author=smoke" --data-urlencode "captcha_token=$token" \
+        --data-urlencode "captcha_answer=$sum" --data-urlencode "com_object_id=535" --data-urlencode "com_object_type=a" \
+        --data-urlencode "form_time=$(( $(date +%s) - 10 ))" --data-urlencode "email-honey-pot=" "${BASE_URL}/comments" 2>/dev/null
+}
+
+# test_comment_as_written <name> <content>: the comment is taken, and Superextra's page shows it
+# as it was sent, byte for byte (#230)
+test_comment_as_written() {
+    local name="$1" content="$2" status
+    status=$(comment_with_question "$content")
+    if [[ "$status" == 200 ]] && curl -s --max-time 10 $CURL_OPTS "${BASE_URL}/wdowa-superextra-a535.html" 2>/dev/null | grep -qF -- "<span class=\"br\">$content</span>"; then
+        echo -e "${GREEN}✓${NC} $name"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - the comment answered $status, or the page does not show it as sent"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
+}
+
+# test_lyrics_as_written <name>: a logged-in account saves Intro's lyrics with a quote and a
+# backslash, and the page shows them as sent; then saves them through ZF's default route with a
+# quote in the song's id, which went into the query as it was until #230
+test_lyrics_as_written() {
+    local name="$1" jar xhr="X-Requested-With: XMLHttpRequest" first second page
+    jar=$(mktemp "${TMPDIR:-/tmp}/hhbd-smoke-lyrics.XXXXXX")
+    curl -s -o /dev/null --max-time 10 $CURL_OPTS -c "$jar" -b "$jar" \
+        --data-urlencode "email=legacy@example.com" --data-urlencode "password=legacypass" "${BASE_URL}/uzytkownik/logowanie.html" 2>/dev/null
+    first=$(curl -s --max-time 10 $CURL_OPTS -b "$jar" -X POST -H "$xhr" \
+        --data-urlencode "lyrics=Smoke #230: it's a \\backslash, in the lyrics" "${BASE_URL}/intro-s1/edytuj-tekst.html" 2>/dev/null)
+    page=$(curl -s --max-time 10 $CURL_OPTS "${BASE_URL}/intro-s1.html" 2>/dev/null)
+    second=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 $CURL_OPTS -b "$jar" -X POST -H "$xhr" \
+        --data-urlencode "lyrics=Smoke #230: a quote in the song's id" "${BASE_URL}/song/process-lyrics/id/1%27x" 2>/dev/null)
+    rm -f "$jar"
+    if grep -q '"success":true' <<<"$first" && grep -qF -- "Smoke #230: it's a \\backslash, in the lyrics" <<<"$page" && [[ "$second" == 200 ]]; then
+        echo -e "${GREEN}✓${NC} $name"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - first save '${first:0:120}', the page shows them: $(grep -cF -- "it's a" <<<"$page"), the quoted id answered $second"
     echo -e "${RED}✗${NC} $error"
     ERRORS+=("$error")
     ((FAILED++))
