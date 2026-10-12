@@ -252,7 +252,7 @@ class SongController extends Zend_Controller_Action
         }
 
         if (!empty($song->featuring->items)) {
-            $description .= 'Gościnnie na albumie udzielaja się ';
+            $description .= 'Gościnnie w utworze udzielają się ';
             foreach ($song->featuring->items as $key => $value) {
                 $description .= $value->name . ' (' . $value->featType . ')';
                 if (sizeof($song->featuring->items) - 1 > $key) {
@@ -260,10 +260,6 @@ class SongController extends Zend_Controller_Action
                 }
             }
             $description .= '. ';
-        }
-
-        if (empty($song->lyrics)) {
-            $description .= 'Nie posiadamy na razie tekstu tego utworu. Jeżeli masz, wyślij nam tekst ' . $song->title . '. ';
         }
 
         return $description;
