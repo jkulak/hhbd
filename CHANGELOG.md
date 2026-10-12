@@ -34,6 +34,12 @@ which the note leaves out. The sections before, by version, stay as they were.
   logged-in account change the query; a percent sign searched for is no longer a wildcard.
 
 ### Internal
+- The move to PostgreSQL was rehearsed on a dump of production (#235): the copy took 2.8 s and
+  proved every table, the smoke test passed alike on both engines, and PostgreSQL's pages came
+  within a tenth of MariaDB's once each statement goes in one round trip.
+  The comments' type admits MariaDB's empty enum value, which two old comments hold; the copy
+  analyses its tables; `make ovh-pg-copy` and `ovh-pg-verify` run it on production, and
+  deploy/ovh/README.md has the move's steps.
 - Every database test runs on PostgreSQL as well as MariaDB, DB_ENGINE choosing, and CI runs
   both halves on each (#234): one sql() for both engines in tests/lib-test-db.sh, PostgreSQL's
   own promises checked where MariaDB's do not apply (Polish order, names unique without case,
