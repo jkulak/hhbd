@@ -439,6 +439,19 @@ class Model_Album_Api extends Jkl_Model_Api
         return $this->getList($query);
     }
 
+    /**
+     * The published albums the catalogue gained last, the newest first (#242): what the home page
+     * opens with, so a visitor, and AdSense, sees the site is kept
+     */
+    public function getRecentlyAdded($count = 8)
+    {
+        $query = 'SELECT ' . self::LIST_COLUMNS . ' FROM albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
+          'WHERE ' . self::SHOWN . ' ' .
+          'ORDER BY t3.added IS NULL, t3.added DESC, t3.id DESC ' .
+          'LIMIT ' . (int) $count;
+        return $this->getList($query);
+    }
+
     public function getAnnounced($count = 20, $page = 1)
     {
         $page = intval($page - 1);
