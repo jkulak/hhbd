@@ -43,9 +43,10 @@ class Model_Audit_Api extends Jkl_Model_Api
     public function userIdFor($accountId)
     {
         $accountId = (int) $accountId;
-        $rows = $this->_db->fetchAll('SELECT ID FROM users WHERE hhb_usr_id = ?', array($accountId));
+        // users' key is ID; asked for as id, as PostgreSQL names it, whatever the case (#231)
+        $rows = $this->_db->fetchAll('SELECT ID AS id FROM users WHERE hhb_usr_id = ?', array($accountId));
         if (!empty($rows)) {
-            return (int) $rows[0]['ID'];
+            return (int) $rows[0]['id'];
         }
         $account = $this->_db->fetchAll('SELECT usr_display_name FROM hhb_users WHERE usr_id = ?', array($accountId));
         if (empty($account)) {
@@ -70,7 +71,7 @@ class Model_Audit_Api extends Jkl_Model_Api
             return null;
         }
         $rows = $this->_db->fetchAll(
-            "SELECT t.added, t.addedby, COALESCE(NULLIF(u.name, ''), u.login) AS name FROM `" . self::TABLES[$kind] . '` t
+            "SELECT t.added, t.addedby, COALESCE(NULLIF(u.name, ''), u.login) AS name FROM " . self::TABLES[$kind] . ' t
              LEFT JOIN users u ON u.ID = t.addedby WHERE t.id = ?',
             array((int) $id)
         );

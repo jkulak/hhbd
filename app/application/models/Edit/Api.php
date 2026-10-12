@@ -298,7 +298,7 @@ class Model_Edit_Api extends Jkl_Model_Api
         $album = $this->one('albums', $id);
         foreach (self::ALBUM_COLUMNS as $table => $columns) {
             foreach ($columns as $column) {
-                $this->deleteAll($table, "`$column` = ?", array($id));
+                $this->deleteAll($table, $this->q($column) . ' = ?', array($id));
             }
         }
         // Its EPs and singles stay, without a parent release.
@@ -315,7 +315,7 @@ class Model_Edit_Api extends Jkl_Model_Api
         $artist = $this->one('artists', $id);
         foreach (self::ARTIST_COLUMNS as $table => $columns) {
             foreach ($columns as $column) {
-                $this->deleteAll($table, "`$column` = ?", array($id));
+                $this->deleteAll($table, $this->q($column) . ' = ?', array($id));
             }
         }
         $this->deleteEntities('artist', $id);
@@ -332,7 +332,7 @@ class Model_Edit_Api extends Jkl_Model_Api
         }
         foreach (self::LABEL_COLUMNS as $table => $columns) {
             foreach ($columns as $column) {
-                $this->deleteAll($table, "`$column` = ?", array($id));
+                $this->deleteAll($table, $this->q($column) . ' = ?', array($id));
             }
         }
         $this->deleteEntities('label', $id);
@@ -412,7 +412,7 @@ class Model_Edit_Api extends Jkl_Model_Api
     /** Points every row whose $column is $from at $into; one the unique keys refuse is deleted */
     private function moveAll($table, $column, $from, $into)
     {
-        foreach ($this->_db->fetchAll("SELECT * FROM `$table` WHERE `$column` = ?", array($from)) as $row) {
+        foreach ($this->_db->fetchAll('SELECT * FROM ' . $this->q($table) . ' WHERE ' . $this->q($column) . ' = ?', array($from)) as $row) {
             $this->moveRow($table, $row, array($column => $into));
         }
     }
@@ -421,7 +421,7 @@ class Model_Edit_Api extends Jkl_Model_Api
     {
         foreach (self::ENTITY_TABLES as $table => list($typeColumn, $idColumn)) {
             $rows = $this->_db->fetchAll(
-                "SELECT * FROM `$table` WHERE `$typeColumn` = ? AND `$idColumn` = ?",
+                'SELECT * FROM ' . $this->q($table) . ' WHERE ' . $this->q($typeColumn) . ' = ? AND ' . $this->q($idColumn) . ' = ?',
                 array(self::ENTITY_TYPES[$kind][$table], $from)
             );
             foreach ($rows as $row) {
@@ -436,26 +436,33 @@ class Model_Edit_Api extends Jkl_Model_Api
     private function deleteEntities($kind, $id)
     {
         foreach (self::ENTITY_TABLES as $table => list($typeColumn, $idColumn)) {
-            $this->deleteAll($table, "`$typeColumn` = ? AND `$idColumn` = ?", array(self::ENTITY_TYPES[$kind][$table], $id));
+            $this->deleteAll($table, $this->q($typeColumn) . ' = ? AND ' . $this->q($idColumn) . ' = ?', array(self::ENTITY_TYPES[$kind][$table], $id));
         }
     }
 
     private function deleteAll($table, $where, array $values)
     {
-        foreach ($this->_db->fetchAll("SELECT * FROM `$table` WHERE $where", $values) as $row) {
+        foreach ($this->_db->fetchAll('SELECT * FROM ' . $this->q($table) . ' WHERE ' . $where, $values) as $row) {
             $this->deleteRow($table, $row);
         }
     }
 
-    /** Changes a row, or deletes it when the change would duplicate a row a unique key holds */
+    /**
+     * Changes a row, or deletes it when the change would duplicate a row a unique key holds.
+     * The change runs under a savepoint, as an operation runs in a transaction: PostgreSQL
+     * refuses every statement after a failed one until the transaction goes back past it.
+     */
     private function moveRow($table, array $row, array $set)
     {
+        $this->_db->query('SAVEPOINT edit_move_row');
         try {
             $this->changeRow($table, $row, $set);
+            $this->_db->query('RELEASE SAVEPOINT edit_move_row');
         } catch (Zend_Db_Statement_Exception $e) {
-            if (false === strpos($e->getMessage(), '1062')) {
+            if (!Jkl_Db::isDuplicateKey($e)) {
                 throw $e;
             }
+            $this->_db->query('ROLLBACK TO SAVEPOINT edit_move_row');
             $this->deleteRow($table, $row);
         }
     }
@@ -465,9 +472,9 @@ class Model_Edit_Api extends Jkl_Model_Api
         list($where, $values) = $this->where($table, $row);
         $assign = array();
         foreach (array_keys($set) as $column) {
-            $assign[] = "`$column` = ?";
+            $assign[] = $this->q($column) . ' = ?';
         }
-        $this->_db->query("UPDATE `$table` SET " . implode(', ', $assign) . " WHERE $where LIMIT 1", array_merge(array_values($set), $values));
+        $this->_db->updateOne($this->q($table), implode(', ', $assign), $where, array_merge(array_values($set), $values));
         $after = $this->find($table, array_merge($row, $set));
         $this->journal($table, 'changed', $row, $after);
     }
@@ -475,7 +482,7 @@ class Model_Edit_Api extends Jkl_Model_Api
     private function deleteRow($table, array $row)
     {
         list($where, $values) = $this->where($table, $row);
-        $this->_db->query("DELETE FROM `$table` WHERE $where LIMIT 1", $values);
+        $this->_db->deleteOne($this->q($table), $where, $values);
         $this->journal($table, 'deleted', $row, null);
     }
 
@@ -483,7 +490,7 @@ class Model_Edit_Api extends Jkl_Model_Api
     {
         $columns = array_keys($row);
         $this->_db->query(
-            "INSERT INTO `$table` (`" . implode('`, `', $columns) . '`) VALUES (' . implode(', ', array_fill(0, count($columns), '?')) . ')',
+            'INSERT INTO ' . $this->q($table) . ' (' . implode(', ', array_map(array($this, 'q'), $columns)) . ') VALUES (' . implode(', ', array_fill(0, count($columns), '?')) . ')',
             array_values($row)
         );
         $this->journal($table, 'inserted', null, $this->find($table, $row));
@@ -523,7 +530,7 @@ class Model_Edit_Api extends Jkl_Model_Api
     /** The row of $table with that id, or an error that names it */
     private function one($table, $id)
     {
-        $rows = $this->_db->fetchAll("SELECT * FROM `$table` WHERE id = ?", array($id));
+        $rows = $this->_db->fetchAll('SELECT * FROM ' . $this->q($table) . ' WHERE id = ?', array($id));
         if (empty($rows)) {
             throw new RuntimeException(sprintf('There is no %s %d.', rtrim($table, 's'), $id));
         }
@@ -534,18 +541,22 @@ class Model_Edit_Api extends Jkl_Model_Api
     private function find($table, array $row)
     {
         list($where, $values) = $this->where($table, $row);
-        $rows = $this->_db->fetchAll("SELECT * FROM `$table` WHERE $where LIMIT 1", $values);
+        $rows = $this->_db->fetchAll('SELECT * FROM ' . $this->q($table) . ' WHERE ' . $where . ' LIMIT 1', $values);
         return empty($rows) ? null : $rows[0];
     }
 
-    /** WHERE on the columns that identify one row of $table, null-safe */
+    /** WHERE on the columns that identify one row of $table, a NULL matched by IS NULL */
     private function where($table, array $row)
     {
         $where = array();
         $values = array();
         foreach ($this->keyOf($table, $row) as $column => $value) {
-            $where[] = "`$column` <=> ?";
-            $values[] = $value;
+            if (null === $value) {
+                $where[] = $this->q($column) . ' IS NULL';
+            } else {
+                $where[] = $this->q($column) . ' = ?';
+                $values[] = $value;
+            }
         }
         return array(implode(' AND ', $where), $values);
     }
@@ -554,22 +565,19 @@ class Model_Edit_Api extends Jkl_Model_Api
     private function keyOf($table, array $row)
     {
         if (!isset($this->keys[$table])) {
-            $indexes = array();
-            $rows = $this->_db->fetchAll(
-                'SELECT index_name, column_name FROM information_schema.statistics
-                  WHERE table_schema = DATABASE() AND table_name = ? AND non_unique = 0
-                  ORDER BY index_name = "PRIMARY" DESC, index_name, seq_in_index',
-                array($table)
-            );
-            foreach ($rows as $index) {
-                $indexes[$index['index_name']][] = $index['column_name'];
-            }
+            $indexes = $this->_db->uniqueKeys($table);
             $this->keys[$table] = empty($indexes) ? null : reset($indexes);
         }
         if (null === $this->keys[$table]) {
             return $row;
         }
         return array_intersect_key($row, array_flip($this->keys[$table]));
+    }
+
+    /** A table's or a column's name, quoted as the engine quotes them */
+    private function q($name)
+    {
+        return $this->_db->quoteIdentifier($name);
     }
 
     private function id($value)

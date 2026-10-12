@@ -242,6 +242,7 @@ Production itself runs `deploy/ovh/compose.yaml` on the shared OVH host, behind 
   - Library: `Jkl_Tools_String`, `Jkl_Db`
 - File paths match class names (e.g., `Jkl_Tools_String` → `library/Jkl/Tools/String.php`)
 - A value from a request reaches SQL as a bound parameter, `$this->_db->fetchAll($sql, $bind)`, never concatenated or escaped into the query; a LIKE pattern is `Jkl_Db::contains()` or `startsWith()` (#230)
+- SQL is written so MariaDB and PostgreSQL both run it (#231, on the way to PostgreSQL, #229): single quotes for strings, no backticks, `CURRENT_DATE` and `EXTRACT()`, every shown column in GROUP BY, NULLs placed with `col IS NULL` where a column has them, lowercase aliases. The application's MariaDB sessions run with `ANSI_QUOTES` and `ONLY_FULL_GROUP_BY` (`Jkl_Db::MARIADB_SESSION`), so a slip fails its test. What the engines say differently goes through `Jkl_Db`: `upsert()`, `searchLike()`, `updateOne()`/`deleteOne()`, `uniqueKeys()`, `isDuplicateKey()`, `inOrder()`, `quoteIdentifier()`
 
 ## CI/CD
 

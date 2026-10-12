@@ -55,14 +55,15 @@ class Model_Provenance_FakeDb
             ));
             return new Model_Provenance_FakeStatement(1);
         }
-        // INSERT INTO import_provenance ... ON DUPLICATE KEY UPDATE
-        list($entityType, $entityId, $field, $source, $sourceRef, $licence, $fetched, $runId) = $bind;
-        $this->provenance["$entityType|$entityId|$field|$source"] = array(
-            'entity_type' => $entityType, 'entity_id' => $entityId, 'field' => $field, 'source' => $source,
-            'source_ref' => $sourceRef, 'licence' => $licence, 'fetched' => $fetched, 'run_id' => $runId,
-            'added' => '2026-10-09 12:00:00',
-        );
-        return new Model_Provenance_FakeStatement(1);
+        throw new LogicException('An unexpected query: ' . $query);
+    }
+
+    /** Jkl_Db::upsert() on import_provenance's key, a later row replacing the one there */
+    public function upsert($table, array $row, array $update = array(), array $conflict = array())
+    {
+        $this->statements[] = array('INSERT INTO ' . $table . ' (' . implode(', ', array_keys($row)) . ')', array_values($row));
+        $this->provenance["{$row['entity_type']}|{$row['entity_id']}|{$row['field']}|{$row['source']}"] = $row + array('added' => '2026-10-09 12:00:00');
+        return true;
     }
 
     public function lastInsertId()

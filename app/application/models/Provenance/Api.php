@@ -134,7 +134,7 @@ class Model_Provenance_Api extends Jkl_Model_Api
         $bind[] = self::assertId($runId);
 
         $statement = $this->_db->query(
-            'UPDATE import_runs SET finished = current_timestamp(), created_count = ?, updated_count = ?,
+            'UPDATE import_runs SET finished = CURRENT_TIMESTAMP, created_count = ?, updated_count = ?,
                     unchanged_count = ?, skipped_count = ?, refused_count = ?, report = ?
               WHERE id = ? AND finished IS NULL',
             $bind
@@ -178,12 +178,14 @@ class Model_Provenance_Api extends Jkl_Model_Api
         $fetched = self::toUtc($fetched);
         $this->assertRunTakesProvenance($runId);
 
-        $this->_db->query(
-            'INSERT INTO import_provenance (entity_type, entity_id, field, source, source_ref, licence, fetched, run_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE source_ref = VALUES(source_ref), licence = VALUES(licence),
-                                     fetched = VALUES(fetched), run_id = VALUES(run_id)',
-            array($entityType, (int) $entityId, $field, $source, $sourceRef, $licence, $fetched, $runId)
+        $this->_db->upsert(
+            'import_provenance',
+            array(
+                'entity_type' => $entityType, 'entity_id' => (int) $entityId, 'field' => $field, 'source' => $source,
+                'source_ref' => $sourceRef, 'licence' => $licence, 'fetched' => $fetched, 'run_id' => $runId,
+            ),
+            array('source_ref' => true, 'licence' => true, 'fetched' => true, 'run_id' => true),
+            array('entity_type', 'entity_id', 'field', 'source')
         );
     }
 
