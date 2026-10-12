@@ -259,17 +259,17 @@ class AlbumController extends Zend_Controller_Action
             $eps[] = $value->title;
         }
 
+        // Facts only: the sentences every album's description ended with, the same on more than
+        // a thousand pages and often untrue, went for AdSense's "low-value content" (#245).
         if ($album->isAnnounced()) {
-            $description = 'Długo oczekiwany album ' . $album->title . ', został zapowiedziany' . $byLabel .
-            '. Premiera planowana jest na ' . $album->releaseDateNormalized . ', czyli już niedługo! ' .
-            (!empty($album->tracklist->items) ? 'Album ma zawierać ' . sizeof($album->tracklist->items) . ' utworów. ' .
-            'Płyta będzie otwarta utworem ' . $album->tracklist->items[0]->title . ', a zamknięta utworem ' . $album->tracklist->items[sizeof($album->tracklist->items) - 1]->title . '. ' : '') .
-            'Czekamy z niecierpliwością. ' .
-            '';
+            $description = 'Album "' . $album->title . '" został zapowiedziany' . $byLabel .
+            (!empty($album->releaseDateNormalized) ? '. Premiera planowana jest na ' . $album->releaseDateNormalized : '') . '. ' .
+            (!empty($album->tracklist->items) ? 'Album ma zawierać ' . sizeof($album->tracklist->items) . ' ' . Jkl_Tools_String::plural(sizeof($album->tracklist->items), 'utwór', 'utwory', 'utworów') . '. ' .
+            'Płyta będzie otwarta utworem "' . $album->tracklist->items[0]->title . '", a zamknięta utworem "' . $album->tracklist->items[sizeof($album->tracklist->items) - 1]->title . '". ' : '');
         } else {
-            $description = 'Album "' . $album->title . '", został wydany' . $byLabel .
+            $description = 'Album "' . $album->title . '" został wydany' . $byLabel .
             (!empty($album->releaseDateNormalized) ? ', premiera odbyła się ' . $album->releaseDateNormalized : '') . '. ' .
-            (!empty($album->tracklist->items) ? 'Album zawiera ' . sizeof($album->tracklist->items) . ' utworów' . (($album->duration != "--") ? ' i trwa ' . $album->duration : ''). '. ' .
+            (!empty($album->tracklist->items) ? 'Album zawiera ' . sizeof($album->tracklist->items) . ' ' . Jkl_Tools_String::plural(sizeof($album->tracklist->items), 'utwór', 'utwory', 'utworów') . ((!empty($album->duration) && $album->duration != "--") ? ' i trwa ' . $album->duration : ''). '. ' .
             'Płyta rozpoczyna się utworem "' . $album->tracklist->items[0]->title . '", a kończy utworem "' . $album->tracklist->items[sizeof($album->tracklist->items) - 1]->title . '". ' : '');
         }
         $description .=
@@ -278,10 +278,7 @@ class AlbumController extends Zend_Controller_Action
           ((!empty($rap)) ? 'Za rymy i rap na płycie, odpowiedzialni są: ' . implode(', ', array_unique($rap)) . '. ' : '') .
           ((!empty($music)) ? 'Warstwę muzyczną zapewnili: ' . implode(', ', array_unique($music)) . '. ' : '') .
           ((!empty($scratch)) ? 'Scratch i cuty na płycie to zasługa: ' . implode(', ', array_unique($scratch)) . '. ' : '') .
-          ((!empty($feat)) ? 'Gościnnie na albumie udzielają się: ' . implode(', ', array_unique($feat)) . '. ' : '') .
-          '' .
-          $album->artistNames . ' to prawdziwy polski hip-hop. ' .
-          'Aby zobaczyć teksty piosenek, należy kliknąć w tytuły na liście powyżej. Do każdej piosenki dołączony jest teledysk. Jeżeli teledyski nieodpowiadają tytułowi, możesz to zgłosić.';
+          ((!empty($feat)) ? 'Gościnnie na albumie udzielają się: ' . implode(', ', array_unique($feat)) . '. ' : '');
         return $description;
     }
 }
