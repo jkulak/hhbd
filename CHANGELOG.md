@@ -25,6 +25,11 @@ which the note leaves out. The sections before, by version, stay as they were.
   ONLY_FULL_GROUP_BY, so SQL PostgreSQL would refuse fails a test on MariaDB too, and the few
   things the engines say differently, an upsert, the search's LIKE, one row of several alike, a
   table's unique keys, a duplicate key's error, go through Jkl_Db.
+- PostgreSQL 17 runs beside MariaDB, on the way to it (#232, #233, #229): its schema is MariaDB's
+  after 0038 as one baseline migration, the app and the importer connect to it when
+  DB_ADAPTER says so, the migration runner and make reset-db run it with DB_ENGINE=postgresql,
+  and app/tools/mariadb-to-postgres.php copies a MariaDB database into it and proves the copy
+  table by table. CI runs the site's smoke test on it too.
 
 ## 2026-10-11
 

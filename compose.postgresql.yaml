@@ -1,0 +1,44 @@
+# The application on PostgreSQL (#232), on the way from MariaDB (#229): laid over compose.yaml,
+# and compose.ci.yaml in CI, it adds PostgreSQL 17, as production will run it, and points the
+# app and the importer at it. MariaDB keeps running beside it: it is what the copy reads from
+# (app/tools/mariadb-to-postgres.php) and what make reset-db fills first.
+#
+#   COMPOSE_FILE=compose.yaml:compose.postgresql.yaml docker compose up -d
+#   DB_ENGINE=postgresql make reset-db
+#
+# The database sorts in Polish: ICU's pl, set when the cluster is made.
+services:
+  app:
+    environment:
+      DB_ADAPTER: pdo_pgsql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  importer:
+    environment:
+      DB_ADAPTER: pdo_pgsql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: hhbd
+      POSTGRES_PASSWORD: hhbd_password
+      POSTGRES_DB: hhbd
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=pl-PL --locale=C.UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "hhbd", "-d", "hhbd"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  pg_data:

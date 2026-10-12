@@ -143,7 +143,7 @@ class Model_User extends Zend_Db_Table_Abstract
     {
         $email = strval($email);
 
-        $result = $this->fetchAll($this->_db->quoteInto('usr_email = ?', $email));
+        $result = $this->fetchAll($this->_db->quoteInto('lower(usr_email) = lower(?)', $email));
         if (count($result) > 0) {
             return new Model_User_Container($result->current());
         } else {
@@ -160,7 +160,7 @@ class Model_User extends Zend_Db_Table_Abstract
     public function authenticate($email, $password)
     {
         $row = $this->_db->fetchRow(
-            'SELECT usr_id, usr_password, usr_display_name, usr_is_admin, usr_login_count FROM hhb_users WHERE usr_email = ? LIMIT 1',
+            'SELECT usr_id, usr_password, usr_display_name, usr_is_admin, usr_login_count FROM hhb_users WHERE lower(usr_email) = lower(?) LIMIT 1',
             array((string) $email)
         );
         if (!$row || !Model_User_Password::verify($password, $row['usr_password'], Model_User_Password::legacySalt())) {
@@ -179,7 +179,7 @@ class Model_User extends Zend_Db_Table_Abstract
     {
         $name = strval($name);
 
-        $rows = $this->fetchAll($this->_db->quoteInto('usr_display_name = ?', $name));
+        $rows = $this->fetchAll($this->_db->quoteInto('lower(usr_display_name) = lower(?)', $name));
         return $rows;
     }
 

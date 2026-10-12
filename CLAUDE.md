@@ -82,6 +82,7 @@ For production-like data instead, load a dump and record the baseline with `make
 
 - `make reset-db` drops the local `hhbd` database and builds it again from the migrations and the fixtures, or loads the kept result of that build while those files have not changed (`RESET_DB_FULL=1` always builds). Run it before and after a piece of work. It acts only on the running db container of this checkout's compose project on the local Docker engine, and refuses anything else.
 - Every schema or data change is a migration in `database/migrations/`, `NNNN-slug.up.sql` with its `.down.sql`: `make migrate-new NAME=...`, `make migrate`, `make migrate-down`, `make migrate-status`. Keep each one small and compatible with the release that is running. Production gets them with `make ovh-migrate` before the release that needs them ([deploy/ovh/README.md](deploy/ovh/README.md)). Details in [database/README.md](database/README.md).
+- PostgreSQL runs beside MariaDB until production moves to it (#229): `compose.postgresql.yaml` over `compose.yaml` puts the app on it, `DB_ENGINE=postgresql make reset-db` builds it from `database/migrations-postgresql/` and a verified copy of MariaDB's rows (`app/tools/mariadb-to-postgres.php`). No new migration until the move: database/README.md says why.
 
 ## Common Commands
 

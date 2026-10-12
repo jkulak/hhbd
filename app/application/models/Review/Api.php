@@ -185,7 +185,7 @@ class Model_Review_Api extends Jkl_Model_Api
         $labelId = null;
         $label = trim(isset($form['label']) ? (string) $form['label'] : '');
         if ('' !== $label) {
-            $rows = $this->_db->fetchAll('SELECT id FROM labels WHERE name = ? ORDER BY id', array($label));
+            $rows = $this->_db->fetchAll('SELECT id FROM labels WHERE lower(name) = lower(?) ORDER BY id', array($label));
             if (empty($rows)) {
                 throw new RuntimeException(sprintf('hhbd nie ma wytwórni „%s”; wybierz ją z listy.', $label));
             }
