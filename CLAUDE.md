@@ -198,7 +198,7 @@ Below 992 px the layout is the phones' and tablets' (#149): one column, a header
 
 ### Analytics, ads and consent
 
-`$this->Analytics()` (`views/helpers/Analytics.php`) prints Google's tags in the layout's head (#161, #162): Consent Mode v2 with everything denied until AdSense's certified consent message says otherwise, GA4 when `GA_MEASUREMENT_ID` is set, AdSense's script when `SHOW_ADS` is on. A controller tells it what its page is, `->page('album', $id, $name)`, and what it found, `->set('search_results', $n)`; `s.js` sends what people do (`track()`); `/prywatnosc.html` says all of it to visitors. There is no Tag Manager: the tags and their parameters are in the code.
+`$this->Analytics()` (`views/helpers/Analytics.php`) prints Google's tags in the layout's head (#161, #162): Consent Mode v2 with everything denied until AdSense's certified consent message says otherwise, GA4 when `GA_MEASUREMENT_ID` is set, AdSense's script when `SHOW_ADS` is on. A controller tells it what its page is, `->page('album', $id, $name)`, and what it found, `->set('search_results', $n)`; `s.js` sends what people do (`track()`); `/prywatnosc.html` says all of it to visitors. There is no Tag Manager: the tags and their parameters are in the code. The side column's ad unit stands only beside hhbd's own content (#244): not on the login, registration and not-logged-in pages, the lyrics form, search results, users' profiles, or a song's page that shows lyrics, which hhbd holds no licence for; AdSense's script stays on every page, as it brings the consent message.
 
 ### Configuration
 
