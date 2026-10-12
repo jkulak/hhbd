@@ -49,15 +49,24 @@ class Jkl_Db
 
     /**
      * What a connection through $adapter needs beyond the host and the credentials (#232):
-     * MariaDB's utf8mb4 and its portable SQL modes; PostgreSQL's UTF8, and values fetched as
-     * strings, as PDO MySQL hands them and the code has always read them.
+     * MariaDB's utf8mb4 and its portable SQL modes; PostgreSQL's UTF8, values fetched as
+     * strings, as PDO MySQL hands them and the code has always read them, and each statement
+     * sent with its values in one round trip rather than prepared, bound and run in three:
+     * a page runs hundreds of small queries, and the rehearsal on production's data (#235)
+     * measured the prepared ones adding a tenth to PostgreSQL's pages. The values stay bound,
+     * never put into the SQL. Connections are not persistent, though they would save some 5 ms
+     * a page: a PHP-FPM worker would keep a connection PostgreSQL has dropped, after a restart
+     * or a reset, and its next request would fail.
      *
      * @return array charset, driver_options
      */
     public static function connectionOptions($adapter)
     {
         if (self::isPostgresAdapter($adapter)) {
-            return array('charset' => 'UTF8', 'driver_options' => array(PDO::ATTR_STRINGIFY_FETCHES => true));
+            return array('charset' => 'UTF8', 'driver_options' => array(
+                PDO::ATTR_STRINGIFY_FETCHES => true,
+                Pdo\Pgsql::ATTR_DISABLE_PREPARES => true,
+            ));
         }
         return array('charset' => 'utf8mb4', 'driver_options' => self::MARIADB_SESSION);
     }

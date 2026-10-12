@@ -146,6 +146,48 @@ make ovh-indexnow DRY_RUN=1   # count every address in the sitemaps, send nothin
 make ovh-indexnow             # send them all: the first time, and after a gap
 ```
 
+### Moving to PostgreSQL
+
+Production moves from MariaDB to its own PostgreSQL 17 (#229), as every service on the host
+runs one engine. Rehearsed on 2026-10-13 on a dump of production (#235), in a throwaway stack:
+
+- `make ovh-dump`, then the dump loaded into MariaDB (2 s), PostgreSQL's schema made by its
+  migration 0039 (1 s), and `mariadb-to-postgres.php copy`: 56 tables, every one the same on
+  both sides, in 2.8 s. It found the one value production held that the schema refused, two
+  old comments with MariaDB's empty enum value, which 0039 now admits.
+- The whole smoke test on production's data passed alike on both engines (177, and the 3
+  checks only production's environment passes).
+- Pages: the sum of 21 pages' medians was 788-882 ms on PostgreSQL against 620-852 ms on
+  MariaDB over several runs on a laptop, once PostgreSQL's statements went in one round trip
+  each (`Jkl_Db::connectionOptions()`; 996 ms before). Search and Top 10 are faster on
+  PostgreSQL; a page is some 5 ms slower for opening its connection, and an album's page some
+  20 ms, as it runs hundreds of small queries. Persistent connections brought the sum to
+  708 ms, but a worker then keeps a connection PostgreSQL has dropped, and its request after a
+  database restart fails: not worth 5 ms behind Cloudflare.
+
+The move, in this order. Writes made on MariaDB between step 4 and step 5 are lost: page views
+and logins of about a minute, at night; no import or edit runs then.
+
+1. Ahead of the night: `deploy/ovh/compose.yaml` gains the `postgres` service beside `db`, with
+   the backup's labels, the app still on MariaDB; `make ovh-install`, then its pull request
+   merged. Then `DB_ENGINE=postgresql make ovh-migrate` builds the schema, and `make
+   ovh-pg-copy` copies production's data once, as the rehearsal on production itself.
+2. On the night, PostgreSQL emptied for the real copy:
+   `DB_ENGINE=postgresql MIGRATE_ASSUME_YES=1 make ovh-migrate-down N=all`, then
+   `DB_ENGINE=postgresql make ovh-migrate`.
+3. `make ovh-install` with the compose file whose app and importer say `DB_ADAPTER: pdo_pgsql`,
+   `DB_HOST: postgres`, `DB_PORT: "5432"`. The running containers keep MariaDB until the next
+   deploy.
+4. `make ovh-pg-copy`: the copy, verified table by table, then analysed.
+5. `gh workflow run deploy.yml --repo jkulak/hhbd --ref <the running tag>`: the idle colour
+   starts on PostgreSQL and the edge moves to it once it is healthy.
+6. `SMOKE_TARGET=production ./tests/smoke-test.sh https://hhbd.pl`, `make ovh-logs LEVEL=error`,
+   and the next night's backup holds a PostgreSQL dump.
+
+The way back, for 7 days: `make ovh-install` with the compose file before step 3, and the
+running tag deployed again; MariaDB still holds everything up to step 4. After 7 days MariaDB
+goes (#237).
+
 ### How production moved
 
 On 2026-10-08, following CONTRACT.md §10, with no failed request:

@@ -93,6 +93,11 @@ try {
         throw new RuntimeException('the copy differs from the source in ' . implode(', ', $differ));
     }
     'copy' === $mode ? $target->commit() : $target->rollBack();
+    if ('copy' === $mode) {
+        // Fresh tables have no statistics, and the planner guesses without them; the rehearsal
+        // on production's data measured the pages before and after (#235).
+        $target->exec('ANALYZE');
+    }
 } catch (Exception $e) {
     $target->rollBack();
     $log('error', ('copy' === $mode ? 'Nothing was copied: ' : 'Not the same: ') . $e->getMessage(), Jkl_Log::describe($e));
