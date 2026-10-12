@@ -135,6 +135,12 @@ ul.list {
   margin-left: 108px;
 }
 
+/* When an album reached the catalogue, on the home page's newest in the database (#242) */
+.albums span.added {
+  font-size: 85%;
+  color: #766C45;
+}
+
 
 /* layout */
 #body {

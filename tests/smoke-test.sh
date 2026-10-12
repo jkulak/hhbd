@@ -407,6 +407,7 @@ run_fixture_tests() {
     test_page "A quote and a backslash are searched for as typed" "/szukaj.html?q=O%27Rety%5C" "Szukałeś: O'Rety\\\\</h1>"
     test_comment_as_written "A comment with a quote and a backslash is stored and shown as written" "Smoke #230: it's a \\backslash"
     test_lyrics_as_written "Lyrics with a quote and a backslash are saved as written, and a quote in the song's id breaks no query"
+    test_order "The home page's newest in the database has the fixtures' latest album (#242)" "/" 'href="/woyza-wlasnym-sumptem-a780.html"' "<h2>Polski hip-hop w pigułce</h2>"
     # No ad beside lyrics hhbd holds no licence for, nor on a form or a profile (#244)
     test_page_absent "A song's page with lyrics has no ad unit (#244)" "/pogoda-s7329.html" 'class="adsbygoogle"'
     test_page "while one without lyrics has it" "/domowa-produkcja-s9102.html" 'class="adsbygoogle"'
@@ -947,7 +948,10 @@ run_tests() {
     # What each list page is, not who is on its list today: the home page's popular boxes are
     # this week's, the artist list's all time's, the premieres the announcements still ahead,
     # and a name that drops off one took a release back with nothing wrong in it (#212).
-    test_page_multi "Homepage" "/" "<h2>Aktualności</h2>" "<h2>Ostatnio wydane albumy</h2>" "<h2>Popularne w tym tygodniu</h2>"
+    test_page_multi "Homepage" "/" "<h2>Nowe w bazie</h2>" "<h2>Archiwum aktualności</h2>" "<h2>Ostatnio wydane albumy</h2>" "<h2>Popularne w tym tygodniu</h2>"
+    test_order "The home page opens with what the catalogue gained, the news after it (#242)" "/" "<h2>Nowe w bazie</h2>" "<h2>Archiwum aktualności</h2>"
+    test_page "and says when each album reached it" "/" '<span class="added">dodano '
+    test_page_absent "and calls no news current" "/" "<h2>Aktualności</h2>"
     test_page_absent "The home page's news excerpts split no letter (#163)" "/" "�"
     # The table, not a title: production's top album was a 2017 placeholder until #54 removed it.
     test_page "Album List" "/albumy.html" "Lista albumów hip-hopowych"
@@ -1265,6 +1269,7 @@ run_release_tests() {
     test_page "A news item" "/onar-jak-na-pierwszej-plycie-wideo-n1877.html" "<h1>"
     test_page "The search" "/szukaj.html?q=peja" 'href="/peja-p'
     test_page "This week's ranking" "/albumy/popularne-tydzien.html" "<h1>Najpopularniejsze albumy z ostatnich 7 dni</h1>"
+    test_order "The home page opens with what the catalogue gained, the news after it (#242)" "/" "<h2>Nowe w bazie</h2>" "<h2>Archiwum aktualności</h2>"
     test_page "A year's albums" "/albumy-2016.html" "<h1>Polski hip-hop 2016"
     test_not_found "A page that is not there is a 404" "/nie-ma-takiego-albumu-a999999999.html" "Superextra"
     test_page "An album's canonical address is the https one" "/wdowa-superextra-a535.html" "rel=\"canonical\" href=\"${BASE_URL}/wdowa-superextra-a535.html\""
