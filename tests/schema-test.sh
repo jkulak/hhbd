@@ -33,7 +33,8 @@
 #   - a cover file is described once per album, variant and hash (#60)
 #   - an artist's photo file appears once per artist; artistid is an int (#61)
 #   - the catalogue is utf8mb4 with the Polish collation: Ż is not Z, case does not count,
-#     Polish order, and a four-byte character survives an insert and a page view (#71)
+#     Polish order, and a four-byte character survives an insert and a page view (#71); a
+#     label's name likewise
 #   - the lookups the pages make by artist, album, label and views have indexes (#69)
 #   - the image files production lacks for good are no longer named, and the down names them
 #     again (#47)
@@ -46,13 +47,26 @@
 #     when that name is taken, and the up splits it again, unless the archive went too (#102)
 #   - going down to the baseline brings the old schema back, and up removes it again
 #
+# DB_ENGINE=postgresql runs it on PostgreSQL's database, which make reset-db builds by 0039 and
+# copies from MariaDB's (#234). The rows, the site and what a statement may store are checked
+# alike. What is MariaDB's history alone, storage engines, utf8mb3, ON UPDATE, zero dates and
+# sql_mode, and the downs to the baseline, is checked on MariaDB alone; PostgreSQL checks what
+# its schema promises in their place:
+#   - every table 0039 creates is there, and no trigger changes a row behind the application
+#   - the database is UTF8 and sorts in Polish (ICU's pl), a byte-compared table's text is
+#     COLLATE "C", and the JSON columns are json, which refuses what is not JSON
+#   - the search's unaccent(lower()) finds a name without its Polish letters (#232)
+#   - the PostgreSQL track goes down to an empty database and up again to every table
+#
 # It changes rows to prove these and ends with make reset-db, so the database ends as a reset
 # leaves it.
 #
-# Usage: tests/schema-test.sh [base URL of the running site, default http://localhost:8080]
+# Usage: [DB_ENGINE=postgresql] tests/schema-test.sh [base URL of the running site, default http://localhost:8080]
 #
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
+# shellcheck source=tests/lib-test-db.sh
+. tests/lib-test-db.sh
 
 URL=${1:-http://localhost:8080}
 T=$(mktemp -d "${TMPDIR:-/tmp}/hhbd-schematest.XXXXXX")
@@ -63,65 +77,104 @@ fail=0
 ok()  { echo "ok   $1"; pass=$((pass + 1)); }
 bad() { echo "x    $1"; fail=$((fail + 1)); }
 check() { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1"; echo "     expected: $2"; echo "     got:      $3"; fi; }
+# refuses <what> <pattern> <statement>: the statement fails, with an error that matches the
+# pattern (grep -E), the key or the value it is refused for. A statement refused for anything
+# else, a typo or a column the other engine lacks, does not pass for the rule.
+refuses() {
+    if sql "$3" >"$T/out" 2>&1; then
+        bad "$1"
+    elif grep -qE -- "$2" "$T/out"; then
+        ok "$1"
+    else
+        bad "$1, for want of /$2/"; cat "$T/out"
+    fi
+}
 
-sql() { # sql <statement>: in this project's database, as root
-    docker compose exec -T db sh -c 'MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?}" exec mariadb -uroot -N -B --default-character-set=utf8mb4 "${MYSQL_DATABASE:?}" -e "$1"' -- "$1"
-}
+if is_pg; then SCHEMA='current_schema()'; else SCHEMA='DATABASE()'; fi
 col() { # col <where on information_schema.columns>: matching columns, as table.column
-    sql "SELECT GROUP_CONCAT(CONCAT(table_name, '.', column_name) ORDER BY table_name SEPARATOR ' ') FROM information_schema.columns WHERE table_schema = DATABASE() AND $1"
+    sql "SELECT $(agg "CONCAT(table_name, '.', column_name)" table_name ' ') FROM information_schema.columns WHERE table_schema = $SCHEMA AND $1"
 }
-count() { sql "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND $1"; }
-tables() { sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'"; }
+count() { sql "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = $SCHEMA AND $1"; }
+tables() { sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = $SCHEMA AND table_type = 'BASE TABLE'"; }
 engines() { # how many tables on each engine, as "engine count" pairs
     sql "SELECT GROUP_CONCAT(e ORDER BY e SEPARATOR ', ') FROM (SELECT CONCAT(engine, ' ', COUNT(*)) e FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' GROUP BY engine) x"
 }
+# ifnull <expression> <text>: the value, or the text where it is NULL; PostgreSQL's COALESCE
+# wants both of one type
+ifnull() { if is_pg; then printf "COALESCE(CAST(%s AS text), '%s')" "$1" "$2"; else printf "IFNULL(%s, '%s')" "$1" "$2"; fi; }
+# quoted <expression>: the value as an SQL literal, NULL unquoted
+quoted() { if is_pg; then printf 'quote_nullable(%s)' "$1"; else printf 'QUOTE(%s)' "$1"; fi; }
+# On PostgreSQL each table's text columns by collation: "C" where they compare bytes, "default"
+# for the database's Polish order, "C+default" for a table with both.
+TEXT_COLLATIONS="SELECT table_name, string_agg(DISTINCT COALESCE(collation_name, 'default'), '+' ORDER BY COALESCE(collation_name, 'default')) AS c FROM information_schema.columns WHERE table_schema = current_schema() AND data_type IN ('text', 'character varying') GROUP BY table_name"
+compares() { # compares <table>: how its text compares, utf8mb4_bin or C for bytes
+    if is_pg; then
+        sql "SELECT c FROM ($TEXT_COLLATIONS) x WHERE table_name = '$1'"
+    else
+        sql "SELECT table_collation FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = '$1'"
+    fi
+}
+if is_pg; then BYTES=C; else BYTES=utf8mb4_bin; fi
 # Every migration after the baseline, so going down that many returns to it.
 after_baseline=$(( $(find database/migrations -name '[0-9][0-9][0-9][0-9]-*.up.sql' | wc -l) - 1 ))
 
 CATALOG="'albums','artists','songs','labels','cities','news'"
 TIMES_WITH_ON_UPDATE="column_name IN ('added', 'ule_action_timestamp') AND extra LIKE '%on update%'"
+if is_pg; then NOW_DEFAULT=CURRENT_TIMESTAMP; else NOW_DEFAULT='current_timestamp()'; fi
 
 echo "> make reset-db: the migrations, over the fixtures"
 make -s reset-db >"$T/out" 2>&1 || { bad "make reset-db succeeds"; cat "$T/out"; exit 1; }
 ok "make reset-db succeeds ($(tail -1 "$T/out" | sed 's/^ok //'))"
 
 echo "> the schema"
-check "every table is InnoDB, the migrations' own too" "InnoDB $(tables)" "$(engines)"
-check "no added (or ule_action_timestamp) changes on update" "NULL" "$(col "$TIMES_WITH_ON_UPDATE")"
-check "the catalog's added defaults to the current time" "6" "$(count "table_name IN ($CATALOG) AND column_name = 'added' AND column_default = 'current_timestamp()'")"
-check "no column defaults to a zero date" "NULL" "$(col "column_default LIKE '%0000-00-00%'")"
-check "the catalog's updated has no automatic value" "NULL" "$(col "table_name IN ($CATALOG) AND column_name = 'updated' AND (extra LIKE '%on update%' OR column_default IS NOT NULL AND column_default <> 'NULL')")"
+if is_pg; then
+    check "every table 0039 creates is there, and no other but the runner's" \
+        "$(sed -n 's/^CREATE TABLE \([a-z_]*\) (.*/\1/p' database/migrations-postgresql/0039-postgresql.up.sql | LC_ALL=C sort | paste -sd' ' -)" \
+        "$(sql "SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema() AND table_type = 'BASE TABLE' AND table_name <> 'schema_migrations'" | LC_ALL=C sort | paste -sd' ' -)"
+    # What MariaDB's ON UPDATE did, a trigger would do here; there is none.
+    check "no trigger changes a row on update, added included" "0" "$(sql "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema = current_schema()")"
+else
+    check "every table is InnoDB, the migrations' own too" "InnoDB $(tables)" "$(engines)"
+    check "no added (or ule_action_timestamp) changes on update" "NULL" "$(col "$TIMES_WITH_ON_UPDATE")"
+fi
+check "the catalog's added defaults to the current time" "6" "$(count "table_name IN ($CATALOG) AND column_name = 'added' AND column_default = '$NOW_DEFAULT'")"
+if is_pg; then
+    check "the catalog's updated has no automatic value" "NULL" "$(col "table_name IN ($CATALOG) AND column_name = 'updated' AND column_default IS NOT NULL")"
+else
+    check "no column defaults to a zero date" "NULL" "$(col "column_default LIKE '%0000-00-00%'")"
+    check "the catalog's updated has no automatic value" "NULL" "$(col "table_name IN ($CATALOG) AND column_name = 'updated' AND (extra LIKE '%on update%' OR column_default IS NOT NULL AND column_default <> 'NULL')")"
+fi
 
 echo "> updating a row leaves its added alone"
 for t in artists_photos ratings; do
-    id=$(sql "SELECT MIN(id) FROM \`$t\`")
-    sql "UPDATE \`$t\` SET added = '2001-01-01 00:00:00' WHERE id = $id"
+    id=$(sql "SELECT MIN(id) FROM $t")
+    sql "UPDATE $t SET added = '2001-01-01 00:00:00' WHERE id = $id"
     case $t in
         artists_photos) sql "UPDATE artists_photos SET description = 'changed by schema-test' WHERE id = $id" ;;
-        ratings)        sql "UPDATE ratings SET rate = IF(rate = 5, 4, 5) WHERE id = $id" ;;
+        ratings)        sql "UPDATE ratings SET rate = CASE WHEN rate = 5 THEN 4 ELSE 5 END WHERE id = $id" ;;
     esac
-    check "$t: an update keeps added" "2001-01-01 00:00:00" "$(sql "SELECT added FROM \`$t\` WHERE id = $id")"
+    check "$t: an update keeps added" "2001-01-01 00:00:00" "$(sql "SELECT added FROM $t WHERE id = $id")"
 done
 
 echo "> inserting a catalog row without a time"
 sql "INSERT INTO cities (name) VALUES ('schema-test city')"
-check "cities: added is the time of the insert" "1" "$(sql "SELECT added IS NOT NULL AND ABS(TIMESTAMPDIFF(SECOND, added, NOW())) <= 60 FROM cities WHERE name = 'schema-test city'")"
+check "cities: added is the time of the insert" "1" "$(sql "SELECT CASE WHEN added BETWEEN NOW() - INTERVAL '1' MINUTE AND NOW() + INTERVAL '1' MINUTE THEN 1 ELSE 0 END FROM cities WHERE name = 'schema-test city'")"
 
 echo "> a page view through the site (#68)"
 BROWSER="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36"
 # The site's day is Warsaw's; the database's CURDATE() is UTC's, a day behind after 22:00.
 TODAY=$(TZ=Europe/Warsaw date +%F)
-viewed() { sql "SELECT CONCAT_WS(' ', (SELECT viewed FROM \`$2\` WHERE id = $3), IFNULL((SELECT views FROM page_views WHERE entity_type = '$1' AND entity_id = $3 AND day = '$TODAY'), 0))"; }
+viewed() { sql "SELECT CONCAT_WS(' ', (SELECT viewed FROM $2 WHERE id = $3), COALESCE((SELECT views FROM page_views WHERE entity_type = '$1' AND entity_id = $3 AND day = '$TODAY'), 0))"; }
 view() { # view <type> <table> <id> <path>: a browser opens the page; what it counts, and what it must not touch
     local type=$1 table=$2 id=$3 path=$4 cols before after counted jar
     cols="added"; [ "$table" = news ] || cols="added, updated"
     jar="$T/jar-$type"
     # Known values, so "unchanged" means something even where the fixtures leave them NULL.
-    sql "UPDATE \`$table\` SET added = '2002-02-02 02:02:02'$([ "$table" = news ] || echo ", updated = '2003-03-03 03:03:03'") WHERE id = $id"
-    before=$(sql "SELECT CONCAT_WS('|', $cols) FROM \`$table\` WHERE id = $id")
+    sql "UPDATE $table SET added = '2002-02-02 02:02:02'$([ "$table" = news ] || echo ", updated = '2003-03-03 03:03:03'") WHERE id = $id"
+    before=$(sql "SELECT CONCAT_WS('|', $cols) FROM $table WHERE id = $id")
     counted=$(viewed "$type" "$table" "$id")
     curl -s -o /dev/null --max-time 10 -A "$BROWSER" -c "$jar" -b "$jar" "$URL$path"
-    after=$(sql "SELECT CONCAT_WS('|', $cols) FROM \`$table\` WHERE id = $id")
+    after=$(sql "SELECT CONCAT_WS('|', $cols) FROM $table WHERE id = $id")
     check "$table $id: a view leaves $cols as they were" "$before" "$after"
     check "$table $id: and counts it, in the total and in the day's" "$(echo "$counted" | awk '{ print $1 + 1, $2 + 1 }')" "$(viewed "$type" "$table" "$id")"
     counted=$(viewed "$type" "$table" "$id")
@@ -140,7 +193,7 @@ check "nothing answers at /stat, which let anyone add views" "404" "$(curl -s -o
 echo "> the premieres of this day in earlier years (#197)"
 # Today, Warsaw's, twenty years back: Superextra to the day, Podmiejski Gwar to the month alone;
 # both get their dates back after, which later checks read.
-dates=$(sql "SELECT GROUP_CONCAT(CONCAT('UPDATE albums SET year = ', QUOTE(year), ', release_date_precision = ', QUOTE(release_date_precision), ' WHERE id = ', id) SEPARATOR '; ') FROM albums WHERE id IN (535, 50)")
+dates=$(sql "SELECT $(agg "CONCAT('UPDATE albums SET year = ', $(quoted year), ', release_date_precision = ', $(quoted release_date_precision), ' WHERE id = ', id)" id '; ') FROM albums WHERE id IN (535, 50)")
 sql "UPDATE albums SET year = '$(( ${TODAY:0:4} - 20 ))-${TODAY:5}', release_date_precision = 'day' WHERE id = 535; UPDATE albums SET year = '$(( ${TODAY:0:4} - 5 ))-${TODAY:5}', release_date_precision = 'month' WHERE id = 50"
 on_this_day=$(curl -s --max-time 10 "$URL/" | sed -n '/id="on-this-day"/,/<\/div>/p' | tr -s ' \n' ' ')
 check "the home page shows an album released on this day twenty years ago" "1" "$(grep -c '20 lat temu:</span> <a href="/wdowa-superextra-a535.html"> Wdowa - Superextra</a> (2006)' <<<"$on_this_day" || true)"
@@ -149,158 +202,160 @@ sql "$dates"
 
 echo "> external ids"
 sql "INSERT INTO external_ids (entity_type, entity_id, source, kind, value) VALUES ('album', 535, 'discogs', 'master', '1234567')"
-if sql "INSERT INTO external_ids (entity_type, entity_id, source, kind, value) VALUES ('album', 536, 'discogs', 'master', '1234567')" >"$T/out" 2>&1; then
-    bad "an id already on one row cannot go on another"
-else
-    ok "an id already on one row cannot go on another"
-fi
+refuses "an id already on one row cannot go on another" "PRIMARY|external_ids_pkey" \
+    "INSERT INTO external_ids (entity_type, entity_id, source, kind, value) VALUES ('album', 536, 'discogs', 'master', '1234567')"
 sql "INSERT INTO external_ids (entity_type, entity_id, source, kind, value) VALUES ('artist', 35, 'wikidata', 'item', 'q9346013'), ('artist', 36, 'wikidata', 'item', 'Q9346013')"
 check "values differing only in case are two ids, whatever the tables' collation" "2" "$(sql "SELECT COUNT(*) FROM external_ids WHERE source = 'wikidata'")"
 check "and a lookup finds only the one written that way" "36" "$(sql "SELECT entity_id FROM external_ids WHERE source = 'wikidata' AND kind = 'item' AND value = 'Q9346013'")"
-check "the table keeps ids in utf8mb4, compared byte for byte" "utf8mb4_bin" "$(sql "SELECT table_collation FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'external_ids'")"
-check "an id gets the time it was added" "1" "$(sql "SELECT added IS NOT NULL FROM external_ids WHERE source = 'discogs' AND kind = 'master' AND value = '1234567'")"
+check "the table compares ids byte for byte ($BYTES)" "$BYTES" "$(compares external_ids)"
+check "an id gets the time it was added" "1" "$(sql "SELECT CASE WHEN added IS NOT NULL THEN 1 ELSE 0 END FROM external_ids WHERE source = 'discogs' AND kind = 'master' AND value = '1234567'")"
 
 echo "> import runs and provenance"
 check "make import-runs lists the run the fixtures hold" "fixtures.ndjson" "$(./scripts/import-runs.sh | tail -1 | awk '{ print $6 }')"
 sql "INSERT INTO import_runs (batch, batch_sha256, mode) VALUES ('schema-test.ndjson', REPEAT('a', 64), 'apply')"
 run=$(sql "SELECT MAX(id) FROM import_runs")
 sql "INSERT INTO import_provenance (entity_type, entity_id, field, source, source_ref, licence, fetched, run_id) VALUES ('album', 535, 'title', 'discogs', '1234567', 'CC0', '2026-10-09 12:00:00', $run), ('album', 535, 'cover', 'coverartarchive', 'https://coverartarchive.org/release/x/front', NULL, '2026-10-09 12:00:00', $run)"
-if sql "INSERT INTO import_provenance (entity_type, entity_id, field, source, source_ref, fetched, run_id) VALUES ('album', 535, 'year', 'discogs', '1', '2026-10-09 12:00:00', $((run + 1000)))" >"$T/out" 2>&1; then
-    bad "provenance cannot point at a run that does not exist"
-else
-    ok "provenance cannot point at a run that does not exist"
-fi
-if sql "UPDATE import_runs SET report = '{not json' WHERE id = $run" >"$T/out" 2>&1; then
-    bad "a run's report has to be JSON"
-else
-    ok "a run's report has to be JSON"
-fi
-sql "UPDATE import_runs SET finished = started + INTERVAL 83 SECOND, created_count = 2, unchanged_count = 5, report = '{\"totals\": {\"created\": 2}}' WHERE id = $run"
+refuses "provenance cannot point at a run that does not exist" "fk_import_provenance_run" \
+    "INSERT INTO import_provenance (entity_type, entity_id, field, source, source_ref, fetched, run_id) VALUES ('album', 535, 'year', 'discogs', '1', '2026-10-09 12:00:00', $((run + 1000)))"
+refuses "a run's report has to be JSON" "import_runs.report|type json" "UPDATE import_runs SET report = '{not json' WHERE id = $run"
+sql "UPDATE import_runs SET finished = started + INTERVAL '83' SECOND, created_count = 2, unchanged_count = 5, report = '{\"totals\": {\"created\": 2}}' WHERE id = $run"
 check "make import-runs lists the run with its time, totals and provenance rows" \
     "$run 00:01:23 apply schema-test.ndjson aaaaaaaaaaaa 2 0 5 0 0 2" \
     "$(./scripts/import-runs.sh 1 | tail -1 | awk '{ $2 = ""; $3 = ""; print }' | tr -s ' ' | sed 's/^ //')"
-check "both tables compare bytes, like external_ids" "import_provenance utf8mb4_bin import_runs utf8mb4_bin" "$(sql "SELECT GROUP_CONCAT(CONCAT(table_name, ' ', table_collation) ORDER BY table_name SEPARATOR ' ') FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('import_runs', 'import_provenance')")"
+check "both tables compare bytes, like external_ids" "import_provenance $BYTES import_runs $BYTES" "import_provenance $(compares import_provenance) import_runs $(compares import_runs)"
+# The JSON columns: MariaDB's are longtext with a json_valid CHECK, PostgreSQL's json.
+if is_pg; then
+    json_columns=$(col "data_type = 'json'")
+else
+    json_columns=$(sql "SELECT GROUP_CONCAT(CONCAT(table_name, '.', constraint_name) ORDER BY table_name, constraint_name SEPARATOR ' ') FROM information_schema.check_constraints WHERE constraint_schema = DATABASE() AND check_clause LIKE 'json_valid(%'")
+fi
+check "every JSON column refuses what is not JSON" \
+    "edit_journal.row_after edit_journal.row_before edit_operations.args import_runs.report migration_archive.row_data review_items.detail review_items.undo_data" \
+    "$(tr ' ' '\n' <<<"$json_columns" | LC_ALL=C sort | paste -sd' ' -)"
 
 echo "> the import in addedby"
-check "users has the import as 1100, with no password" "import, no password" "$(sql "SELECT CONCAT(login, IF(pass IS NULL, ', no password', ', a password')) FROM users WHERE ID = 1100")"
+check "users has the import as 1100, with no password" "import, no password" "$(sql "SELECT CONCAT(login, CASE WHEN pass IS NULL THEN ', no password' ELSE ', a password' END) FROM users WHERE ID = 1100")"
 sql "UPDATE artists SET addedby = 1100 WHERE id = 35"
 sql "UPDATE labels SET addedby = 1100 WHERE id = 58"
 # Albums 779 and 780, the fixtures' unpublished one and self-release, are the import's too (#168).
 check "the README's query lists what the import added" "artist 35 label 58 album 779 album 780" "$(sql "SELECT 'album' AS type, id, title AS name, added FROM albums WHERE addedby = 1100 UNION ALL SELECT 'artist', id, name, added FROM artists WHERE addedby = 1100 UNION ALL SELECT 'label', id, name, added FROM labels WHERE addedby = 1100 ORDER BY added, type, id" | awk -F'\t' '{ printf "%s%s %s", sep, $1, $2; sep = " " }')"
 
 echo "> one artist-city table"
-pairs() { sql "SELECT GROUP_CONCAT(CONCAT(cityid, ':', artistid, ':', status) ORDER BY cityid, artistid, status SEPARATOR ' ') FROM \`$1\`"; }
-check "the old table is gone" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'city_artist_lookup'")"
+pairs() { sql "SELECT $(agg "CONCAT(cityid, ':', artistid, ':', status)" "cityid, artistid, status" ' ') FROM $1"; }
+check "the old table is gone" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = $SCHEMA AND table_name = 'city_artist_lookup'")"
 check "its pairs are in the table the pages read, once each, without the orphan" "1:1:999 2:35:999 3:46:0" "$(pairs artist_city_lookup)"
-check "the archive holds every old row and every pair put in" "artist_city_lookup inserted 2, city_artist_lookup deleted 5" "$(sql "SELECT GROUP_CONCAT(CONCAT(table_name, ' ', action, ' ', n) ORDER BY table_name SEPARATOR ', ') FROM (SELECT table_name, action, COUNT(*) n FROM migration_archive WHERE version = '0010' GROUP BY table_name, action) a")"
-if sql "INSERT INTO artist_city_lookup (cityid, artistid) VALUES (2, 35)" >"$T/out" 2>&1; then
-    bad "a pair cannot be stored twice"
-else
-    ok "a pair cannot be stored twice"
-fi
+check "the archive holds every old row and every pair put in" "artist_city_lookup inserted 2, city_artist_lookup deleted 5" "$(sql "SELECT $(agg "CONCAT(table_name, ' ', action, ' ', n)" table_name ', ') FROM (SELECT table_name, action, COUNT(*) n FROM migration_archive WHERE version = '0010' GROUP BY table_name, action) a")"
+refuses "a pair cannot be stored twice" "u_artist_city_lookup" "INSERT INTO artist_city_lookup (cityid, artistid) VALUES (2, 35)"
 
 echo "> unique link tables"
 UNIQUE_TABLES="album_artist_lookup altnames_lookup artist_city_lookup artist_lookup band_lookup city_label_lookup collection feature_lookup music_lookup ratings remix_lookup scratch_lookup wishlist"
-uniques() { sql "SELECT GROUP_CONCAT(DISTINCT table_name ORDER BY table_name SEPARATOR ' ') FROM information_schema.statistics WHERE table_schema = DATABASE() AND non_unique = 0 AND index_name LIKE 'u\\_%' AND (table_name LIKE '%\\\\_lookup' OR table_name IN ('collection', 'wishlist', 'ratings'))"; }
+uniques() {
+    if is_pg; then
+        sql "SELECT $(agg tablename tablename ' ') FROM (SELECT DISTINCT tablename FROM pg_indexes WHERE schemaname = current_schema() AND indexname LIKE 'u\\_%' AND indexdef LIKE 'CREATE UNIQUE INDEX %' AND (tablename LIKE '%\\_lookup' OR tablename IN ('collection', 'wishlist', 'ratings'))) x"
+    else
+        sql "SELECT GROUP_CONCAT(DISTINCT table_name ORDER BY table_name SEPARATOR ' ') FROM information_schema.statistics WHERE table_schema = DATABASE() AND non_unique = 0 AND index_name LIKE 'u\\_%' AND (table_name LIKE '%\\\\_lookup' OR table_name IN ('collection', 'wishlist', 'ratings'))"
+    fi
+}
 dupes() { # the duplicated rows of the fixtures, as table:count
     sql "SELECT CONCAT_WS(' ',
-        CONCAT('album_artist:', (SELECT GROUP_CONCAT(status ORDER BY status) FROM album_artist_lookup WHERE albumid = 535 AND artistid = 8)),
+        CONCAT('album_artist:', (SELECT $(agg status status) FROM album_artist_lookup WHERE albumid = 535 AND artistid = 8)),
         CONCAT('band:', (SELECT COUNT(*) FROM band_lookup WHERE artistid = 2 AND bandid = 22)),
         CONCAT('altnames:', (SELECT COUNT(*) FROM altnames_lookup WHERE artistid = 4 AND altname = 'Tede')),
         CONCAT('artist:', (SELECT COUNT(*) FROM artist_lookup WHERE songid = 7329 AND artistid = 8)),
-        CONCAT('collection:', (SELECT GROUP_CONCAT(ID ORDER BY ID) FROM collection WHERE albumid = 535 AND userid = 1)),
-        CONCAT('ratings:', (SELECT GROUP_CONCAT(CONCAT(ID, '@', added) ORDER BY ID) FROM ratings WHERE albumid = 535 AND userid = 1)))"
+        CONCAT('collection:', (SELECT $(agg id id) FROM collection WHERE albumid = 535 AND userid = 1)),
+        CONCAT('ratings:', (SELECT $(agg "CONCAT(id, '@', added)" id) FROM ratings WHERE albumid = 535 AND userid = 1)))"
 }
 check "every link table has its unique key" "$UNIQUE_TABLES" "$(uniques)"
 check "one row per key is left, the published copy where they differed, the oldest where rows have ids" \
     "album_artist:999 band:1 altnames:1 artist:1 collection:1 ratings:1@$(sql "SELECT added FROM ratings WHERE ID = 1")" "$(dupes)"
 check "the archive holds every copy and every row put back" \
     "album_artist_lookup deleted 3, album_artist_lookup inserted 1, altnames_lookup deleted 2, altnames_lookup inserted 1, artist_lookup deleted 2, artist_lookup inserted 1, band_lookup deleted 2, band_lookup inserted 1, collection deleted 1, ratings deleted 1" \
-    "$(sql "SELECT GROUP_CONCAT(CONCAT(table_name, ' ', action, ' ', n) ORDER BY table_name, action SEPARATOR ', ') FROM (SELECT table_name, action, COUNT(*) n FROM migration_archive WHERE version = '0011' GROUP BY table_name, action) a")"
-if sql "INSERT INTO band_lookup (artistid, bandid) VALUES (2, 22)" >"$T/out" 2>&1; then
-    bad "a link cannot be stored twice"
-else
-    ok "a link cannot be stored twice"
-fi
+    "$(sql "SELECT $(agg "CONCAT(table_name, ' ', action, ' ', n)" "table_name, action" ', ') FROM (SELECT table_name, action, COUNT(*) n FROM migration_archive WHERE version = '0011' GROUP BY table_name, action) a")"
+refuses "a link cannot be stored twice" "u_band_lookup" "INSERT INTO band_lookup (artistid, bandid) VALUES (2, 22)"
 
 echo "> bands"
-types() { sql "SELECT GROUP_CONCAT(CONCAT(id, ':', type) ORDER BY id SEPARATOR ' ') FROM artists WHERE id BETWEEN 60 AND 63"; }
+types() { sql "SELECT $(agg "CONCAT(id, ':', type)" id ' ') FROM artists WHERE id BETWEEN 60 AND 63"; }
 BANDS_WITH_OTHER_TYPES="SELECT COUNT(*) FROM artists a WHERE a.type <> 'b' AND a.id IN (SELECT b.bandid FROM band_lookup b JOIN artists m ON m.id = b.artistid)"
 check "every artist with members is typed 'b'" "0" "$(sql "$BANDS_WITH_OTHER_TYPES")"
 check "the two that were not are now; a 'b' without members and an artist whose member is missing keep theirs" "60:b 61:b 62:b 63:x" "$(types)"
-check "the archive holds both old types" "60:x 61:m" "$(sql "SELECT GROUP_CONCAT(CONCAT(JSON_VALUE(row_data, '$.id'), ':', JSON_VALUE(row_data, '$.type')) ORDER BY id SEPARATOR ' ') FROM migration_archive WHERE version = '0012'")"
+check "the archive holds both old types" "60:x 61:m" "$(sql "SELECT $(agg "CONCAT($(json_get row_data id), ':', $(json_get row_data type))" id ' ') FROM migration_archive WHERE version = '0012'")"
 
 echo "> roles"
-credits() { sql "SELECT GROUP_CONCAT(CONCAT(songid, ':', artistid, ':', feattype) ORDER BY songid SEPARATOR ' ') FROM feature_lookup WHERE (songid, artistid) IN ((6, 36), (7, 41), (10, 42))"; }
-roles() { sql "SELECT CONCAT((SELECT COUNT(*) FROM feattypes WHERE id = 0 AND feattype IS NULL), ' row 0, ', (SELECT COUNT(*) FROM feattypes WHERE feattype = 'testest'), ' testest, ', (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'feattypes' AND index_name = 'u_feattypes'), ' key')"; }
+credits() { sql "SELECT $(agg "CONCAT(songid, ':', artistid, ':', feattype)" songid ' ') FROM feature_lookup WHERE (songid, artistid) IN ((6, 36), (7, 41), (10, 42))"; }
+if is_pg; then
+    FEATTYPES_KEY="SELECT COUNT(*) FROM pg_indexes WHERE schemaname = current_schema() AND tablename = 'feattypes' AND indexname = 'u_feattypes'"
+else
+    FEATTYPES_KEY="SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'feattypes' AND index_name = 'u_feattypes'"
+fi
+roles() { sql "SELECT CONCAT((SELECT COUNT(*) FROM feattypes WHERE id = 0 AND feattype IS NULL), ' row 0, ', (SELECT COUNT(*) FROM feattypes WHERE feattype = 'testest'), ' testest, ', ($FEATTYPES_KEY), ' key')"; }
 check "row 0 stays, the test role is gone, and role names have a unique key" "1 row 0, 0 testest, 1 key" "$(roles)"
 check "a credit without a role takes the artist's only other role; the others stay without one" "6:36:1 7:41:0 10:42:0" "$(credits)"
-check "the archive holds the deleted role and the changed credit" "feattypes deleted 1, feature_lookup changed 1" "$(sql "SELECT GROUP_CONCAT(CONCAT(table_name, ' ', action, ' ', n) ORDER BY table_name SEPARATOR ', ') FROM (SELECT table_name, action, COUNT(*) n FROM migration_archive WHERE version = '0013' GROUP BY table_name, action) a")"
-if sql "INSERT INTO feattypes (feattype) VALUES ('SCRATCH')" >"$T/out" 2>&1; then
-    bad "a role name cannot be stored twice, whatever its case"
-else
-    ok "a role name cannot be stored twice, whatever its case"
-fi
+check "the archive holds the deleted role and the changed credit" "feattypes deleted 1, feature_lookup changed 1" "$(sql "SELECT $(agg "CONCAT(table_name, ' ', action, ' ', n)" table_name ', ') FROM (SELECT table_name, action, COUNT(*) n FROM migration_archive WHERE version = '0013' GROUP BY table_name, action) a")"
+refuses "a role name cannot be stored twice, whatever its case" "u_feattypes" "INSERT INTO feattypes (feattype) VALUES ('SCRATCH')"
 
 echo "> release types"
-check "the flagged albums are a single and an EP, the rest albums" "2:single 46:ep album:$(sql "SELECT COUNT(*) - 2 FROM albums")" "$(sql "SELECT CONCAT((SELECT GROUP_CONCAT(CONCAT(id, ':', release_type) ORDER BY id SEPARATOR ' ') FROM albums WHERE release_type <> 'album'), ' album:', (SELECT COUNT(*) FROM albums WHERE release_type = 'album'))")"
+check "the flagged albums are a single and an EP, the rest albums" "2:single 46:ep album:$(sql "SELECT COUNT(*) - 2 FROM albums")" "$(sql "SELECT CONCAT((SELECT $(agg "CONCAT(id, ':', release_type)" id ' ') FROM albums WHERE release_type <> 'album'), ' album:', (SELECT COUNT(*) FROM albums WHERE release_type = 'album'))")"
 check "nothing is digital until someone says so" "0" "$(sql "SELECT COUNT(*) FROM albums WHERE media_digital <> 0 OR catalog_digital IS NOT NULL")"
 
 echo "> album credits"
-check "an album credited to two artists has them in positions 1 and 2, both main" "1:main:1 2:main:2" "$(sql "SELECT GROUP_CONCAT(CONCAT(artistid, ':', role, ':', position) ORDER BY position SEPARATOR ' ') FROM album_artist_lookup WHERE albumid = 1")"
+check "an album credited to two artists has them in positions 1 and 2, both main" "1:main:1 2:main:2" "$(sql "SELECT $(agg "CONCAT(artistid, ':', role, ':', position)" position ' ') FROM album_artist_lookup WHERE albumid = 1")"
 
 echo "> discs"
-tracks() { sql "SELECT GROUP_CONCAT(CONCAT(albumid, ':', songid, ':', $1) ORDER BY albumid, songid SEPARATOR ' ') FROM album_lookup WHERE albumid IN (3, 4, 9999)"; }
+tracks() { sql "SELECT $(agg "CONCAT(albumid, ':', songid, ':', $1)" "albumid, songid" ' ') FROM album_lookup WHERE albumid IN (3, 4, 9999)"; }
 check "no track number is 0 or encodes a disc" "0" "$(sql "SELECT COUNT(*) FROM album_lookup WHERE track = 0 OR track >= 100")"
 check "the two-disc album's tracks are on discs 1 and 2, the track at 0 is last, the missing album's are gone" "3:11:1-1 3:12:2-1 4:13:1-1 4:14:1-2 4:30:1-3" "$(tracks "CONCAT(disc, '-', track)")"
-check "the archive holds every row of the albums it touched, as they were" "3:2 4:3 9999:2" "$(sql "SELECT GROUP_CONCAT(CONCAT(a, ':', n) ORDER BY a SEPARATOR ' ') FROM (SELECT JSON_VALUE(row_data, '$.albumid') a, COUNT(*) n FROM migration_archive WHERE version = '0016' GROUP BY a) x")"
+check "the archive holds every row of the albums it touched, as they were" "3:2 4:3 9999:2" "$(sql "SELECT $(agg "CONCAT(a, ':', n)" a ' ') FROM (SELECT $(json_get row_data albumid) a, COUNT(*) n FROM migration_archive WHERE version = '0016' GROUP BY a) x")"
 
 echo "> no label"
-check "the placeholder label is gone and its album has no label" "0 NULL" "$(sql "SELECT CONCAT((SELECT COUNT(*) FROM labels WHERE id = 27), ' ', IFNULL((SELECT labelid FROM albums WHERE id = 48), 'NULL'))")"
+check "the placeholder label is gone and its album has no label" "0 NULL" "$(sql "SELECT CONCAT((SELECT COUNT(*) FROM labels WHERE id = 27), ' ', $(ifnull "(SELECT labelid FROM albums WHERE id = 48)" NULL))")"
 
 echo "> release dates"
-dates() { sql "SELECT GROUP_CONCAT(CONCAT(id, ':', IFNULL(year, 'NULL'), ':', $1) ORDER BY id SEPARATOR ' ') FROM albums WHERE id IN (49, 50, 778, 923)"; }
-check "no release date has zero parts" "0" "$(sql "SELECT COUNT(*) FROM albums WHERE MONTH(year) = 0 OR DAY(year) = 0")"
+dates() { sql "SELECT $(agg "CONCAT(id, ':', $(ifnull year NULL), ':', $1)" id ' ') FROM albums WHERE id IN (49, 50, 778, 923)"; }
+# PostgreSQL has no zero date to hold; its date type refuses one, below.
+is_pg || check "no release date has zero parts" "0" "$(sql "SELECT COUNT(*) FROM albums WHERE MONTH(year) = 0 OR DAY(year) = 0")"
 check "zero parts became a precision, 0000-00-00 no date, the guessed announcement announced, the placeholder gone" \
     "49:2016-12-01:month:1 50:2013-01-01:year:0 778:NULL:day:0" "$(dates "CONCAT(release_date_precision, ':', announced)")"
-if sql "UPDATE albums SET year = '2020-05-00' WHERE id = 50" >"$T/out" 2>&1; then
-    bad "the database refuses a date with zero parts"
-else
-    ok "the database refuses a date with zero parts"
-fi
+refuses "the database refuses a date with zero parts" "2020-05-00" "UPDATE albums SET year = '2020-05-00' WHERE id = 50"
 
 echo "> album covers"
 sql "INSERT INTO album_covers (albumid, variant, path, width, height, sha256, mime, source) VALUES (535, '300', 'a/x.jpg', 300, 300, REPEAT('b', 64), 'image/jpeg', 'legacy')"
-if sql "INSERT INTO album_covers (albumid, variant, path, width, height, sha256, mime, source) VALUES (535, '300', 'a/y.jpg', 300, 300, REPEAT('b', 64), 'image/jpeg', 'legacy')" >"$T/out" 2>&1; then
-    bad "the same file cannot describe one album's variant twice"
-else
-    ok "the same file cannot describe one album's variant twice"
-fi
+refuses "the same file cannot describe one album's variant twice" "u_album_covers" \
+    "INSERT INTO album_covers (albumid, variant, path, width, height, sha256, mime, source) VALUES (535, '300', 'a/y.jpg', 300, 300, REPEAT('b', 64), 'image/jpeg', 'legacy')"
 
 echo "> artist photos"
-check "artistid is an int, and a photo has room for its size, hash, licence and credit" "int 8" "$(sql "SELECT CONCAT((SELECT data_type FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'artists_photos' AND column_name = 'artistid'), ' ', (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'artists_photos' AND column_name IN ('width', 'height', 'sha256', 'mime', 'licence', 'licence_url', 'credit', 'modified')))")"
+if is_pg; then INT=integer; else INT=int; fi
+check "artistid is an int, and a photo has room for its size, hash, licence and credit" "$INT 8" "$(sql "SELECT CONCAT((SELECT data_type FROM information_schema.columns WHERE table_schema = $SCHEMA AND table_name = 'artists_photos' AND column_name = 'artistid'), ' ', (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = $SCHEMA AND table_name = 'artists_photos' AND column_name IN ('width', 'height', 'sha256', 'mime', 'licence', 'licence_url', 'credit', 'modified')))")"
 sql "UPDATE artists_photos SET sha256 = REPEAT('c', 64) WHERE id = 1"
-if sql "INSERT INTO artists_photos (artistid, filename, description, source, sourceurl, sha256) SELECT artistid, 'copy.jpg', '', '', '', sha256 FROM artists_photos WHERE id = 1" >"$T/out" 2>&1; then
-    bad "the same file cannot be one artist's photo twice"
-else
-    ok "the same file cannot be one artist's photo twice"
-fi
+refuses "the same file cannot be one artist's photo twice" "u_artists_photos" \
+    "INSERT INTO artists_photos (artistid, filename, description, source, sourceurl, sha256) SELECT artistid, 'copy.jpg', '', '', '', sha256 FROM artists_photos WHERE id = 1"
 
-echo "> utf8mb4 with the Polish collation"
-check "every table is utf8mb4_polish_ci, but the byte-compared ones and the runner's own" "utf8mb4_bin 11, utf8mb4_general_ci 1, utf8mb4_polish_ci 45" "$(sql "SELECT GROUP_CONCAT(CONCAT(c, ' ', n) ORDER BY c SEPARATOR ', ') FROM (SELECT table_collation c, COUNT(*) n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' GROUP BY table_collation) x")"
-check "no column is left in utf8mb3" "0" "$(count "character_set_name = 'utf8mb3'")"
+echo "> utf8mb4 with the Polish collation, ICU's pl on PostgreSQL"
+if is_pg; then
+    check "the database is UTF8 and sorts in Polish, by ICU's pl-PL" "UTF8 i pl-PL" "$(sql "SELECT CONCAT_WS(' ', pg_encoding_to_char(encoding), datlocprovider, datlocale) FROM pg_database WHERE datname = current_database()")"
+    check "every table's text sorts in Polish, but the byte-compared ones'; none has both" "C 9, default 27" "$(sql "SELECT $(agg "CONCAT(c, ' ', n)" c ', ') FROM (SELECT c, COUNT(*) n FROM ($TEXT_COLLATIONS) x GROUP BY c) y")"
+    check "text sorts in Polish: ą after a, Ć after C, Ł after L" "az ąb Cma Ćma Lona Łona" "$(sql "SELECT $(agg n n ' ') FROM (VALUES ('Łona'), ('Cma'), ('ąb'), ('Lona'), ('Ćma'), ('az')) v(n)")"
+else
+    check "every table is utf8mb4_polish_ci, but the byte-compared ones and the runner's own" "utf8mb4_bin 11, utf8mb4_general_ci 1, utf8mb4_polish_ci 45" "$(sql "SELECT GROUP_CONCAT(CONCAT(c, ' ', n) ORDER BY c SEPARATOR ', ') FROM (SELECT table_collation c, COUNT(*) n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' GROUP BY table_collation) x")"
+    check "no column is left in utf8mb3" "0" "$(count "character_set_name = 'utf8mb3'")"
+fi
 if sql "INSERT INTO artists (name, urlname, type, status, trivia, website) VALUES ('Zabson', 'zabson-2', 'm', 999, '', '')" >"$T/out" 2>&1; then
     ok "Zabson is a name of its own next to Żabson"
 else
     bad "Zabson is a name of its own next to Żabson"; cat "$T/out"
 fi
-if sql "INSERT INTO artists (name, urlname, type, status, trivia, website) VALUES ('żabson', 'zabson-3', 'm', 999, '', '')" >"$T/out" 2>&1; then
-    bad "żabson is Żabson in another case, and refused"
-else
-    ok "żabson is Żabson in another case, and refused"
-fi
+refuses "żabson is Żabson in another case, and refused" "u_artists_name" "INSERT INTO artists (name, urlname, type, status, trivia, website) VALUES ('żabson', 'zabson-3', 'm', 999, '', '')"
+refuses "and ZABSON is Zabson" "u_artists_name" "INSERT INTO artists (name, urlname, type, status, trivia, website) VALUES ('ZABSON', 'zabson-4', 'm', 999, '', '')"
 sql "INSERT INTO artists (name, urlname, type, status, trivia, website) VALUES ('Łoś Testowy', 'los-testowy', 'm', 999, '', ''), ('Lux Testowy', 'lux-testowy', 'm', 999, '', ''), ('Mazur Testowy', 'mazur-testowy', 'm', 999, '', ''), ('Zenek Testowy', 'zenek-testowy', 'm', 999, '', '')"
-check "names sort in Polish order: L before Ł before M, Z before Ż" "Lux Testowy|Łoś Testowy|Mazur Testowy|Zabson|Zenek Testowy|Żabson" "$(sql "SELECT GROUP_CONCAT(name ORDER BY name SEPARATOR '|') FROM artists WHERE name IN ('Lux Testowy', 'Łoś Testowy', 'Mazur Testowy', 'Zabson', 'Zenek Testowy', 'Żabson')")"
+check "names sort in Polish order: L before Ł before M, Z before Ż" "Lux Testowy|Łoś Testowy|Mazur Testowy|Zabson|Zenek Testowy|Żabson" "$(sql "SELECT $(agg name name '|') FROM artists WHERE name IN ('Lux Testowy', 'Łoś Testowy', 'Mazur Testowy', 'Zabson', 'Zenek Testowy', 'Żabson')")"
+# The search's LIKE on PostgreSQL (Jkl_Db::searchLike), with the unaccent 0039 installs; the
+# smoke test searches through the site on both engines.
+is_pg && check "the search finds Łoś Testowy from LOS TEST, without case or Polish letters" "Łoś Testowy" "$(sql "SELECT name FROM artists WHERE unaccent(lower(name)) LIKE unaccent(lower('%LOS TEST%'))")"
+if sql "INSERT INTO labels (name, urlname, logo) VALUES ('Łódź Testowa', 'lodz-testowa', ''), ('Lodz Testowa', 'lodz-testowa-2', '')" >"$T/out" 2>&1; then
+    ok "a label's name is its own by its Polish letters: Łódź Testowa and Lodz Testowa"
+else
+    bad "a label's name is its own by its Polish letters: Łódź Testowa and Lodz Testowa"; cat "$T/out"
+fi
+refuses "but not by case: ŁÓDŹ TESTOWA is Łódź Testowa" "'name'|u_labels_name" "INSERT INTO labels (name, urlname, logo) VALUES ('ŁÓDŹ TESTOWA', 'lodz-testowa-3', '')"
 sql "INSERT INTO artists (id, name, urlname, type, status, trivia, website) VALUES (9001, 'Mikrofon 🎤', 'mikrofon', 'm', 999, '', '')"
 check "a four-byte character comes back from the database" "Mikrofon 🎤" "$(sql "SELECT name FROM artists WHERE id = 9001")"
 # The page whole, then the test: piped into grep -q, which leaves at the first match, curl still
@@ -314,40 +369,47 @@ fi
 # Gone before the down: in utf8mb3_general_ci Zabson and Żabson would be one name, and the
 # microphone could not be stored, so the down would rightly refuse.
 sql "DELETE FROM artists WHERE id = 9001 OR name IN ('Zabson', 'Lux Testowy', 'Łoś Testowy', 'Mazur Testowy', 'Zenek Testowy')"
+sql "DELETE FROM labels WHERE name IN ('Łódź Testowa', 'Lodz Testowa')"
 
 echo "> indexes the pages' joins use"
+JOIN_INDEXES="'i_album_artist_lookup_artistid', 'i_artist_lookup_artistid', 'i_feature_lookup_artistid', 'i_music_lookup_artistid', 'i_scratch_lookup_artistid', 'i_remix_lookup_artistid', 'i_album_lookup_albumid', 'i_albums_labelid', 'i_songs_viewed'"
+# Each index as table.columns, a line each
+if is_pg; then
+    indexed=$(sql "SELECT CONCAT(tablename, '.', replace(regexp_replace(indexdef, '.* USING btree \((.*)\)$', '\1'), ', ', ',')) FROM pg_indexes WHERE schemaname = current_schema() AND indexname IN ($JOIN_INDEXES)")
+else
+    indexed=$(sql "SELECT CONCAT(table_name, '.', GROUP_CONCAT(column_name ORDER BY seq_in_index)) FROM information_schema.statistics WHERE table_schema = DATABASE() AND index_name IN ($JOIN_INDEXES) GROUP BY table_name, index_name")
+fi
 check "lookups by artist, by album, by label and by views have their indexes (#69)" \
-    "albums.labelid album_artist_lookup.artistid album_lookup.albumid,disc,track artist_lookup.artistid feature_lookup.artistid music_lookup.artistid remix_lookup.artistid scratch_lookup.artistid songs.viewed" \
-    "$(sql "SELECT GROUP_CONCAT(CONCAT(table_name, '.', cols) ORDER BY table_name SEPARATOR ' ') FROM (SELECT table_name, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS cols FROM information_schema.statistics WHERE table_schema = DATABASE() AND index_name IN ('i_album_artist_lookup_artistid', 'i_artist_lookup_artistid', 'i_feature_lookup_artistid', 'i_music_lookup_artistid', 'i_scratch_lookup_artistid', 'i_remix_lookup_artistid', 'i_album_lookup_albumid', 'i_albums_labelid', 'i_songs_viewed') GROUP BY table_name, index_name) x")"
+    "album_artist_lookup.artistid album_lookup.albumid,disc,track albums.labelid artist_lookup.artistid feature_lookup.artistid music_lookup.artistid remix_lookup.artistid scratch_lookup.artistid songs.viewed" \
+    "$(LC_ALL=C sort <<<"$indexed" | paste -sd' ' -)"
 
 echo "> no zero dates"
 # Every date, datetime and timestamp column, and how many of its values have a zero part.
 zero_dates() {
     sql "SELECT CONCAT_WS(' ', $(sql "SELECT GROUP_CONCAT(CONCAT('(SELECT COUNT(*) FROM \`', table_name, '\` WHERE MONTH(\`', column_name, '\`) = 0 OR DAY(\`', column_name, '\`) = 0)') SEPARATOR ', ') FROM information_schema.columns WHERE table_schema = DATABASE() AND data_type IN ('date', 'datetime', 'timestamp')"))" | tr ' ' '\n' | awk '{ s += $1 } END { print s }'
 }
-check "no date, datetime or timestamp column holds a zero part" "0" "$(zero_dates)"
-check "the server runs with NO_ZERO_IN_DATE and NO_ZERO_DATE" "1 1" "$(sql "SELECT CONCAT_WS(' ', FIND_IN_SET('NO_ZERO_IN_DATE', @@GLOBAL.sql_mode) > 0, FIND_IN_SET('NO_ZERO_DATE', @@GLOBAL.sql_mode) > 0)")"
+# PostgreSQL has none to hold, and no sql_mode that would allow one: what is left of #88 there
+# is the precision partial dates keep.
+if ! is_pg; then
+    check "no date, datetime or timestamp column holds a zero part" "0" "$(zero_dates)"
+    check "the server runs with NO_ZERO_IN_DATE and NO_ZERO_DATE" "1 1" "$(sql "SELECT CONCAT_WS(' ', FIND_IN_SET('NO_ZERO_IN_DATE', @@GLOBAL.sql_mode) > 0, FIND_IN_SET('NO_ZERO_DATE', @@GLOBAL.sql_mode) > 0)")"
+fi
 check "a band's start and end: a year, a month, not known" "22:1998-01-01:year:- 23:1998-03-01:month:2003-01-01:year" \
-    "$(sql "SELECT GROUP_CONCAT(CONCAT_WS(':', id, since, since_precision, IFNULL(till, '-'), IF(till IS NULL, NULL, till_precision)) ORDER BY id SEPARATOR ' ') FROM artists WHERE id IN (22, 23)")"
+    "$(sql "SELECT $(agg "CONCAT_WS(':', id, since, since_precision, $(ifnull till -), CASE WHEN till IS NULL THEN NULL ELSE till_precision END)" id ' ') FROM artists WHERE id IN (22, 23)")"
 check "a member's join and departure" "1998-01-01 year 2003-12-01 month" \
     "$(sql "SELECT CONCAT_WS(' ', insince, insince_precision, awaysince, awaysince_precision) FROM band_lookup WHERE artistid = 35 AND bandid = 23")"
 check "a user's unknown times, and a news item's, are NULL" "8:NULL 9:NULL:NULL 2:NULL" \
-    "$(sql "SELECT CONCAT('8:', IFNULL(usr_added, 'NULL'), ' 9:', IFNULL((SELECT usr_updated FROM hhb_users WHERE usr_id = 9), 'NULL'), ':', IFNULL((SELECT usr_last_login FROM hhb_users WHERE usr_id = 9), 'NULL'), ' 2:', IFNULL((SELECT expires FROM news WHERE ID = 2), 'NULL')) FROM hhb_users WHERE usr_id = 8")"
+    "$(sql "SELECT CONCAT('8:', $(ifnull usr_added NULL), ' 9:', $(ifnull "(SELECT usr_updated FROM hhb_users WHERE usr_id = 9)" NULL), ':', $(ifnull "(SELECT usr_last_login FROM hhb_users WHERE usr_id = 9)" NULL), ' 2:', $(ifnull "(SELECT expires FROM news WHERE ID = 2)" NULL)) FROM hhb_users WHERE usr_id = 8")"
 if sql "INSERT INTO hhb_users (usr_email, usr_password, usr_display_name, usr_added) VALUES ('nowy@example.com', MD5('x'), 'Nowy', NOW())" >"$T/out" 2>&1; then
     ok "a registration, which writes only its added time, goes in"
 else
     bad "a registration, which writes only its added time, goes in"; cat "$T/out"
 fi
 sql "DELETE FROM hhb_users WHERE usr_email = 'nowy@example.com'"
-if sql "UPDATE artists SET since = '2001-00-00' WHERE id = 22" >"$T/out" 2>&1; then
-    bad "the server refuses a zero part"
-else
-    ok "the server refuses a zero part"
-fi
-if sql "SET SESSION sql_mode = ''; UPDATE band_lookup SET awaysince = '2004-00-00' WHERE artistid = 35 AND bandid = 23" >"$T/out" 2>&1; then
-    bad "and so does the CHECK, in a session that allows zero dates"
-else
-    ok "and so does the CHECK, in a session that allows zero dates"
+if ! is_pg; then
+    refuses "the server refuses a zero part" "2001-00-00" "UPDATE artists SET since = '2001-00-00' WHERE id = 22"
+    refuses "and so does the CHECK, in a session that allows zero dates" "band_lookup.awaysince" \
+        "SET SESSION sql_mode = ''; UPDATE band_lookup SET awaysince = '2004-00-00' WHERE artistid = 35 AND bandid = 23"
 fi
 
 echo "> Polish letters stored mangled (#27)"
@@ -359,26 +421,51 @@ check "an album's lost cover and an artist's lost photo are no longer named (#47
     "$(sql "SELECT CONCAT((SELECT CONCAT(id, ':', cover) FROM albums WHERE id = 576), ' ', (SELECT COUNT(*) FROM artists_photos WHERE id = 120), ' ', (SELECT COUNT(*) FROM migration_archive WHERE version = '0029' AND table_name = 'artists_photos'))")"
 
 echo "> artists who share a name"
-check "an artist's name is unique with its qualifier, not alone" "name,disambiguation" \
-    "$(sql "SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'artists' AND index_name = 'u_artists_name' AND non_unique = 0")"
+if is_pg; then
+    # A key on lower() of both: neither the name nor its qualifier counts case (0039).
+    check "an artist's name is unique with its qualifier, not alone" "lower((name)::text), lower((disambiguation)::text)" \
+        "$(sql "SELECT regexp_replace(indexdef, '.* USING btree \((.*)\)$', '\1') FROM pg_indexes WHERE schemaname = current_schema() AND tablename = 'artists' AND indexname = 'u_artists_name' AND indexdef LIKE 'CREATE UNIQUE INDEX %'")"
+else
+    check "an artist's name is unique with its qualifier, not alone" "name,disambiguation" \
+        "$(sql "SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'artists' AND index_name = 'u_artists_name' AND non_unique = 0")"
+fi
 check "two Solars stand side by side, each with its qualifier" "64:Solar:SBM Label 65:Solar:raper z Poznania" \
-    "$(sql "SELECT GROUP_CONCAT(CONCAT(id, ':', name, ':', disambiguation) ORDER BY id SEPARATOR ' ') FROM artists WHERE id IN (64, 65)")"
+    "$(sql "SELECT $(agg "CONCAT(id, ':', name, ':', disambiguation)" id ' ') FROM artists WHERE id IN (64, 65)")"
 if sql "INSERT INTO artists (id, name, urlname, type, status, trivia, website) VALUES (9002, 'Solar', 'solar', 'm', 999, '', '')" >"$T/out" 2>&1; then
     ok "a third Solar without a qualifier can join them"
 else
     bad "a third Solar without a qualifier can join them"; cat "$T/out"
 fi
-if sql "INSERT INTO artists (name, urlname, type, status, trivia, website) VALUES ('solar', 'solar-2', 'm', 999, '', '')" >"$T/out" 2>&1; then
-    bad "but not a fourth: a name without a qualifier is still one artist's"
-else
-    ok "but not a fourth: a name without a qualifier is still one artist's"
-fi
-if sql "INSERT INTO artists (name, disambiguation, urlname, type, status, trivia, website) VALUES ('Solar', 'sbm label', 'solar-3', 'm', 999, '', '')" >"$T/out" 2>&1; then
-    bad "and a qualifier names one artist of a name"
-else
-    ok "and a qualifier names one artist of a name"
-fi
+refuses "but not a fourth: a name without a qualifier is still one artist's" "u_artists_name" \
+    "INSERT INTO artists (name, urlname, type, status, trivia, website) VALUES ('solar', 'solar-2', 'm', 999, '', '')"
+refuses "and a qualifier names one artist of a name" "u_artists_name" \
+    "INSERT INTO artists (name, disambiguation, urlname, type, status, trivia, website) VALUES ('Solar', 'sbm label', 'solar-3', 'm', 999, '', '')"
 sql "DELETE FROM artists WHERE id = 9002"
+
+finish() { # the fixtures back, and the count
+    echo "> back to the fixtures"
+    if make -s reset-db >"$T/out" 2>&1; then ok "make reset-db leaves the database as the fixtures have it"; else bad "make reset-db leaves the database as the fixtures have it"; cat "$T/out"; fi
+    echo ""
+    echo "$pass passed, $fail failed"
+    [ "$fail" -eq 0 ] || exit 1
+    exit 0
+}
+
+# What follows takes MariaDB's migrations down and up again: its history before PostgreSQL's
+# track began, which starts at 0039 with that history as one migration (#232). PostgreSQL's
+# goes down and up whole.
+if is_pg; then
+    echo "> the PostgreSQL track down to an empty database, and up again"
+    # Tables, indexes, and the unaccent the search needs
+    built() { sql "SELECT CONCAT_WS(' ', (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_type = 'BASE TABLE'), (SELECT COUNT(*) FROM pg_indexes WHERE schemaname = current_schema()), (SELECT COUNT(*) FROM pg_extension WHERE extname = 'unaccent'))"; }
+    before=$(built)
+    ./scripts/migrate.sh down all >"$T/out" 2>&1 || { bad "down all succeeds"; cat "$T/out"; }
+    check "after down: nothing but the runner's table and its key, no unaccent" "1 1 0" "$(built)"
+    ./scripts/migrate.sh up >"$T/out" 2>&1 || { bad "up succeeds"; cat "$T/out"; }
+    check "after up again: every table, index and unaccent back" "$before" "$(built)"
+    finish
+fi
+
 # The down folds each qualifier into its name; one a plain name already holds stops it before
 # it changes anything.
 sql "INSERT INTO artists (id, name, urlname, type, status, trivia, website) VALUES (9003, 'Solar (SBM Label)', 'solar-sbm-label-2', 'm', 999, '', '')"
@@ -441,7 +528,7 @@ check "after down: no release type columns" "0" "$(count "table_name = 'albums' 
 check "after down: the roles and credits as the fixtures had them" "1 row 0, 1 testest, 0 key 6:36:0 7:41:0 10:42:0" "$(roles) $(credits)"
 check "after down: no archive" "0" "$(sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'migration_archive'")"
 check "after down: added changes on update again, in 11 tables plus the lyrics log" "12" "$(count "$TIMES_WITH_ON_UPDATE")"
-check "after down: the catalog's added has no default" "0" "$(count "table_name IN ($CATALOG) AND column_name = 'added' AND column_default = 'current_timestamp()'")"
+check "after down: the catalog's added has no default" "0" "$(count "table_name IN ($CATALOG) AND column_name = 'added' AND column_default = '$NOW_DEFAULT'")"
 check "after down: album_prices.added defaults to the zero date again" "album_prices.added" "$(col "column_default LIKE '%0000-00-00%'")"
 check "after down: the lost cover and photo named again" "wally-prawda-naga-hhbdpl.jpg Enemis-1-hhbdpl.jpg" \
     "$(sql "SELECT CONCAT((SELECT cover FROM albums WHERE id = 576), ' ', (SELECT filename FROM artists_photos WHERE id = 120))")"
@@ -463,9 +550,4 @@ check "after up again: the roles cleaned again" "1 row 0, 0 testest, 1 key 6:36:
 check "after up again: the folded names kept, with no qualifier" "64:Solar (SBM Label): 65:Solar (raper z Poznania):" \
     "$(sql "SELECT GROUP_CONCAT(CONCAT(id, ':', name, ':', disambiguation) ORDER BY id SEPARATOR ' ') FROM artists WHERE id IN (64, 65)")"
 
-echo "> back to the fixtures"
-if make -s reset-db >"$T/out" 2>&1; then ok "make reset-db leaves the database as the fixtures have it"; else bad "make reset-db leaves the database as the fixtures have it"; cat "$T/out"; fi
-
-echo ""
-echo "$pass passed, $fail failed"
-[ "$fail" -eq 0 ]
+finish
