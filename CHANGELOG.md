@@ -34,6 +34,10 @@ which the note leaves out. The sections before, by version, stay as they were.
   logged-in account change the query; a percent sign searched for is no longer a wildcard.
 
 ### Internal
+- Production runs PostgreSQL 17 beside MariaDB, empty until the move (#236): its own container,
+  sorting in Polish, labelled for the host's nightly backup; the app stays on MariaDB. The
+  production stack's test builds its schema and runs the copy into it as `make ovh-pg-copy`
+  will.
 - Every database test runs on PostgreSQL as well as MariaDB, DB_ENGINE choosing, and CI runs
   both halves on each (#234): one sql() for both engines in tests/lib-test-db.sh, PostgreSQL's
   own promises checked where MariaDB's do not apply (Polish order, names unique without case,
