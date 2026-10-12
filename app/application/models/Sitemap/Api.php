@@ -39,7 +39,7 @@ class Model_Sitemap_Api extends Jkl_Model_Api
                 $list = Model_News_Api::getInstance()->getRecent(self::LIMIT, false);
                 break;
             case 'artists':
-                $list = Model_Artist_Api::getInstance()->getRecentlyAdded(self::LIMIT);
+                $list = Model_Artist_Api::getInstance()->getSitemap(self::LIMIT);
                 break;
             case 'songs':
                 $list = Model_Song_Api::getInstance()->getSitemap(self::LIMIT);
