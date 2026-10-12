@@ -308,8 +308,6 @@ class ArtistController extends Zend_Controller_Action
             $description .= $artist->website . '. ';
         }
 
-        $description .= 'Żeby zobaczyć teskty piosenek, wybierz album, a następnie konkretną piosenkę. ';
-
         return $description;
     }
 }

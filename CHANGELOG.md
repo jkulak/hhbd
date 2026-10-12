@@ -24,6 +24,10 @@ which the note leaves out. The sections before, by version, stay as they were.
   profile, ask search engines not to index them and are left out of the sitemaps, so what
   Google and AdSense judge hhbd.pl by is the pages with something on them (#243). They stay as
   they were for visitors.
+- The descriptions hhbd.pl writes for an album, an artist, a song and a label state facts, without
+  the sentences that ended every one of them, "… to prawdziwy polski hip-hop", "Do każdej
+  piosenki dołączony jest teledysk", "Nie posiadamy na razie tekstu…" and the like, the same on
+  thousands of pages and often untrue (#245).
 - Searches, comments and lyrics reach the database as bound values, never escaped into the SQL
   text, so a quote or a backslash in them is stored and searched for as typed (#230). Saving
   lyrics no longer puts the song's id from the address into a query as it came, which let a

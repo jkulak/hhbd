@@ -1128,6 +1128,15 @@ run_tests() {
     test_page "and so does an artist's" "/mes-p35.html" '<p id="lead">Mes – wykonawca'
     echo ""
 
+    # The generated descriptions say facts, none of the sentences every page repeated (#245):
+    # read-only, so production too
+    echo "--- Descriptions ---"
+    test_page "An album's generated description says what it is" "/wdowa-superextra-a535.html" 'Album "Superextra" został wydany'
+    test_page_absent "and nothing every album's said" "/wdowa-superextra-a535.html" "to prawdziwy polski hip-hop"
+    test_page_absent "nor that every song has a video" "/wdowa-superextra-a535.html" "Do każdej piosenki dołączony jest teledysk"
+    test_page_absent "An artist's description sends nobody to look for lyrics" "/mes-p35.html" "wybierz album, a następnie konkretną piosenkę"
+    echo ""
+
     # Popularity over a period (#194)
     echo "--- Rankings ---"
     test_page_multi "The albums of the last 7 days" "/albumy/popularne-tydzien.html" "<h1>Najpopularniejsze albumy z ostatnich 7 dni</h1>" 'href="/albumy/popularne-miesiac.html"' 'rel="canonical" href="'"${BASE_URL}"'/albumy/popularne-tydzien.html"'
