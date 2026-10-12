@@ -47,6 +47,33 @@ class Jkl_Db
         $this->_db = Zend_Db::factory($adapter, $params);
     }
 
+    /**
+     * What a connection through $adapter needs beyond the host and the credentials (#232):
+     * MariaDB's utf8mb4 and its portable SQL modes; PostgreSQL's UTF8, and values fetched as
+     * strings, as PDO MySQL hands them and the code has always read them.
+     *
+     * @return array charset, driver_options
+     */
+    public static function connectionOptions($adapter)
+    {
+        if (self::isPostgresAdapter($adapter)) {
+            return array('charset' => 'UTF8', 'driver_options' => array(PDO::ATTR_STRINGIFY_FETCHES => true));
+        }
+        return array('charset' => 'utf8mb4', 'driver_options' => self::MARIADB_SESSION);
+    }
+
+    /** Whether an adapter name, as application.ini and DB_ADAPTER give it, is PostgreSQL's */
+    public static function isPostgresAdapter($adapter)
+    {
+        return 'pdo_pgsql' === strtolower((string) $adapter);
+    }
+
+    /** Whether this connection is to PostgreSQL */
+    public function isPostgres()
+    {
+        return $this->_db instanceof Zend_Db_Adapter_Pdo_Pgsql;
+    }
+
     /*
     * FechtAll
     *
@@ -80,6 +107,10 @@ class Jkl_Db
      */
     public function searchLike($column)
     {
+        if ($this->isPostgres()) {
+            // unaccent turns ó into o and ł into l, lower() the case; both sides alike (#232)
+            return 'unaccent(lower(' . $column . ')) LIKE unaccent(lower(?))';
+        }
         return $column . ' LIKE ? COLLATE ' . self::SEARCH_COLLATION;
     }
 
@@ -94,6 +125,20 @@ class Jkl_Db
     public function upsert($table, array $row, array $update = array(), array $conflict = array())
     {
         $columns = array_keys($row);
+        $insert = 'INSERT INTO ' . $table . ' (' . implode(', ', $columns) . ') VALUES (' . implode(', ', array_fill(0, count($columns), '?')) . ')';
+        if ($this->isPostgres()) {
+            $set = array();
+            foreach ($update as $column => $expression) {
+                $set[] = $column . ' = ' . (true === $expression ? 'EXCLUDED.' . $column : $expression);
+            }
+            $statement = $this->query(
+                $insert . (empty($set)
+                    ? ' ON CONFLICT DO NOTHING'
+                    : ' ON CONFLICT (' . implode(', ', $conflict) . ') DO UPDATE SET ' . implode(', ', $set)),
+                array_values($row)
+            );
+            return $statement->rowCount() > 0;
+        }
         $set = array();
         foreach ($update as $column => $expression) {
             $set[] = $column . ' = ' . (true === $expression ? 'VALUES(' . $column . ')' : $expression);
@@ -103,11 +148,7 @@ class Jkl_Db
             // none, as INSERT IGNORE would, without ignoring every other error with it.
             $set[] = $columns[0] . ' = ' . $columns[0];
         }
-        $statement = $this->query(
-            'INSERT INTO ' . $table . ' (' . implode(', ', $columns) . ') VALUES (' . implode(', ', array_fill(0, count($columns), '?')) . ')'
-            . ' ON DUPLICATE KEY UPDATE ' . implode(', ', $set),
-            array_values($row)
-        );
+        $statement = $this->query($insert . ' ON DUPLICATE KEY UPDATE ' . implode(', ', $set), array_values($row));
         return $statement->rowCount() > 0;
     }
 
@@ -117,12 +158,19 @@ class Jkl_Db
      */
     public function updateOne($table, $set, $where, array $bind = array())
     {
+        if ($this->isPostgres()) {
+            // No LIMIT on an UPDATE: the row is picked by its physical address, ctid
+            return $this->query('UPDATE ' . $table . ' SET ' . $set . ' WHERE ctid = (SELECT ctid FROM ' . $table . ' WHERE ' . $where . ' LIMIT 1)', $bind);
+        }
         return $this->query('UPDATE ' . $table . ' SET ' . $set . ' WHERE ' . $where . ' LIMIT 1', $bind);
     }
 
     /** DELETE of one row among those $where matches, as updateOne() has it */
     public function deleteOne($table, $where, array $bind = array())
     {
+        if ($this->isPostgres()) {
+            return $this->query('DELETE FROM ' . $table . ' WHERE ctid = (SELECT ctid FROM ' . $table . ' WHERE ' . $where . ' LIMIT 1)', $bind);
+        }
         return $this->query('DELETE FROM ' . $table . ' WHERE ' . $where . ' LIMIT 1', $bind);
     }
 
@@ -133,12 +181,28 @@ class Jkl_Db
      */
     public function uniqueKeys($table)
     {
-        $rows = $this->fetchAll(
-            "SELECT index_name, column_name FROM information_schema.statistics
+        if ($this->isPostgres()) {
+            // An index on an expression, lower(name), names no column there and is left out
+            $rows = $this->fetchAll(
+                "SELECT i.relname AS index_name, a.attname AS column_name
+                   FROM pg_index x
+                   JOIN pg_class t ON t.oid = x.indrelid
+                   JOIN pg_class i ON i.oid = x.indexrelid
+                   JOIN LATERAL unnest(x.indkey) WITH ORDINALITY AS k(attnum, n) ON true
+                   JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum
+                  WHERE t.relname = ? AND t.relnamespace = current_schema()::regnamespace AND x.indisunique
+                    AND x.indexprs IS NULL
+                  ORDER BY x.indisprimary DESC, i.relname, k.n",
+                array($table)
+            );
+        } else {
+            $rows = $this->fetchAll(
+                "SELECT index_name, column_name FROM information_schema.statistics
               WHERE table_schema = DATABASE() AND table_name = ? AND non_unique = 0
               ORDER BY index_name = 'PRIMARY' DESC, index_name, seq_in_index",
-            array($table)
-        );
+                array($table)
+            );
+        }
         $keys = array();
         foreach ($rows as $row) {
             $keys[$row['index_name']][] = $row['column_name'];

@@ -1,9 +1,20 @@
 # shellcheck shell=bash
 # Shared by the scripts that reach a database (reset-db.sh, migrate.sh): how to find this
-# checkout's local db container, what to refuse first, and how to run mariadb inside a
+# checkout's local db container, what to refuse first, and how to run a client inside a
 # container. Sourced, never run. The caller sets REFUSE_AS to its own name.
+#
+# DB_ENGINE says which database (#232): mariadb, the compose service db, as production runs
+# today; or postgresql, the service postgres, which production moves to (#229). The rest of
+# a script reads the engine from here.
 
 refuse() { echo "x ${REFUSE_AS:-db}: $1; nothing was touched" >&2; exit 1; }
+
+DB_ENGINE=${DB_ENGINE:-mariadb}
+case "$DB_ENGINE" in
+    mariadb) DB_SERVICE=db ;;
+    postgresql) DB_SERVICE=postgres ;;
+    *) refuse "DB_ENGINE is mariadb or postgresql, not '$DB_ENGINE'" ;;
+esac
 
 # The engine must be a local socket. A context or DOCKER_HOST pointing elsewhere would have
 # `docker compose` act on a database on another machine.
@@ -37,8 +48,8 @@ local_db_container() {
     project=$(docker compose config 2>/dev/null | sed -n 's/^name: //p' | head -1)
     [ -n "$project" ] || refuse "docker compose finds no project in $PWD"
 
-    cid=$(docker compose ps -q --status running db 2>/dev/null | head -1)
-    [ -n "$cid" ] || refuse "no running db container in the compose project '$project'; start it with docker compose up -d"
+    cid=$(docker compose ps -q --status running "$DB_SERVICE" 2>/dev/null | head -1)
+    [ -n "$cid" ] || refuse "no running $DB_SERVICE container in the compose project '$project'; start it with docker compose up -d"
 
     label() { docker inspect --format "{{index .Config.Labels \"$1\"}}" "$cid"; }
     [ "$(label com.docker.compose.project.working_dir)" = "$PWD" ] \
@@ -72,23 +83,41 @@ LEGACY_DATES_SESSION="SET SESSION sql_mode = TRIM(BOTH ',' FROM REPLACE(REPLACE(
 # shellcheck disable=SC2016
 MARIADB_ROOT='MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?}" exec mariadb -uroot -N -B --default-character-set=utf8mb4'
 
+# psql as the image's superuser, the service's own role, over the container's socket, where
+# the image trusts it: no password passes. Rows out as tab-separated lines with no header, and
+# the first error stops it, as mariadb does.
+#   sh -c "$PSQL_ROOT -d postgres"                   no database of the service's (CREATE DATABASE)
+#   sh -c "$PSQL_ROOT -d \"\${POSTGRES_DB:?}\""       the container's database
+# shellcheck disable=SC2016
+PSQL_ROOT='exec psql -X -q -A -t -v ON_ERROR_STOP=1 -F "$(printf "\t")" -U "${POSTGRES_USER:?}"'
+
+# The client command for the engine, in that container's database ("db") or none
+client_command() {
+    if [ "$DB_ENGINE" = postgresql ]; then
+        if [ "${1:-}" = db ]; then printf '%s' "$PSQL_ROOT -d \"\${POSTGRES_DB:?}\""; else printf '%s' "$PSQL_ROOT -d postgres"; fi
+    else
+        if [ "${1:-}" = db ]; then printf '%s' "$MARIADB_ROOT \"\${MYSQL_DATABASE:?}\""; else printf '%s' "$MARIADB_ROOT"; fi
+    fi
+}
+
 # container_sql <container> [db]: run the SQL on stdin in that container, in its database when
 # the second argument is "db".
 container_sql() {
-    if [ "${2:-}" = db ]; then
-        docker exec -i "$1" sh -c "$MARIADB_ROOT \"\${MYSQL_DATABASE:?}\""
-    else
-        docker exec -i "$1" sh -c "$MARIADB_ROOT"
-    fi
+    docker exec -i "$1" sh -c "$(client_command "${2:-}")"
 }
+
+# The SQL that names the current database's schema, for information_schema
+if [ "$DB_ENGINE" = postgresql ]; then SCHEMA_SQL='current_schema()'; else SCHEMA_SQL='DATABASE()'; fi
+# shellcheck disable=SC2034 # used by the scripts that source this file
 
 # use_db_target <local|container|ovh>: defines db_sql, which runs the SQL on stdin in that
 # database, and sets `where` to name it in messages. The variables it reads are named after
 # migrate.sh, which had them first:
 #   local       this checkout's compose project, with local_db_container's refusals
 #   container   the container MIGRATE_CONTAINER names, on the local engine (tests, other projects)
-#   ovh         production's db container (OVH_DB_CONTAINER, hhbd-db-1) on OVH_HOST over ssh;
-#               MIGRATE_SSH replaces the ssh command and OVH_SUDO the sudo, for tests
+#   ovh         production's db container (OVH_DB_CONTAINER, hhbd-db-1, or hhbd-postgres-1 for
+#               PostgreSQL) on OVH_HOST over ssh; MIGRATE_SSH replaces the ssh command and
+#               OVH_SUDO the sudo, for tests
 use_db_target() {
     case "$1" in
         local)
@@ -107,13 +136,13 @@ use_db_target() {
             ;;
         ovh)
             [ -n "${OVH_HOST:-}" ] || refuse "OVH_HOST is not set: it lives in gcloud-ovh-migrate's .env, which make loads"
-            db_ovh_container=${OVH_DB_CONTAINER:-hhbd-db-1}
+            db_ovh_container=${OVH_DB_CONTAINER:-hhbd-$DB_SERVICE-1}
             # One static command over ssh, SQL on stdin: nothing from this side is quoted for the
             # far side, and the password is read from the container's environment over there.
             db_sql() {
                 # shellcheck disable=SC2086
                 ${MIGRATE_SSH:-ssh -o BatchMode=yes} "${OVH_SSH_USER:-ubuntu}@$OVH_HOST" \
-                    "${OVH_SUDO-sudo} docker exec -i $db_ovh_container sh -c '$MARIADB_ROOT \"\${MYSQL_DATABASE:?}\"'"
+                    "${OVH_SUDO-sudo} docker exec -i $db_ovh_container sh -c '$(client_command db)'"
             }
             where="$db_ovh_container on $OVH_HOST"
             ;;

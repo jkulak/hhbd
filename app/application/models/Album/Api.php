@@ -453,7 +453,8 @@ class Model_Album_Api extends Jkl_Model_Api
 
     public function getFirstLetters()
     {
-        $query = 'SELECT DISTINCT(SUBSTR(title, 1,1)) as name from albums WHERE status = ' . self::PUBLISHED . ' order by name ASC';
+        // Each letter once whatever its case, as MariaDB's collation had it on its own (#232)
+        $query = 'SELECT DISTINCT UPPER(SUBSTR(title, 1, 1)) as name from albums WHERE status = ' . self::PUBLISHED . ' order by name ASC';
         return  $this->_db->fetchAll($query);
     }
 

@@ -11,7 +11,8 @@
 # =============================================================================
 FROM debian:trixie-slim AS base
 
-# PDO MySQL, mbstring, the XML that ZF reads its config with, opcache; cgi-fcgi from
+# PDO MySQL and PDO PostgreSQL, while hhbd moves from the first to the second (#229), mbstring,
+# the XML that ZF reads its config with, opcache; cgi-fcgi from
 # libfcgi-bin for the healthcheck; Debian's CA certificates, without which PHP trusts no
 # certificate and no HTTPS request succeeds, as IndexNow's did not (#220, #227).
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -20,6 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     php8.4-fpm \
     php8.4-mbstring \
     php8.4-mysql \
+    php8.4-pgsql \
     php8.4-opcache \
     php8.4-xml \
     libfcgi-bin \
@@ -82,7 +84,7 @@ FROM base AS importer
 
 RUN apt-get update && apt-get install -y --no-install-recommends php8.4-gd \
     && rm -rf /var/lib/apt/lists/* \
-    && php -r 'exit((extension_loaded("pdo_mysql") && gd_info()["JPEG Support"] && gd_info()["PNG Support"] && gd_info()["WebP Support"]) ? 0 : 1);'
+    && php -r 'exit((extension_loaded("pdo_mysql") && extension_loaded("pdo_pgsql") && gd_info()["JPEG Support"] && gd_info()["PNG Support"] && gd_info()["WebP Support"]) ? 0 : 1);'
 
 COPY --from=builder /var/www/html/app ./app
 # A decoded original takes four bytes a pixel, a 6000 x 4000 photo 96 MB, beside the copy being
