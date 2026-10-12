@@ -301,7 +301,7 @@ class Model_Import_Importer extends Jkl_Model_Api
         if ('label' !== $entity) {
             return null;
         }
-        $rows = $this->_db->fetchAll('SELECT id FROM labels WHERE name = ?', array(trim($name)));
+        $rows = $this->_db->fetchAll('SELECT id FROM labels WHERE lower(name) = lower(?)', array(trim($name)));
         return empty($rows) ? null : (int) $rows[0]['id'];
     }
 
@@ -314,10 +314,12 @@ class Model_Import_Importer extends Jkl_Model_Api
      */
     private function artistNamed($name, $disambiguation = null)
     {
-        $sql = 'SELECT id, disambiguation FROM artists WHERE name = ?';
+        // Case does not count, as with MariaDB's collation, which compared without it by
+        // itself; lower() says so on either engine, and matches PostgreSQL's unique key (#232).
+        $sql = 'SELECT id, disambiguation FROM artists WHERE lower(name) = lower(?)';
         $values = array(trim($name));
         if (null !== $disambiguation) {
-            $sql .= ' AND disambiguation = ?';
+            $sql .= ' AND lower(disambiguation) = lower(?)';
             $values[] = $disambiguation;
         }
         $rows = $this->_db->fetchAll($sql . ' ORDER BY id', $values);
@@ -472,7 +474,7 @@ class Model_Import_Importer extends Jkl_Model_Api
     /** A city by name, made when it is new (#64) */
     private function cityId($name)
     {
-        $rows = $this->_db->fetchAll('SELECT id FROM cities WHERE name = ?', array(trim($name)));
+        $rows = $this->_db->fetchAll('SELECT id FROM cities WHERE lower(name) = lower(?)', array(trim($name)));
         if (!empty($rows)) {
             return (int) $rows[0]['id'];
         }
@@ -535,7 +537,7 @@ class Model_Import_Importer extends Jkl_Model_Api
             // PostgreSQL cannot tell.
             $rows = $this->_db->fetchAll(
                 'SELECT a.id FROM albums a JOIN album_artist_lookup l ON l.albumid = a.id
-                  WHERE l.artistid = ? AND a.title = ?'
+                  WHERE l.artistid = ? AND lower(a.title) = lower(?)'
                   . (null === $year ? '' : ' AND (a.year IS NULL OR ABS(EXTRACT(YEAR FROM a.year) - ?) <= 1)')
                   . ' ORDER BY a.id',
                 null === $year ? array($main[0]['id'], $title) : array($main[0]['id'], $title, $year)

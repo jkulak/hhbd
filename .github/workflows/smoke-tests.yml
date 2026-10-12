@@ -25,10 +25,13 @@ jobs:
       matrix:
         # Two halves at once, each on its own runner with its own stack and database: the site's
         # pages, and the tools that change the database. One after the other they took eight
-        # minutes.
-        part: [site, tools]
+        # minutes. And the site's pages on PostgreSQL, copied from MariaDB's fixtures, on the
+        # way to it (#229, #232); the tools' tests follow there with #234.
+        part: [site, tools, site-postgresql]
     env:
       COMPOSE_PROJECT_NAME: hhbd
+      COMPOSE_FILE: ${{ matrix.part == 'site-postgresql' && 'compose.yaml:compose.ci.yaml:compose.postgresql.yaml' || 'compose.yaml:compose.ci.yaml' }}
+      DB_ENGINE: ${{ matrix.part == 'site-postgresql' && 'postgresql' || 'mariadb' }}
       HAS_DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN != '' }}
 
     steps:
@@ -93,8 +96,9 @@ jobs:
 
       - name: Start Docker Compose services
         run: |
-          # compose.ci.yaml runs the app on the builder stage, which has composer, unzip and git
-          docker compose -f compose.yaml -f compose.ci.yaml up -d
+          # compose.ci.yaml runs the app on the builder stage, which has composer, unzip and git;
+          # COMPOSE_FILE names it, and compose.postgresql.yaml in the PostgreSQL part
+          docker compose up -d
           echo "Waiting for services to start..."
 
       - name: Install Composer dependencies in app container
@@ -112,7 +116,8 @@ jobs:
       - name: Load the schema and the fixtures
         run: |
           # The schema from the migrations, the fixtures onto the baseline, the later migrations
-          # over that data: the one way a database is set up here, locally and in CI alike.
+          # over that data: the one way a database is set up here, locally and in CI alike. With
+          # DB_ENGINE=postgresql, then that copied into PostgreSQL and proved.
           make reset-db
 
       - name: Generate test images
@@ -136,7 +141,7 @@ jobs:
           ./tests/backfill-test.sh
 
       - name: Run smoke tests
-        if: matrix.part == 'site'
+        if: matrix.part == 'site' || matrix.part == 'site-postgresql'
         run: |
           bash ./tests/smoke-test.sh http://localhost:8080
 

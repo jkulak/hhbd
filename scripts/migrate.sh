@@ -30,13 +30,22 @@
 # done part of its work and is not recorded: undo by hand what ran, fix the file, run again.
 # Keep a migration small for that reason. MIGRATIONS_DIR replaces the directory, for tests.
 #
+# DB_ENGINE=postgresql (#232) runs database/migrations-postgresql in the postgres service with
+# psql instead: each file and its record in one transaction, so a file that fails leaves
+# nothing behind. Its track starts at 0039, the MariaDB schema after 0038 as one baseline; a
+# PostgreSQL database is built by `up` from empty, and `baseline` is MariaDB's alone.
+#
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 # shellcheck source=scripts/lib-db.sh
 . scripts/lib-db.sh
 REFUSE_AS=migrate
 
-DIR=${MIGRATIONS_DIR:-database/migrations}
+if [ "$DB_ENGINE" = postgresql ]; then
+    DIR=${MIGRATIONS_DIR:-database/migrations-postgresql}
+else
+    DIR=${MIGRATIONS_DIR:-database/migrations}
+fi
 TARGET=${MIGRATE_TARGET:-local}
 TABLE=schema_migrations
 cmd=${1:-}
@@ -93,24 +102,45 @@ fi
 use_db_target "$TARGET"
 
 query() { printf '%s\n' "$1" | db_sql; }
-# Every file in a session that allows zero dates, which the older migrations need (lib-db.sh).
-run_file() { { printf '%s\n' "$LEGACY_DATES_SESSION"; cat "$1"; } | db_sql; }
+# run_file <file> <record SQL>: the file, then the SQL that records it. On MariaDB every file
+# runs in a session that allows zero dates, which the older migrations need (lib-db.sh), and is
+# recorded once it has run; on PostgreSQL the two are one transaction.
+run_file() {
+    if [ "$DB_ENGINE" = postgresql ]; then
+        { printf 'BEGIN;\n'; cat "$1"; printf '\n%s;\nCOMMIT;\n' "$2"; } | db_sql
+    else
+        { printf '%s\n' "$LEGACY_DATES_SESSION"; cat "$1"; } | db_sql && query "$2"
+    fi
+}
+if [ "$DB_ENGINE" = postgresql ]; then
+    FAILED_NOTE="nothing of it took effect, as it ran in one transaction"
+else
+    FAILED_NOTE="MariaDB commits DDL as it goes, so check what of it took effect before running again"
+fi
 
 [ "$(query 'SELECT 1' 2>/dev/null)" = 1 ] || refuse "cannot reach the database at $where"
 
-has_table() { [ "$(query "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = '$1'")" = 1 ]; }
+has_table() { [ "$(query "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = $SCHEMA_SQL AND table_name = '$1'")" = 1 ]; }
 ensure_table() {
-    query "CREATE TABLE IF NOT EXISTS $TABLE (
-        version CHAR(4) NOT NULL PRIMARY KEY,
-        name VARCHAR(190) NOT NULL,
-        applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    if [ "$DB_ENGINE" = postgresql ]; then
+        query "CREATE TABLE IF NOT EXISTS $TABLE (
+            version varchar(4) NOT NULL PRIMARY KEY,
+            name varchar(190) NOT NULL,
+            applied_at timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )"
+    else
+        query "CREATE TABLE IF NOT EXISTS $TABLE (
+            version CHAR(4) NOT NULL PRIMARY KEY,
+            name VARCHAR(190) NOT NULL,
+            applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    fi
 }
 # applied: "version<TAB>name<TAB>applied_at" per recorded migration, in order; nothing before
 # the table exists.
 applied() { if has_table "$TABLE"; then query "SELECT version, name, applied_at FROM $TABLE ORDER BY version"; fi; }
 is_recorded() { printf '%s\n' "$2" | awk -F'\t' -v v="$1" '$1 == v' | grep -q .; }
-app_tables() { query "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' AND table_name <> '$TABLE'"; }
+app_tables() { query "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = $SCHEMA_SQL AND table_type = 'BASE TABLE' AND table_name <> '$TABLE'"; }
 
 # --- status -------------------------------------------------------------------------------
 
@@ -161,11 +191,10 @@ up() {
         if is_recorded "$version" "$recs"; then continue; fi
         f="$DIR/$version-$name.up.sql"
         echo "> up $version $name"
-        if ! run_file "$f"; then
-            echo "x migrate: $f failed at $where. It is not recorded and nothing after it ran; MariaDB commits DDL as it goes, so check what of it took effect before running again" >&2
+        if ! run_file "$f" "INSERT INTO $TABLE (version, name) VALUES ('$version', '$name')"; then
+            echo "x migrate: $f failed at $where. It is not recorded and nothing after it ran; $FAILED_NOTE" >&2
             exit 1
         fi
-        query "INSERT INTO $TABLE (version, name) VALUES ('$version', '$name')"
         n=$((n + 1))
     done <<<"$ALL"
     echo "ok $where: $n up; $(status | tail -1)"
@@ -196,11 +225,10 @@ down() {
         f=$(printf '%s\n' "$DIR/$version"-*.down.sql | head -1)
         [ -f "$f" ] || refuse "no $version-*.down.sql in $DIR for the recorded migration $version $name ($when)"
         echo "> down $version $name"
-        if ! run_file "$f"; then
-            echo "x migrate: $f failed at $where. $version stays recorded; MariaDB commits DDL as it goes, so check what of it took effect before running again" >&2
+        if ! run_file "$f" "DELETE FROM $TABLE WHERE version = '$version'"; then
+            echo "x migrate: $f failed at $where. $version stays recorded; $FAILED_NOTE" >&2
             exit 1
         fi
-        query "DELETE FROM $TABLE WHERE version = '$version'"
         n=$((n + 1))
     done <<<"$list"
     echo "ok $where: $n down; $(status | tail -1)"
@@ -211,11 +239,12 @@ down() {
 # The columns the baseline creates, "table<TAB>column": mysqldump writes one column per line,
 # indented two spaces and backquoted; keys and constraints start with a word instead.
 baseline_columns() { awk '/^CREATE TABLE `/ { t = $3; gsub(/`/, "", t) } /^  `/ { c = $1; gsub(/`/, "", c); print t "\t" c }' "$1" | sort; }
-db_columns() { query "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name <> '$TABLE'" | sort; }
+db_columns() { query "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = $SCHEMA_SQL AND table_name <> '$TABLE'" | sort; }
 list_columns() { awk -F'\t' '{ printf "%s.%s ", $1, $2 }'; }
 
 baseline() {
     local recs f missing extra
+    [ "$DB_ENGINE" = mariadb ] || refuse "baseline records MariaDB's 0001 on a database that has its schema; a PostgreSQL database is built by up from empty"
     recs=$(applied)
     [ -z "$recs" ] || refuse "$where already records $(printf '%s\n' "$recs" | grep -c .) migration(s); baseline is for a database with none"
     f=$(printf '%s\n' "$DIR"/0001-*.up.sql | head -1)

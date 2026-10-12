@@ -26,7 +26,7 @@ class Model_Legacy_Api extends Jkl_Model_Api
     /**
      * The ids whose slug is the one given, two at most: one is the page, two mean the slug does
      * not tell which (songs share theirs often, "intro"). Case does not count, as the old links
-     * were written both ways.
+     * were written both ways: lower() says so, which MariaDB's collation did by itself (#232).
      *
      * @return int[]
      */
@@ -37,7 +37,7 @@ class Model_Legacy_Api extends Jkl_Model_Api
             return array();
         }
         $rows = $this->_db->fetchAll(
-            'SELECT id FROM ' . self::TABLES[$kind] . " WHERE urlname <> '' AND REPLACE(urlname, '-', '_') = REPLACE(?, '-', '_') ORDER BY id LIMIT 2",
+            'SELECT id FROM ' . self::TABLES[$kind] . " WHERE urlname <> '' AND lower(REPLACE(urlname, '-', '_')) = lower(REPLACE(?, '-', '_')) ORDER BY id LIMIT 2",
             array($slug)
         );
         return array_map('intval', array_column($rows, 'id'));

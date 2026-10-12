@@ -98,7 +98,7 @@ ovh-secrets-init: ## Create deploy/ovh/hhbd.enc.env once, with database password
 # --- The local database -------------------------------------------------------------------
 
 .PHONY: reset-db
-reset-db: ## Drop the local hhbd database and build it from the migrations and the test fixtures, or load the kept result of that (local stack only; RESET_DB_FULL=1 always builds)
+reset-db: ## Drop the local hhbd database and build it from the migrations and the test fixtures, or load the kept result of that (local stack only; RESET_DB_FULL=1 always builds; DB_ENGINE=postgresql copies it into PostgreSQL too)
 	./scripts/reset-db.sh
 
 .PHONY: test-images

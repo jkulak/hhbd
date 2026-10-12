@@ -55,7 +55,7 @@ class Model_FeatType_Api extends Jkl_Model_Api
             throw new InvalidArgumentException(sprintf('Not a role: "%s"', $name));
         }
 
-        $rows = $this->_db->fetchAll('SELECT id FROM feattypes WHERE feattype = ?', array($name));
+        $rows = $this->_db->fetchAll('SELECT id FROM feattypes WHERE lower(feattype) = lower(?)', array($name));
         if (!empty($rows)) {
             return (int) $rows[0]['id'];
         }
