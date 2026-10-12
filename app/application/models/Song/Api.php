@@ -24,6 +24,17 @@ class Model_Song_Api extends Jkl_Model_Api
      * has nothing to show it with (#37), and one on unpublished albums only waits with them
      * for an admin (#168). Follows a song id column, as "t1.id " . SHOWN.
      */
+    /**
+     * A song whose page has something of its own (#243): lyrics, or someone credited with its
+     * music, a guest verse or the scratches. A page with none of them, a title and perhaps a
+     * video, asks search engines not to index it and stays out of the sitemap; the condition
+     * is on the songs table aliased t1, for both.
+     */
+    public const HAS_CONTENT = "(t1.lyrics <> ''
+        OR EXISTS (SELECT 1 FROM music_lookup m WHERE m.songid = t1.id)
+        OR EXISTS (SELECT 1 FROM feature_lookup f WHERE f.songid = t1.id)
+        OR EXISTS (SELECT 1 FROM scratch_lookup x WHERE x.songid = t1.id))";
+
     private const SHOWN = 'IN (SELECT l.songid FROM album_lookup l JOIN albums al ON al.id = l.albumid
                                WHERE al.status = ' . Model_Album_Api::PUBLISHED . '
                                  AND EXISTS (SELECT 1 FROM album_artist_lookup c JOIN artists a ON a.id = c.artistid WHERE c.albumid = l.albumid))';
@@ -99,6 +110,12 @@ class Model_Song_Api extends Jkl_Model_Api
     }
 
     /** Whether song $id has a page a visitor may open, for the page to ask before it builds it (#147, #168) */
+    /** Whether a song's page has something of its own: HAS_CONTENT */
+    public function hasContent($id)
+    {
+        return !empty($this->_db->fetchAll('SELECT 1 FROM songs t1 WHERE t1.id = ? AND ' . self::HAS_CONTENT, array((int) $id)));
+    }
+
     public function exists($id)
     {
         return !empty($this->_db->fetchAll('SELECT 1 FROM songs t1 WHERE t1.id = ? AND t1.id ' . self::SHOWN, array((int) $id)));
@@ -343,7 +360,7 @@ class Model_Song_Api extends Jkl_Model_Api
     {
         $query = 'SELECT *, t1.id AS song_id, t1.title AS sng_title
               FROM songs t1
-              WHERE t1.id ' . self::SHOWN . '
+              WHERE t1.id ' . self::SHOWN . ' AND ' . self::HAS_CONTENT . '
               ORDER BY t1.added DESC
               LIMIT ' . intval($limit);
         return $this->_getList($query);

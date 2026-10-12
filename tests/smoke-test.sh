@@ -407,6 +407,19 @@ run_fixture_tests() {
     test_page "A quote and a backslash are searched for as typed" "/szukaj.html?q=O%27Rety%5C" "Szukałeś: O'Rety\\\\</h1>"
     test_comment_as_written "A comment with a quote and a backslash is stored and shown as written" "Smoke #230: it's a \\backslash"
     test_lyrics_as_written "Lyrics with a quote and a backslash are saved as written, and a quote in the song's id breaks no query"
+    # No ad beside lyrics hhbd holds no licence for, nor on a form or a profile (#244)
+    test_page_absent "A song's page with lyrics has no ad unit (#244)" "/pogoda-s7329.html" 'class="adsbygoogle"'
+    test_page "while one without lyrics has it" "/domowa-produkcja-s9102.html" 'class="adsbygoogle"'
+    test_page_absent "A user's profile has none" "/testuser1-u1.html" 'class="adsbygoogle"'
+    test_admin_page "nor the lyrics form" "/pogoda-s7329/edytuj-tekst.html" "<textarea" '!class="adsbygoogle"'
+    # A page with nothing of its own stays out of search engines' index and the sitemap (#243)
+    test_page "A song with no lyrics and no credits asks not to be indexed (#243)" "/domowa-produkcja-s9102.html" 'name="robots" content="noindex,follow"'
+    test_page_absent "and the song sitemap leaves it out" "/sitemap-songs.xml" "-s9102.html<"
+    test_page "A song with credits is indexed" "/pogoda-s7329.html" 'name="robots" content="index,follow"'
+    test_page "An artist with no album, credit, group or profile asks not to be indexed" "/enemis-p2258.html" 'name="robots" content="noindex,follow"'
+    test_page_absent "and the artist sitemap leaves it out" "/sitemap-artists.xml" "-p2258.html<"
+    test_page "An artist with albums is indexed" "/mes-p35.html" 'name="robots" content="index,follow"'
+    test_page "and in the artist sitemap" "/sitemap-artists.xml" "/mes-p35.html<"
     test_page "A search with Polish letters finds the name (#151)" "/szukaj.html?q=Sok%C3%B3%C5%82" 'href="/sokol-p10.html"'
     test_page "and so does one without them" "/szukaj.html?q=sokol" 'href="/sokol-p10.html"'
     test_page "and one in capitals" "/szukaj.html?q=SOK%C3%93%C5%81" 'href="/sokol-p10.html"'
@@ -1077,6 +1090,15 @@ run_tests() {
     test_page "The about page is in the sitemap" "/sitemap-pages.xml" "<loc>${BASE_URL}/o-nas.html</loc>"
     test_page_absent "No page's footer dates hhbd.pl to 2005-2007" "/" "w latach 2005-2007"
     test_page "The browser's search box searches hhbd.pl's search" "/opensearch.xml" 'template="https://hhbd.pl/szukaj.html?q={searchTerms}"'
+    echo ""
+
+    # An ad only beside hhbd's own content (#244): read-only, so production too, where ads are on
+    echo "--- Ads ---"
+    test_page "An album's page has the ad unit" "/wdowa-superextra-a535.html" 'class="adsbygoogle"'
+    test_page_absent "The login page has none" "/uzytkownik/logowanie.html" 'class="adsbygoogle"'
+    test_page_absent "nor the registration" "/uzytkownik/rejestracja.html" 'class="adsbygoogle"'
+    test_page_absent "nor the page that asks to log in" "/uzytkownik/niezalogowany.html" 'class="adsbygoogle"'
+    test_page_absent "nor search results" "/szukaj.html?q=peja" 'class="adsbygoogle"'
     echo ""
 
     # What a shared link previews (#177): read-only, so production too

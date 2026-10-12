@@ -11,6 +11,20 @@
 
 class Model_Artist_Api extends Jkl_Model_Api
 {
+    /**
+     * An artist whose page has something of its own (#243): a published album, a credit on a
+     * song, a group it belongs to or members, or a profile. A page with none of them asks
+     * search engines not to index it and stays out of the sitemap; the condition is on the
+     * artists table aliased t1, for both.
+     */
+    public const HAS_CONTENT = "(t1.profile <> ''
+        OR EXISTS (SELECT 1 FROM album_artist_lookup c JOIN albums a ON a.id = c.albumid WHERE c.artistid = t1.id AND a.status = 999)
+        OR EXISTS (SELECT 1 FROM artist_lookup r WHERE r.artistid = t1.id)
+        OR EXISTS (SELECT 1 FROM music_lookup m WHERE m.artistid = t1.id)
+        OR EXISTS (SELECT 1 FROM feature_lookup f WHERE f.artistid = t1.id)
+        OR EXISTS (SELECT 1 FROM scratch_lookup x WHERE x.artistid = t1.id)
+        OR EXISTS (SELECT 1 FROM band_lookup b WHERE b.artistid = t1.id OR b.bandid = t1.id))";
+
     private static $_instance;
 
     /**
@@ -329,6 +343,19 @@ class Model_Artist_Api extends Jkl_Model_Api
         (($limit != null) ? ' LIMIT ' . $limit : '');
 
         return $this->getList($query);
+    }
+
+    /** Whether an artist's page has something of its own: HAS_CONTENT */
+    public function hasContent($id)
+    {
+        return !empty($this->_db->fetchAll('SELECT 1 FROM artists t1 WHERE t1.id = ? AND ' . self::HAS_CONTENT, array((int) $id)));
+    }
+
+    /** The artists the sitemap lists: those whose page has something of its own (#243) */
+    public function getSitemap($limit)
+    {
+        return $this->getList('SELECT t1.id AS art_id, t1.name, t1.disambiguation FROM artists t1
+            WHERE ' . self::HAS_CONTENT . ' ORDER BY t1.added DESC LIMIT ' . (int) $limit);
     }
 
     public function getRecentlyAdded($limit = 10)

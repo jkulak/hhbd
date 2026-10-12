@@ -80,6 +80,11 @@ class ArtistController extends Zend_Controller_Action
         Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
 
         $this->view->Analytics()->page('artist', $artist->id, $artist->qualifiedName);
+        // An artist with no album, credit, group or profile has a name alone on the page: there
+        // for a visitor, kept out of search engines' index, as of the sitemap (#243)
+        if (!Model_Artist_Api::getInstance()->hasContent($artist->id)) {
+            $this->view->headMeta()->setName('robots', 'noindex,follow');
+        }
 
         Model_PageView_Api::getInstance()->count('artist', $artist->id, $this->view->IsAdmin());
         $artist->addAlbums(Model_Album_Api::getInstance()->getArtistsAlbums($artist->id, array(), false, 'year'));
