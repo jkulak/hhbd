@@ -52,16 +52,10 @@ class Model_Search_Api extends Jkl_Model_Api
         return $result;
     }
 
+    /** What a visitor searched for, bound as it was typed (#230) */
     public function saveSearch($query)
     {
-        $query = Jkl_Db::escape($query);
-        if (!isset($query)) {
-            throw Jkl_Exception("Empty search query can't be saved to database!");
-        }
-        $query = "INSERT INTO searches SET searchstring='$query';";
-        $result = $this->_db->query($query);
-
-        // how to check query result ?
+        $this->_db->query('INSERT INTO searches (searchstring) VALUES (?)', array((string) $query));
         return true;
     }
 }

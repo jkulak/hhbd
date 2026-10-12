@@ -52,10 +52,10 @@ class Model_Album_Api extends Jkl_Model_Api
     /**
      * Creates object and fetches the list from database result
      */
-    public function getList($query)
+    public function getList($query, array $bind = array())
     {
         $albums = new Jkl_List();
-        foreach ($this->_withCredits($this->_db->fetchAll($query)) as $params) {
+        foreach ($this->_withCredits($this->_db->fetchAll($query, $bind)) as $params) {
             $albums->add(new Model_Album_Container($params));
         }
         return $albums;
@@ -296,25 +296,23 @@ class Model_Album_Api extends Jkl_Model_Api
 
     public function getLike($like = '', $limit = 20, $page = 1)
     {
-        $like = Jkl_Db::escape($like);
         $limit = intval($limit);
         $page = intval($page - 1);
         $page = ($page < 1) ? 0 : $page;
         $query = 'SELECT ' . self::LIST_COLUMNS . ' FROM albums AS t3 LEFT JOIN labels AS t4 ON t4.id=t3.labelid ' .
-          'WHERE t3.title LIKE "%' . $like . '%" COLLATE ' . self::SEARCH_COLLATION . ' AND ' . self::SHOWN . ' ' .
+          'WHERE t3.title LIKE ? COLLATE ' . self::SEARCH_COLLATION . ' AND ' . self::SHOWN . ' ' .
           'ORDER BY t3.viewed DESC' .
           (($limit != null) ? ' LIMIT ' . $limit : '') .
           ' OFFSET ' . ($page * $limit);
-        return $this->getList($query);
+        return $this->getList($query, array(Jkl_Db::contains($like)));
     }
 
     public function getLikeCount($like = '')
     {
-        $like = Jkl_Db::escape($like);
         $query = "SELECT count(*) as count
               FROM albums AS t1
-              WHERE t1.status = " . self::PUBLISHED . " AND t1.title LIKE '%$like%' COLLATE " . self::SEARCH_COLLATION;
-        $result = $this->_db->fetchAll($query);
+              WHERE t1.status = " . self::PUBLISHED . " AND t1.title LIKE ? COLLATE " . self::SEARCH_COLLATION;
+        $result = $this->_db->fetchAll($query, array(Jkl_Db::contains($like)));
         return intval($result[0]['count']);
     }
     /**
