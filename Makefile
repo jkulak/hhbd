@@ -79,6 +79,19 @@ ovh-import: ## Read an import batch into production's catalogue: make ovh-import
 ovh-edit: ## Edit production's catalogue, journalled: make ovh-edit DO="merge-albums 850 841" BY=<admin> WHY="..." (a dry run without MODE=apply); DO="undo <operation>" takes one back
 	@./scripts/edit.sh ovh
 
+# The copy of production's MariaDB into its PostgreSQL (#235, #236), in a one-off app container
+# of the running release on the host, both databases on the stack's own network.
+OVH_PG_COPY = ssh -o BatchMode=yes "$${OVH_SSH_USER:-ubuntu}@$${OVH_HOST:?OVH_HOST is not set}" \
+	'cd /srv/hhbd && sudo SOPS_AGE_KEY_FILE=/etc/sops/age.key /usr/local/bin/sops exec-env hhbd.enc.env "docker compose run --rm --no-deps -T app php /var/www/html/app/tools/mariadb-to-postgres.php $(1)"'
+
+.PHONY: ovh-pg-copy
+ovh-pg-copy: ## Copy production's MariaDB into its empty PostgreSQL and prove the copy, table by table (the move, #236)
+	$(call OVH_PG_COPY,copy)
+
+.PHONY: ovh-pg-verify
+ovh-pg-verify: ## Compare production's MariaDB and PostgreSQL table by table, writing nothing
+	$(call OVH_PG_COPY,verify)
+
 .PHONY: ovh-dump
 ovh-dump: ## Dump production's database to ~/Developer/hhbd-dumps/hhbd-prod-<date>.sql.gz, outside every repository (read-only on production)
 	@./scripts/ovh-dump.sh
