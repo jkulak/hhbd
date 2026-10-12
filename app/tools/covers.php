@@ -13,8 +13,9 @@
  * would, rows already there included.
  *
  * It reads DB_HOST, DB_NAME, DB_USER and DB_PASSWORD from the environment, as the application
- * does, and the files under CONTENT_DIR (/var/www/html/content by default). getimagesize() is in
- * PHP's core, so it needs no GD, which the production image lacks.
+ * does, with DB_ADAPTER and DB_PORT for PostgreSQL (pdo_pgsql, #234), and the files under
+ * CONTENT_DIR (/var/www/html/content by default). getimagesize() is in PHP's core, so it needs no
+ * GD, which the production image lacks.
  */
 
 $mode = isset($argv[1]) ? $argv[1] : '';
@@ -30,8 +31,11 @@ if (!is_dir($contentDir . '/a')) {
     exit(1);
 }
 
+$pg = 'pdo_pgsql' === strtolower((string) getenv('DB_ADAPTER'));
 $db = new PDO(
-    sprintf('mysql:host=%s;dbname=%s;charset=utf8mb4', getenv('DB_HOST'), getenv('DB_NAME')),
+    $pg
+        ? sprintf('pgsql:host=%s;port=%s;dbname=%s', getenv('DB_HOST'), getenv('DB_PORT') ?: '5432', getenv('DB_NAME'))
+        : sprintf('mysql:host=%s;dbname=%s;charset=utf8mb4', getenv('DB_HOST'), getenv('DB_NAME')),
     getenv('DB_USER'),
     getenv('DB_PASSWORD'),
     array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION)
@@ -41,9 +45,11 @@ if ($dryRun) {
     $db->beginTransaction();
 }
 
+// A cover already described stays as it is: PostgreSQL says so with ON CONFLICT, MariaDB with
+// IGNORE.
 $insert = $db->prepare(
-    'INSERT IGNORE INTO album_covers (albumid, variant, path, width, height, sha256, mime, source, main)
-     VALUES (?, ?, ?, ?, ?, ?, ?, \'legacy\', \'y\')'
+    'INSERT ' . ($pg ? '' : 'IGNORE ') . 'INTO album_covers (albumid, variant, path, width, height, sha256, mime, source, main)
+     VALUES (?, ?, ?, ?, ?, ?, ?, \'legacy\', \'y\')' . ($pg ? ' ON CONFLICT DO NOTHING' : '')
 );
 
 $counts = array('orig' => 0, '600' => 0, '300' => 0, '75' => 0, 'missing' => 0, 'unreadable' => 0, 'already' => 0);
