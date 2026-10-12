@@ -14,8 +14,14 @@
 #
 # Usage: tests/import-test.sh [base URL of the running site, default http://localhost:8080]
 #
+# DB_ENGINE=postgresql runs it against the stack on PostgreSQL (compose.postgresql.yaml, #234),
+# where the importer writes to PostgreSQL too: the same checks, the resets through
+# DB_ENGINE=postgresql make reset-db.
+#
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
+# shellcheck source=tests/lib-test-db.sh
+. tests/lib-test-db.sh
 
 URL=${1:-http://localhost:8080}
 BATCH=tests/import/batch
@@ -27,9 +33,6 @@ ok()  { echo "ok   $1"; pass=$((pass + 1)); }
 bad() { echo "x    $1"; fail=$((fail + 1)); }
 check() { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1"; echo "     expected: $2"; echo "     got:      $3"; fi; }
 
-sql() { # sql <statement>: in this project's database, as root
-    docker compose exec -T db sh -c 'MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?}" exec mariadb -uroot -N -B --default-character-set=utf8mb4 "${MYSQL_DATABASE:?}" -e "$1"' -- "$1"
-}
 import() { # import <batch dir> <mode> <name>: the report in $T/<name>.json, the progress in $T/<name>.err
     local status=0
     make -s import BATCH="$1" MODE="$2" >"$T/$3.json" 2>"$T/$3.err" || status=$?
@@ -76,7 +79,7 @@ check "and leaves no row behind" "$rows_start" "$(rows)"
 check "and no file" "" "$(content | comm -13 "$T/content-start" -)"
 check "its progress on stderr is one JSON line per document and one for the run, in the host's format (#101)" "12 12" \
     "$(grep -c '^{' "$T/dry.err") $(grep '^{' "$T/dry.err" | jq -c 'select((.time | test("^[0-9-]{10}T[0-9:]{8}[.][0-9]{3}Z$")) and .level == "info" and (.msg | length > 0) and .logger == "importer")' | grep -c .)"
-check "but its run, closed" "dry-run 7 1" "$(sql "SELECT CONCAT_WS(' ', mode, created_count, finished IS NOT NULL) FROM import_runs ORDER BY id DESC LIMIT 1")"
+check "but its run, closed" "dry-run 7 1" "$(sql "SELECT CONCAT_WS(' ', mode, created_count, CASE WHEN finished IS NULL THEN 0 ELSE 1 END) FROM import_runs ORDER BY id DESC LIMIT 1")"
 
 echo "> an apply"
 check "the apply reads every document" "0" "$(import "$BATCH" apply apply)"
@@ -85,9 +88,9 @@ check "the new rows are the import's" "Testowy Raper Ąę 1100, Testowy Album Im
     "$(sql "SELECT CONCAT((SELECT CONCAT(name, ' ', addedby) FROM artists WHERE name = 'Testowy Raper Ąę'), ', ', (SELECT CONCAT(title, ' ', addedby) FROM albums WHERE title = 'Testowy Album Importu'))")"
 album=$(jq -r '.documents[] | select(.ref == "release:testowy-album") | .hhbd_id' "$T/apply.json")
 check "the album's cover in four sizes, from the one original" "orig:1200 600:600 300:300 75:75" \
-    "$(sql "SELECT GROUP_CONCAT(CONCAT(variant, ':', width) ORDER BY width DESC SEPARATOR ' ') FROM album_covers WHERE albumid = $album")"
+    "$(sql "SELECT $(agg "CONCAT(variant, ':', width)" "width DESC" ' ') FROM album_covers WHERE albumid = $album")"
 check "the single's smaller cover never upscaled, and flagged to replace" "300:300:1 75:75:1" \
-    "$(sql "SELECT GROUP_CONCAT(CONCAT(c.variant, ':', c.width, ':', c.needs_upgrade) ORDER BY c.width DESC SEPARATOR ' ') FROM album_covers c JOIN albums a ON a.id = c.albumid WHERE a.title = 'Testowy Singiel'")"
+    "$(sql "SELECT $(agg "CONCAT(c.variant, ':', c.width, ':', c.needs_upgrade)" "c.width DESC" ' ') FROM album_covers c JOIN albums a ON a.id = c.albumid WHERE a.title = 'Testowy Singiel'")"
 check "every size written into content/" "a/orig a/600 a/300 a/75" \
     "$(for v in orig 600 300 75; do [ -f "content/a/$v/$cover.jpg" ] && printf 'a/%s ' "$v"; done | sed 's/ $//')"
 page=$(curl -s "$URL$(jq -r '.documents[] | select(.ref == "release:testowy-album") | .url' "$T/apply.json")")
@@ -106,27 +109,27 @@ check "Eldo: the empty website and start filled, the real name kept" "https://ex
     "$(sql "SELECT CONCAT_WS(' ', website, since, realname, updatedby) FROM artists WHERE id = 2")"
 check "album 1: found by its Discogs master, its catalogue number filled, its tracklist kept" "TEST 0001 3" \
     "$(sql "SELECT CONCAT(catalog_cd, ' ', (SELECT COUNT(*) FROM album_lookup WHERE albumid = 1)) FROM albums WHERE id = 1")"
-check "Mes keeps his Discogs id" "271903" "$(sql "SELECT GROUP_CONCAT(value) FROM external_ids WHERE entity_type = 'artist' AND entity_id = 35 AND source = 'discogs'")"
+check "Mes keeps his Discogs id" "271903" "$(sql "SELECT $(agg value value) FROM external_ids WHERE entity_type = 'artist' AND entity_id = 35 AND source = 'discogs'")"
 check "a namesake the batch tells apart is an artist of its own, Mes himself without a qualifier" "35: new:testowy imiennik" \
-    "$(sql "SELECT GROUP_CONCAT(CONCAT(IF(id = 35, '35', 'new'), ':', disambiguation) ORDER BY id SEPARATOR ' ') FROM artists WHERE name = 'Mes'")"
+    "$(sql "SELECT $(agg "CONCAT(CASE WHEN id = 35 THEN '35' ELSE 'new' END, ':', disambiguation)" id ' ') FROM artists WHERE name = 'Mes'")"
 check "its page is under the qualified name" "1" \
     "$(curl -s "$URL$(jq -r '.documents[] | select(.ref == "artist:mes-imiennik") | .url' "$T/apply.json")" | grep -c '<h1>Mes (testowy imiennik)</h1>' || true)"
 check "and the report asks a person to look at it" "1" \
     "$(jq '[.documents[] | select(.ref == "artist:mes-imiennik") | .warnings[] | select(test("for a person to review: same name as hhbd artist 35"))] | length' "$T/apply.json")"
 check "the namesake, the single's stand-in cover and what the single lacks wait for a person, on their pages" "artist:namesake album:cover_placeholder album:incomplete" \
-    "$(sql "SELECT GROUP_CONCAT(CONCAT(entity_type, ':', reason) ORDER BY id SEPARATOR ' ') FROM review_items WHERE run_id = (SELECT MAX(id) FROM import_runs) AND resolved IS NULL")"
+    "$(sql "SELECT $(agg "CONCAT(entity_type, ':', reason)" id ' ') FROM review_items WHERE run_id = (SELECT MAX(id) FROM import_runs) AND resolved IS NULL")"
 check "where each changed group came from, and only those" "core cover tracklist" \
-    "$(sql "SELECT GROUP_CONCAT(field ORDER BY field SEPARATOR ' ') FROM import_provenance WHERE entity_type = 'album' AND entity_id = $album")"
+    "$(sql "SELECT $(agg field field ' ') FROM import_provenance WHERE entity_type = 'album' AND entity_id = $album")"
 check "Eldo's core is not credited to the batch" "facts" \
-    "$(sql "SELECT GROUP_CONCAT(field) FROM import_provenance WHERE entity_type = 'artist' AND entity_id = 2")"
+    "$(sql "SELECT $(agg field field) FROM import_provenance WHERE entity_type = 'artist' AND entity_id = 2")"
 single_id=$(jq -r '.documents[] | select(.ref == "release:testowy-singiel") | .hhbd_id' "$T/apply.json")
 check "an album with a label, a date to the day and a tracklist is published (#168)" "999" "$(sql "SELECT status FROM albums WHERE id = $album")"
 check "the single, with no label and a month alone, waits unpublished, its item naming what it lacks" "0 brak: wytwórnia, data dzienna" \
-    "$(sql "SELECT CONCAT(a.status, ' ', JSON_VALUE(r.detail, '$.text')) FROM albums a JOIN review_items r ON r.entity_type = 'album' AND r.entity_id = a.id AND r.reason = 'incomplete' AND r.resolved IS NULL WHERE a.id = $single_id")"
+    "$(sql "SELECT CONCAT(a.status, ' ', $(json_get r.detail text)) FROM albums a JOIN review_items r ON r.entity_type = 'album' AND r.entity_id = a.id AND r.reason = 'incomplete' AND r.resolved IS NULL WHERE a.id = $single_id")"
 check "and a visitor gets a 404 for it" "404" "$(curl -s -o /dev/null -w '%{http_code}' "$URL$(jq -r '.documents[] | select(.ref == "release:testowy-singiel") | .url' "$T/apply.json")")"
 check "an album hhbd had keeps its status, whatever it lacks" "999 0" \
     "$(sql "SELECT CONCAT(status, ' ', (SELECT COUNT(*) FROM review_items WHERE entity_type = 'album' AND entity_id = 1 AND reason = 'incomplete')) FROM albums WHERE id = 1")"
-check "the run holds the report" "apply 11" "$(sql "SELECT CONCAT(mode, ' ', JSON_LENGTH(report, '$.documents')) FROM import_runs ORDER BY id DESC LIMIT 1")"
+check "the run holds the report" "apply 11" "$(sql "SELECT CONCAT(mode, ' ', $(json_len report documents)) FROM import_runs ORDER BY id DESC LIMIT 1")"
 content >"$T/content-applied"
 rows_applied=$(rows)
 
@@ -141,7 +144,7 @@ echo "> the single as run 14 left such albums: published, with nothing to review
 sql "UPDATE albums SET status = 999 WHERE id = $single_id; DELETE FROM review_items WHERE entity_type = 'album' AND entity_id = $single_id AND reason = 'incomplete'" >/dev/null
 check "the batch again reads every document" "0" "$(import "$BATCH" apply rerun)"
 check "and holds the single back, as the import made it and it lacks a label and a day" "0 brak: wytwórnia, data dzienna" \
-    "$(sql "SELECT CONCAT(a.status, ' ', JSON_VALUE(r.detail, '$.text')) FROM albums a JOIN review_items r ON r.entity_type = 'album' AND r.entity_id = a.id AND r.reason = 'incomplete' AND r.resolved IS NULL WHERE a.id = $single_id")"
+    "$(sql "SELECT CONCAT(a.status, ' ', $(json_get r.detail text)) FROM albums a JOIN review_items r ON r.entity_type = 'album' AND r.entity_id = a.id AND r.reason = 'incomplete' AND r.resolved IS NULL WHERE a.id = $single_id")"
 check "saying it changed the single, and only it" "1 updated" "$(jq -r '[.documents[] | select(.action == "updated")] | "\(length) \(.[0].action)"' "$T/rerun.json")"
 
 echo "> a batch that brings what the single lacked: it is self-released, out on 13 March"
@@ -167,7 +170,7 @@ cp "$BATCH/files/cover-album.jpg" "$T/upgrade/files/"
 jq -c --argjson id "$single_id" 'select(.ref == "release:testowy-album") | {kind: "image", target: {entity: "album", ref: "hhbd:album:\($id)"}, role: "cover", file: .cover}' "$BATCH/batch.ndjson" >"$T/upgrade/batch.ndjson"
 check "the import reads it" "0" "$(import "$T/upgrade" apply upgrade)"
 check "it takes the stand-in's place on the page" "1 orig:1200:0 600:600:0 300:300:0 75:75:0" \
-    "$(sql "SELECT COUNT(*) FROM album_covers WHERE albumid = $single_id AND main = 'n' AND variant = '300'") $(sql "SELECT GROUP_CONCAT(CONCAT(variant, ':', width, ':', needs_upgrade) ORDER BY width DESC SEPARATOR ' ') FROM album_covers WHERE albumid = $single_id AND main = 'y'")"
+    "$(sql "SELECT COUNT(*) FROM album_covers WHERE albumid = $single_id AND main = 'n' AND variant = '300'") $(sql "SELECT $(agg "CONCAT(variant, ':', width, ':', needs_upgrade)" "width DESC" ' ') FROM album_covers WHERE albumid = $single_id AND main = 'y'")"
 check "and settles the doubt about it" "replaced 1100" \
     "$(sql "SELECT CONCAT_WS(' ', resolution, resolved_by) FROM review_items WHERE entity_type = 'album' AND entity_id = $single_id AND reason = 'cover_placeholder'")"
 check "the same cover again changes nothing" "0 created, 0 updated, 1 unchanged, 0 refused" "$([ "$(import "$T/upgrade" apply upgrade-again)" = 0 ] && totals upgrade-again)"

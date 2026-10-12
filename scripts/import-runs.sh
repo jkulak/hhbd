@@ -8,6 +8,7 @@
 #
 # Where it reads, DB_TARGET: local (this checkout's compose project, the default) or ovh
 # (production's database over ssh, OVH_HOST from gcloud-ovh-migrate's .env), as scripts/migrate.sh reaches them.
+# DB_ENGINE=postgresql reads PostgreSQL's database there instead (#234).
 #
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
@@ -21,10 +22,13 @@ case "$limit" in ''|*[!0-9]*|0) echo "usage: $0 [<how many>, a positive number]"
 use_db_target "${DB_TARGET:-local}"
 query() { printf '%s\n' "$1" | db_sql; }
 
-[ "$(query "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'import_runs'")" = 1 ] \
+[ "$(query "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = $SCHEMA_SQL AND table_name = 'import_runs'")" = 1 ] \
     || refuse "$where has no import_runs table; it comes with migration 0007"
 
-rows=$(query "SELECT r.id, r.started, IFNULL(TIMEDIFF(r.finished, r.started), '-'), r.mode, r.batch,
+# The time a run took, as hours:minutes:seconds: PostgreSQL's difference of two timestamps is an
+# interval, which prints that way
+if [ "$DB_ENGINE" = postgresql ]; then took='CAST(r.finished - r.started AS text)'; else took='TIMEDIFF(r.finished, r.started)'; fi
+rows=$(query "SELECT r.id, r.started, COALESCE($took, '-'), r.mode, r.batch,
                      LEFT(r.batch_sha256, 12), r.created_count, r.updated_count, r.unchanged_count,
                      r.skipped_count, r.refused_count,
                      (SELECT COUNT(*) FROM import_provenance p WHERE p.run_id = r.id)
