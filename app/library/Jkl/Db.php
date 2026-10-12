@@ -82,10 +82,24 @@ class Jkl_Db
         return $this->_queryCount;
     }
 
-    public static function escape($value)
+    /**
+     * A LIKE pattern that finds $text anywhere in a value, bound as a parameter, never written
+     * into the query (#230). Its own % and _ are matched as themselves, not as wildcards; the
+     * backslash before them is LIKE's escape on MariaDB and PostgreSQL alike.
+     */
+    public static function contains($text)
     {
-        $search = array("\\", "\0", "\n", "\r", "\x1a", "'", '"', '%');
-        $replace = array("\\\\", "\\0", "\\n", "\\r", "\Z", "\'", '\"', '\%');
-        return str_replace($search, $replace, $value);
+        return '%' . self::likeLiteral($text) . '%';
+    }
+
+    /** A LIKE pattern that finds values starting with $text, as contains() has it */
+    public static function startsWith($text)
+    {
+        return self::likeLiteral($text) . '%';
+    }
+
+    private static function likeLiteral($text)
+    {
+        return addcslashes((string) $text, '\\%_');
     }
 }

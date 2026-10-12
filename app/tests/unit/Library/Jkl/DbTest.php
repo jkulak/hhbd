@@ -2,71 +2,36 @@
 
 use PHPUnit\Framework\TestCase;
 
+/**
+ * LIKE patterns for values bound as parameters (#230): what a visitor typed is matched as it
+ * is, its own % and _ included, and nothing in it is escaped for a query string.
+ */
 class Jkl_DbTest extends TestCase
 {
     /**
-     * @dataProvider escapeProvider
+     * @dataProvider containsProvider
      */
-    public function testEscape(string $input, string $expected): void
+    public function testContainsFindsTheTextAnywhereTakingItsWildcardsLiterally(string $input, string $expected): void
     {
-        $result = Jkl_Db::escape($input);
-        $this->assertEquals($expected, $result);
+        $this->assertSame($expected, Jkl_Db::contains($input));
     }
 
-    public function escapeProvider(): array
+    public function containsProvider(): array
     {
         return [
-            'plain string' => [
-                'hello world',
-                'hello world'
-            ],
-            'single quote' => [
-                "it's a test",
-                "it\\'s a test"
-            ],
-            'double quote' => [
-                'say "hello"',
-                'say \\"hello\\"'
-            ],
-            'backslash' => [
-                'path\\to\\file',
-                'path\\\\to\\\\file'
-            ],
-            'newline' => [
-                "line1\nline2",
-                'line1\\nline2'
-            ],
-            'carriage return' => [
-                "line1\rline2",
-                'line1\\rline2'
-            ],
-            'null byte' => [
-                "null\0byte",
-                'null\\0byte'
-            ],
-            'percent sign' => [
-                '100% complete',
-                '100\\% complete'
-            ],
-            'multiple special chars' => [
-                "it's \"100%\" done\n",
-                "it\\'s \\\"100\\%\\\" done\\n"
-            ],
-            'empty string' => [
-                '',
-                ''
-            ],
-            'SQL injection attempt' => [
-                "'; DROP TABLE users; --",
-                "\\'; DROP TABLE users; --"
-            ],
+            'plain text' => ['peja', '%peja%'],
+            'a quote is left as it is, for the parameter to carry' => ["O'Rety", "%O'Rety%"],
+            'a double quote too' => ['say "hej"', '%say "hej"%'],
+            'a percent sign is no wildcard' => ['100%', '%100\\%%'],
+            'nor is an underscore' => ['a_b', '%a\\_b%'],
+            'a backslash stands for itself' => ['a\\b', '%a\\\\b%'],
+            'empty finds everything' => ['', '%%'],
         ];
     }
 
-    public function testEscapeIsStatic(): void
+    public function testStartsWithFindsValuesBeginningWithTheText(): void
     {
-        // Verify escape can be called statically without instance
-        $result = Jkl_Db::escape('test');
-        $this->assertEquals('test', $result);
+        $this->assertSame('P%', Jkl_Db::startsWith('P'));
+        $this->assertSame('\\_%', Jkl_Db::startsWith('_'));
     }
 }

@@ -39,20 +39,15 @@ class Model_Comment_Api extends Jkl_Model_Api
         return $list;
     }
 
+    /** A comment as its author wrote it, every value bound rather than escaped (#230) */
     public function postComment($content, $author, $authorIp, $objectId, $objectType, $authorId = null)
     {
-        $content = addslashes($content);
-        $author = addslashes($author);
-        $authorIp = addslashes($authorIp);
-        $objectType = addslashes($objectType);
-        $objectId = intval($objectId);
-        $authorId = intval($authorId);
-
-        $query = "INSERT INTO hhb_comments
+        $this->_db->query(
+            'INSERT INTO hhb_comments
               (com_content, com_author, com_author_ip, com_author_id, com_object_type, com_object_id, com_added)
-              VALUES ('$content', '$author', '$authorIp', '$authorId', '$objectType', '$objectId', '" . date("Y-m-d H:i:s") . "')";
-
-        $result = $this->_db->query($query);
+              VALUES (?, ?, ?, ?, ?, ?, ?)',
+            array((string) $content, (string) $author, (string) $authorIp, intval($authorId), (string) $objectType, intval($objectId), date('Y-m-d H:i:s'))
+        );
         return true;
     }
 
