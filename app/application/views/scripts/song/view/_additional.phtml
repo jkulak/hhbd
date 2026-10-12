@@ -1,7 +1,10 @@
+<?php // No ad beside lyrics hhbd holds no licence for: AdSense refuses ads next to copyrighted text without the rights (#244) ?>
+<?php if (empty($this->song->lyrics)): ?>
 <div class="box googleads">
   <h3 class="hidden">Google Ads</h3>
   <?php echo $this->partial('common/googleAds/_rectangle.phtml'); ?>
 </div>
+<?php endif ?>
 
 <?php foreach ($this->albumSongs as $key => $value): ?>
   <?php echo $this->partial('song/box/_list.phtml', array('boxId' => 'albumSongs', 'boxHeader' => 'Utwory z albumu "' . $this->song->featured->items[$key]->title . '"', 'songs' => $value)) ?>  
