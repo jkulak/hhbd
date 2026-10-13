@@ -75,8 +75,8 @@ ssh -t ubuntu@$OVH_HOST 'sudo docker exec -it hhbd-postgres-1 psql -U hhbd hhbd'
 
 ### Secrets
 
-`deploy/ovh/hhbd.enc.env` holds `DB_PASSWORD`, `GHCR_USER` and `GHCR_READ_TOKEN`, every value
-`ENC[...]`; `DB_ROOT_PASSWORD`, MariaDB's root password until #237, is read by nothing.
+`deploy/ovh/hhbd.enc.env` holds `DB_PASSWORD`, `LEGACY_PASSWORD_SALT`, `GHCR_USER` and
+`GHCR_READ_TOKEN`, every value `ENC[...]`.
 `HEALTHCHECKS_ENABLED=true` and `HEALTHCHECKS_PROJECT_PING_KEY`, the host's Healthchecks project
 key, let the release timer's job ping its check (CONTRACT.md §7); without them it runs all the
 same, unwatched.
