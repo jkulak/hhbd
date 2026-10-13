@@ -54,6 +54,8 @@ which the note leaves out. The sections before, by version, stay as they were.
   logged-in account change the query; a percent sign searched for is no longer a wildcard.
 
 ### Internal
+- Production's secrets no longer hold `DB_ROOT_PASSWORD` (#261), MariaDB's root password, which
+  nothing has read since MariaDB left with #237.
 - The release queue is tested end to end on every pull request (`tests/release-test.sh`, #258),
   and the production stack's test checks the `hhbd-release` timer as CONTRACT.md §7 asks;
   an undo no longer refuses a row only because its page was seen since.
