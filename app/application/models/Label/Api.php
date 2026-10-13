@@ -48,13 +48,36 @@ class Model_Label_Api extends Jkl_Model_Api
         return $this->has('labels', $id);
     }
 
+    /**
+     * A label by id, read once a request (#255): a page lists many albums of one label. A $full
+     * one, for the label's own page, is read every time.
+     */
     public function find($id, $full = false)
     {
         $id = intval($id);
-        $query = 'select *, id AS lab_id from labels where id=' . $id;
-        $result = $this->_db->fetchAll($query);
-        $item = new Model_Label_Container($result[0], $full);
+        $row = $full ? null : $this->remembered($id);
+        if (null === $row) {
+            $result = $this->_db->fetchAll('select *, id AS lab_id from labels where id=' . $id);
+            $row = $result[0];
+            if (null !== $row) {
+                $this->remember($id, $row);
+            }
+        }
+        $item = new Model_Label_Container($row, $full);
         return $item;
+    }
+
+    /**
+     * Labels' rows a query read along with its own, kept for find() (#255): lab_id, name,
+     * website, email, addres, profile, logo, added and updated are what a container reads.
+     */
+    public function rememberRows(array $rows)
+    {
+        foreach ($rows as $row) {
+            if (null === $this->remembered($row['lab_id'])) {
+                $this->remember($row['lab_id'], $row);
+            }
+        }
     }
 
     public function getFullList()

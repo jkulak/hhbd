@@ -11,6 +11,7 @@
 #   - nothing is published on the host
 #   - the importer's image writes the fixtures' images into the content volume, and the smoke
 #     test passes through the edge
+#   - no page sends the count of its queries, which compose.yaml turns on for the tests (#255)
 #   - nginx takes the client's address from X-Real-IP sent by the edge, and from nobody else
 #   - a request Cloudflare took over HTTPS is HTTPS to the application, so its canonical tags
 #     and sitemaps say https:// (#147)
@@ -206,6 +207,8 @@ else
     bad "the smoke test passes through the edge"
     tail -30 "$T/smoke"
 fi
+check "no page says how many queries it sent: that is for the tests (#255)" "" \
+    "$(curl -s -o /dev/null -D - --max-time 10 --connect-to hhbd.pl:80:127.0.0.1:"$PORT" http://hhbd.pl/ | grep -i '^x-query-count:' || true)"
 
 echo "> the scheme, as the application sees it (#147)"
 # Cloudflare sends X-Forwarded-Proto: https, which the edge passes on from Cloudflare's address

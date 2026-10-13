@@ -21,10 +21,32 @@ class Model_Album_Api extends Jkl_Model_Api
      * takes a temporary table, and SELECT * across albums, artists and labels carried their
      * TEXT columns into it, which sent it to disk (#69).
      */
-    private const LIST_COLUMNS = 't3.*, t3.id AS alb_id, t4.id AS lab_id, t3.added AS alb_added, t3.addedby AS alb_addedby, t3.viewed AS alb_viewed';
+    private const LIST_COLUMNS = 't3.*, t3.id AS alb_id, t4.id AS lab_id, t3.added AS alb_added, t3.addedby AS alb_addedby, t3.viewed AS alb_viewed, '
+        . self::CREDITS_JSON . ', ' . self::COVERS_JSON . ', ' . self::LABEL_JSON;
 
     /** The same for the lists that never named an album's label, so no label is looked up for each */
-    private const BARE_COLUMNS = 't3.*, t3.id AS alb_id';
+    private const BARE_COLUMNS = 't3.*, t3.id AS alb_id, ' . self::CREDITS_JSON . ', ' . self::COVERS_JSON;
+
+    /**
+     * An album's credits with what a list shows of each artist, its covers and its label, read
+     * in the album's own row (#255): a page of albums read them in a query of each, and each
+     * artist and label in one more. JSON arrays that unpack() takes apart, every value as
+     * PostgreSQL writes it as text, as PDO fetches a column; not row_to_json(), which writes a
+     * timestamp with a T. JSON has no equality, so a query with them has no DISTINCT or UNION.
+     */
+    private const CREDITS_JSON = '(SELECT json_agg(json_build_array(l.artistid::text, l.role, l.position::text, l.credited_as, '
+        . 'a.name, a.disambiguation, a.since::text, a.till::text, a.viewed::text)) '
+        . 'FROM album_artist_lookup l JOIN artists a ON a.id = l.artistid WHERE l.albumid = t3.id) AS credits_json';
+    private const COVERS_JSON = "(SELECT json_agg(json_build_array(c.variant, c.path, c.width::text, c.height::text) ORDER BY c.variant, c.main = 'y', c.id) "
+        . 'FROM album_covers c WHERE c.albumid = t3.id) AS covers_json';
+    private const LABEL_JSON = '(SELECT json_build_array(t5.name, t5.website, t5.email, t5.addres, t5.profile, t5.logo, t5.added::text, t5.updated::text) '
+        . 'FROM labels t5 WHERE t5.id = t3.labelid) AS label_json';
+
+    /** What only an album's own page shows, read with its row as well */
+    private const PAGE_COLUMNS = '(SELECT SUM(s.length) FROM songs s JOIN album_lookup l ON l.songid = s.id WHERE l.albumid = t3.id) AS duration_seconds, '
+        . '(SELECT COUNT(r.id) FROM ratings r WHERE r.albumid = t3.id) AS votecount, '
+        . '(SELECT r.rating FROM ratings_avg r WHERE r.albumid = t3.id LIMIT 1) AS rating, '
+        . '(SELECT p.status FROM albums p WHERE p.id = t3.epfor) AS epfor_status';
 
     /** The status of an album the site shows; any other keeps it for admins (#168) */
     public const PUBLISHED = 999;
@@ -92,17 +114,83 @@ class Model_Album_Api extends Jkl_Model_Api
                 $albums[(int) $row['alb_id']] = $row;
             }
         }
-        $credits = $this->getCredits(array_keys($albums));
-        $covers = $this->getCovers(array_keys($albums));
+        return array_values($this->_unpacked($albums));
+    }
+
+    /**
+     * Rows by album id, each with its credits and covers: unpack()'s from the columns
+     * CREDITS_JSON and the others brought, the artists' and labels' rows kept for their find(),
+     * or for a query without them read by getCredits() and getCovers().
+     */
+    private function _unpacked(array $albums)
+    {
+        $artists = array();
+        $labels = array();
+        $unread = array();
         foreach ($albums as $id => $row) {
-            if (isset($credits[$id])) {
-                $albums[$id]['credits'] = $credits[$id];
+            if (!array_key_exists('credits_json', $row)) {
+                $unread[] = $id;
+                continue;
             }
-            if (isset($covers[$id])) {
-                $albums[$id]['covers'] = $covers[$id];
+            list($albums[$id], $credited, $label) = self::unpack($row);
+            $artists = array_merge($artists, $credited);
+            if (null !== $label) {
+                $labels[] = $label;
             }
         }
-        return array_values($albums);
+        Model_Artist_Api::getInstance()->rememberRows($artists);
+        Model_Label_Api::getInstance()->rememberRows($labels);
+        if (!empty($unread)) {
+            $credits = $this->getCredits($unread);
+            $covers = $this->getCovers($unread);
+            foreach ($unread as $id) {
+                if (isset($credits[$id])) {
+                    $albums[$id]['credits'] = $credits[$id];
+                }
+                if (isset($covers[$id])) {
+                    $albums[$id]['covers'] = $covers[$id];
+                }
+            }
+        }
+        return $albums;
+    }
+
+    /**
+     * A row with the columns CREDITS_JSON, COVERS_JSON and LABEL_JSON taken apart: its credits
+     * as getCredits() gives them, its covers as getCovers() does, and the rows of its artists and
+     * of its label with what a container that is not $full reads of them.
+     *
+     * @return array the row, its artists' rows, its label's row or null
+     */
+    public static function unpack(array $row)
+    {
+        $credits = array();
+        $artists = array();
+        foreach ((array) json_decode((string) $row['credits_json'], true) as $credit) {
+            list($artistId, $role, $position, $creditedAs, $name, $disambiguation, $since, $till, $viewed) = $credit;
+            $credits[] = array('albumid' => 0, 'artistid' => $artistId, 'role' => $role, 'position' => $position, 'credited_as' => $creditedAs);
+            $artists[] = array('art_id' => $artistId, 'name' => $name, 'disambiguation' => $disambiguation, 'since' => $since, 'till' => $till, 'viewed' => $viewed);
+        }
+        if (!empty($credits)) {
+            $row['credits'] = self::creditsByAlbum($credits)[0];
+        }
+        $covers = array();
+        foreach ((array) json_decode((string) $row['covers_json'], true) as $cover) {
+            // The last one per variant wins, as in getCovers()
+            list($variant, $path, $width, $height) = $cover;
+            $covers[$variant] = array('path' => $path, 'width' => (int) $width, 'height' => (int) $height);
+        }
+        if (!empty($covers)) {
+            $row['covers'] = $covers;
+        }
+        $label = null;
+        if (!empty($row['lab_id']) && !empty($row['label_json'])) {
+            list($name, $website, $email, $addres, $profile, $logo, $added, $updated) = json_decode($row['label_json'], true);
+            $label = array('lab_id' => $row['lab_id'], 'name' => $name, 'website' => $website, 'email' => $email,
+                'addres' => $addres, 'profile' => $profile, 'logo' => $logo, 'added' => $added, 'updated' => $updated);
+        }
+        unset($row['credits_json'], $row['covers_json'], $row['label_json']);
+        return array($row, $artists, $label);
     }
 
     /**
@@ -247,56 +335,61 @@ class Model_Album_Api extends Jkl_Model_Api
     public function find($id, $full = false)
     {
         $id = intval($id);
-        $query = "SELECT *, t1.id as alb_id, t1.labelid AS lab_id, t1.epfor as epforid, t1.added as alb_added, t1.addedby as alb_addedby, t1.viewed as alb_viewed, t3.id as art_id " .
-        "FROM albums t1, album_artist_lookup t2, artists t3 " .
-        "WHERE (t3.id=t2.artistid AND t2.albumid=t1.id AND t1.id=" . $id . ") " .
-        // The album's artist is its credit with the lowest artist id, as the pages have always
-        // picked it; its name is in the album's address, so it must not move.
-        "ORDER BY t3.id";
-        $result = $this->_db->fetchAll($query);
-        $params = $result[0];
-        // SELECT * brings the parent release's id as epfor; the container takes epfor for the
-        // album itself, which only a full find of a published parent gives. An id left there
-        // broke the page of a single whose album waits unpublished (#258).
-        unset($params['epfor']);
-        $credits = $this->getCredits(array($id));
-        if (isset($credits[$id])) {
-            $params['credits'] = $credits[$id];
-        }
-        $covers = $this->getCovers(array($id));
-        if (isset($covers[$id])) {
-            $params['covers'] = $covers[$id];
-        }
+        $params = $this->_findRows(array($id), $full)[$id];
         if ($full) {
             $params['tracklist'] = Model_Song_Api::getInstance()->getTracklist($id);
             $params['eps'] = $this->getEps($id);
-            if (!empty($params['epforid']) && $this->isPublished($params['epforid'])) {
-                $params['epfor'] = $this->getEpFor($params['epforid']);
+            if (!empty($params['epforid']) && self::PUBLISHED === (int) $params['epfor_status']) {
+                $params['epfor'] = $this->find($params['epforid']);
             }
-            $params['duration'] = Model_Song_Api::getInstance()->getAlbumDuration($id);
-            $params['votecount'] = Model_Rating_Api::getInstance()->getAlbumVoteCount($id);
-            $params['rating'] = Model_Rating_Api::getInstance()->getAlbumRating($id);
+            $params['duration'] = Model_Song_Api::formatDuration($params['duration_seconds']);
+            unset($params['duration_seconds'], $params['epfor_status']);
         }
-        $item = new Model_Album_Container($params, $full);
-        return $item;
+        return new Model_Album_Container($params, $full);
     }
 
-    private function getEpFor($id)
+    /**
+     * find()'s rows of albums $ids, by id, in one query however many (#255), with PAGE_COLUMNS
+     * for a $full one. An album's row is joined to its artist's, the credit with the lowest artist
+     * id, as the pages have always picked it; its name is in the album's address, so it must not
+     * move. SELECT * across albums, album_artist_lookup and artists, in this order, gives the
+     * album the artist's id, status and updated, as it always has.
+     */
+    private function _findRows(array $ids, $full = false)
     {
-        $id = intval($id);
-        return Model_Album_Api::getInstance()->find($id);
+        $ids = array_map('intval', $ids);
+        if (empty($ids)) {
+            return array();
+        }
+        $rows = $this->_db->fetchAll(
+            'SELECT DISTINCT ON (t3.id) *, t3.id AS alb_id, t3.labelid AS lab_id, t3.epfor AS epforid, t3.added AS alb_added, '
+            . 't3.addedby AS alb_addedby, t3.viewed AS alb_viewed, t1.id AS art_id, '
+            . self::CREDITS_JSON . ', ' . self::COVERS_JSON . ', ' . self::LABEL_JSON . ($full ? ', ' . self::PAGE_COLUMNS : '')
+            . ' FROM albums t3, album_artist_lookup t2, artists t1'
+            . ' WHERE t1.id = t2.artistid AND t2.albumid = t3.id AND t3.id IN (' . implode(', ', $ids) . ')'
+            . ' ORDER BY t3.id, t1.id'
+        );
+        $byId = array();
+        foreach ($rows as $row) {
+            // SELECT * brings the parent release's id as epfor; the container takes epfor for the
+            // album itself, which only a full find of a published parent gives. An id left there
+            // broke the page of a single whose album waits unpublished (#258).
+            unset($row['epfor']);
+            $byId[(int) $row['alb_id']] = $row;
+        }
+        return $this->_unpacked($byId);
     }
 
+    /** The published singles of album $id, the latest first */
     private function getEps($id)
     {
         $id = intval($id);
         $query = 'SELECT id FROM albums WHERE epfor=' . $id . ' AND status = ' . self::PUBLISHED . ' ORDER BY year IS NULL, year DESC';
-        $result = $this->_db->fetchAll($query);
+        $ids = array_column($this->_db->fetchAll($query), 'id');
+        $rows = $this->_findRows($ids);
         $eps = new Jkl_List();
-        $albumApi = Model_Album_Api::getInstance();
-        foreach ($result as $params) {
-            $ep = $albumApi->find($params['id']);
-            $eps->add($ep);
+        foreach ($ids as $epId) {
+            $eps->add(new Model_Album_Container($rows[(int) $epId]));
         }
         return $eps;
     }
@@ -501,22 +594,75 @@ class Model_Album_Api extends Jkl_Model_Api
         return self::getList($this->_byIds($ids));
     }
 
-    public function getArtistsAlbumsCount($id)
+    /**
+     * getArtistsAlbums($id, array(), false, 'year') for each of these artists, in two queries
+     * whatever their number (#255): an artist's page lists the albums of every project it is in.
+     *
+     * @param int[] $ids artists' ids
+     * @return array artist id => Jkl_List of its published albums, the latest first
+     */
+    public function getArtistsAlbumsByYear(array $ids)
     {
-        $id = intval($id);
-        $query = "SELECT count(*) as count
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        $lists = array();
+        $byArtist = array();
+        foreach ($ids as $id) {
+            $lists[$id] = new Jkl_List();
+            $byArtist[$id] = array();
+        }
+        if (empty($ids)) {
+            return $lists;
+        }
+        $found = $this->_db->fetchAll(
+            'SELECT t2.artistid, t3.id FROM album_artist_lookup AS t2 JOIN albums AS t3 ON t3.id=t2.albumid ' .
+            'WHERE (t2.artistid IN (' . implode(', ', $ids) . ') AND t3.status = ' . self::PUBLISHED . ') ' .
+            'ORDER BY t2.artistid, t3.year IS NULL, t3.year DESC'
+        );
+        foreach ($found as $row) {
+            $byArtist[(int) $row['artistid']][] = (int) $row['id'];
+        }
+        // An album by two of them is read once and listed under each
+        $albums = array();
+        $rows = $this->_db->fetchAll($this->_byIds(array_values(array_unique(array_column($found, 'id')))));
+        foreach ($this->_withCredits($rows) as $params) {
+            $albums[(int) $params['alb_id']] = $params;
+        }
+        foreach ($byArtist as $id => $albumIds) {
+            foreach ($albumIds as $albumId) {
+                $lists[$id]->add(new Model_Album_Container($albums[$albumId]));
+            }
+        }
+        return $lists;
+    }
+
+    /**
+     * How many published albums each of these artists has, its own and its projects', in one
+     * query for a whole list of artists rather than two for each (#255)
+     *
+     * @param int[] $ids artists' ids
+     * @return array artist id => count
+     */
+    public function getArtistsAlbumsCounts(array $ids)
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        $counts = array_fill_keys($ids, 0);
+        if (empty($ids)) {
+            return $counts;
+        }
+        $in = implode(', ', $ids);
+        $query = "SELECT t3.artistid, count(*) as count
               FROM albums t1, album_artist_lookup t2, band_lookup t3
-              WHERE (t3.bandid=t2.artistid AND t3.artistid=$id AND t1.id=t2.albumid AND t1.status=" . self::PUBLISHED . ")";
-        $result = $this->_db->fetchAll($query);
-        $projectAlbums = $result[0]['count'];
-
-        $query = "SELECT count(*) as count
+              WHERE (t3.bandid=t2.artistid AND t3.artistid IN ($in) AND t1.id=t2.albumid AND t1.status=" . self::PUBLISHED . ")
+              GROUP BY t3.artistid
+            UNION ALL
+            SELECT t2.artistid, count(*) as count
               FROM albums t1, album_artist_lookup t2
-              WHERE (t1.id=t2.albumid AND t2.artistid=$id AND t1.status=" . self::PUBLISHED . ");";
-        $result = $this->_db->fetchAll($query);
-        $albumCount = $result[0]['count'];
-
-        return $albumCount + $projectAlbums;
+              WHERE (t1.id=t2.albumid AND t2.artistid IN ($in) AND t1.status=" . self::PUBLISHED . ')
+              GROUP BY t2.artistid';
+        foreach ($this->_db->fetchAll($query) as $row) {
+            $counts[(int) $row['artistid']] += (int) $row['count'];
+        }
+        return $counts;
     }
 
     public function getLabelsAlbums($id, $exclude = array(), $count = 10)
@@ -643,6 +789,40 @@ class Model_Album_Api extends Jkl_Model_Api
               WHERE t3.id IN (SELECT albumid FROM album_lookup WHERE songid=' . $id . ') AND ' . self::SHOWN . ' ORDER BY t3.id' .
                   (($limit != null) ? ' LIMIT ' . $limit : '');
         return $this->getList($query);
+    }
+
+    /**
+     * getSongAlbums() for each of these songs, in one query for a whole tracklist (#255)
+     *
+     * @param int[] $songIds
+     * @return array song id => Jkl_List of its albums
+     */
+    public function getSongsAlbums(array $songIds)
+    {
+        $songIds = array_values(array_unique(array_map('intval', $songIds)));
+        $rows = array();
+        $lists = array();
+        foreach ($songIds as $songId) {
+            $rows[$songId] = array();
+            $lists[$songId] = new Jkl_List();
+        }
+        if (!empty($songIds)) {
+            $query = 'SELECT l.songid AS on_song, ' . self::BARE_COLUMNS . ' FROM albums AS t3
+                  JOIN (SELECT DISTINCT songid, albumid FROM album_lookup WHERE songid IN (' . implode(', ', $songIds) . ')) l ON l.albumid = t3.id
+                  WHERE ' . self::SHOWN . ' ORDER BY l.songid, t3.id';
+            foreach ($this->_db->fetchAll($query) as $row) {
+                $songId = (int) $row['on_song'];
+                unset($row['on_song']);
+                $rows[$songId][] = $row;
+            }
+        }
+        // Each song's albums apart, as one album is on many of the songs
+        foreach ($rows as $songId => $albums) {
+            foreach ($this->_withCredits($albums) as $params) {
+                $lists[$songId]->add(new Model_Album_Container($params));
+            }
+        }
+        return $lists;
     }
 
     public function getLabelReleases($id, $limit = 10)

@@ -93,6 +93,11 @@ class Bootstrap extends Zend_Application_Bootstrap_Bootstrap
         $routes = new Zend_Config_Xml(APPLICATION_PATH . '/configs/routes.xml', APPLICATION_ENV);
         //$router->removeDefaultRoutes();
         $router->addConfig($routes, 'routes');
+
+        // What each page costs in queries, for tests/query-count-test.sh; never in production
+        if (filter_var(getenv('QUERY_COUNT_HEADER'), FILTER_VALIDATE_BOOLEAN)) {
+            $frontController->registerPlugin(new Jkl_Controller_Plugin_QueryCount());
+        }
     }
 
     protected function _initView()

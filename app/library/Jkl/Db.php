@@ -8,9 +8,11 @@
 class Jkl_Db
 {
     private $_db;
-    private $_queryCount = 0;
 
     private static $_instance;
+
+    /** How many statements have gone through query() or been rolled back; see writes() */
+    private $_writes = 0;
 
     /**
      * Singleton instance
@@ -39,16 +41,17 @@ class Jkl_Db
      * ones adding a tenth to the pages. The values stay bound, never put into the SQL.
      * Connections are not persistent, though they would save some 5 ms a page: a PHP-FPM worker
      * would keep a connection PostgreSQL has dropped, after a restart or a reset, and its next
-     * request would fail.
+     * request would fail. The profiler counts the statements where QUERY_COUNT_HEADER is set,
+     * as compose.yaml has it and production's compose file does not (statementCount()).
      *
-     * @return array charset, driver_options
+     * @return array charset, driver_options, profiler
      */
     public static function connectionOptions()
     {
         return array('charset' => 'UTF8', 'driver_options' => array(
             PDO::ATTR_STRINGIFY_FETCHES => true,
             Pdo\Pgsql::ATTR_DISABLE_PREPARES => true,
-        ));
+        ), 'profiler' => filter_var(getenv('QUERY_COUNT_HEADER'), FILTER_VALIDATE_BOOLEAN));
     }
 
     /*
@@ -59,7 +62,6 @@ class Jkl_Db
     */
     public function fetchAll($query, array $bind = array())
     {
-        $this->_queryCount++;
         return $this->_db->fetchAll($query, $bind);
     }
 
@@ -68,8 +70,19 @@ class Jkl_Db
     */
     public function query($query, array $bind = array())
     {
-        $this->_queryCount++;
+        $this->_writes++;
         return $this->_db->query($query, $bind);
+    }
+
+    /**
+     * A number that changes whenever the database may have: each query(), the way everything
+     * here writes, and each rollBack(). A model that keeps rows it read for the rest of a request
+     * (Jkl_Model_Api::remembered(), #255) reads them again once it has changed, so a tool that
+     * writes and reads in one long run sees what it wrote.
+     */
+    public function writes()
+    {
+        return $this->_writes;
     }
 
     /** A table's or a column's name quoted, for names a query is built with */
@@ -196,12 +209,28 @@ class Jkl_Db
 
     public function rollBack()
     {
+        $this->_writes++;
         $this->_db->rollBack();
     }
 
-    public function getQueryCount()
+    /**
+     * How many statements this request has sent, through Jkl_Db and through Zend_Db_Table's
+     * default adapter, both counted by their profilers when QUERY_COUNT_HEADER turns them on
+     * (connectionOptions()); connecting is not one. The local stack and CI send it as the
+     * header X-Query-Count, for tests/query-count-test.sh (#255).
+     */
+    public static function statementCount()
     {
-        return $this->_queryCount;
+        $adapters = array(Zend_Db_Table::getDefaultAdapter());
+        if (null !== self::$_instance) {
+            $adapters[] = self::$_instance->_db;
+        }
+        $count = 0;
+        foreach (array_filter($adapters) as $adapter) {
+            $profiler = $adapter->getProfiler();
+            $count += $profiler->getTotalNumQueries() - $profiler->getTotalNumQueries(Zend_Db_Profiler::CONNECT);
+        }
+        return $count;
     }
 
     /**

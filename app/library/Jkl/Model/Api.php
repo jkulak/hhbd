@@ -7,6 +7,10 @@ abstract class Jkl_Model_Api
 {
     protected $_db;
 
+    /** Rows remember() keeps, by id, and the Jkl_Db::writes() they were read at */
+    private $_remembered = array();
+    private $_rememberedAt;
+
     public function __construct()
     {
         $dbRes = Zend_Registry::get('Config_Resources');
@@ -36,5 +40,28 @@ abstract class Jkl_Model_Api
     protected function has($table, $id)
     {
         return !empty($this->_db->fetchAll("SELECT 1 FROM $table WHERE id = ?", array((int) $id)));
+    }
+
+    /**
+     * A row this model read by its id earlier in the request, or null (#255). One page names
+     * the same artist or label many times, on every album and song that credits it, and used
+     * to read it each time. PHP starts every request with nothing kept from the one before, so
+     * the rows last no longer than the page; a tool that runs for long forgets them all at its
+     * next write.
+     */
+    protected function remembered($id)
+    {
+        if ($this->_rememberedAt !== $this->_db->writes()) {
+            $this->_remembered = array();
+            $this->_rememberedAt = $this->_db->writes();
+        }
+        return isset($this->_remembered[$id]) ? $this->_remembered[$id] : null;
+    }
+
+    /** Keeps a row read by its id for remembered() */
+    protected function remember($id, array $row)
+    {
+        $this->remembered($id);
+        $this->_remembered[$id] = $row;
     }
 }

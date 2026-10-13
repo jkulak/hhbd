@@ -91,10 +91,13 @@ class SongController extends Zend_Controller_Action
 
         $this->view->comments = Model_Comment_Api::getInstance()->getComments($song->id, Model_Comment_Container::TYPE_SONG);
 
-        // sidenotes
+        // sidenotes: the tracklist of every album the song is on
+        $tracklists = Model_Song_Api::getInstance()->getTracklists(array_map(function ($album) {
+            return $album->id;
+        }, $this->view->song->featured->items));
         $albumSongs = array();
-        foreach ($this->view->song->featured->items as $key => $value) {
-            $albumSongs[] = Model_Song_Api::getInstance()->getTracklist($value->id, null);
+        foreach ($this->view->song->featured->items as $value) {
+            $albumSongs[] = $tracklists[(int) $value->id];
         }
         $this->view->albumSongs = $albumSongs;
         $this->view->popularSongs = Model_Song_Api::getInstance()->getMostPopular(15);
@@ -111,8 +114,6 @@ class SongController extends Zend_Controller_Action
             $this->view->headMeta()->setName('description', Jkl_Tools_String::metaDescription('Tekst i teledysk utworu ' . $this->view->song->albumArtist->name . ' - ' . $this->view->song->title . '. ' . $lines));
         } else {
             $this->view->headMeta()->setName('description', Jkl_Tools_String::metaDescription('Teledysk i informacje o utworze ' . $this->view->song->albumArtist->name . ' - ' . $this->view->song->title . '. Na razie nie mamy tekstu, ale jeżeli go posiadasz, możesz dodać.'));
-
-            Model_Song_Api::getInstance()->getArtists($params['id']);
         }
 
         // Open Graph (#177): the song's facts, not its lyrics, and the cover of its first album
