@@ -329,7 +329,7 @@ class Model_Song_Api extends Jkl_Model_Api
         }
 
         // Bound, never escaped into the query: the id came straight from the request and went
-        // into the INSERT as it was, and the lyrics were escaped the way only MySQL reads (#230).
+        // into the INSERT as it was, and the lyrics were escaped the way only MariaDB read (#230).
         $id = intval($songId);
         $result = $this->_db->query('UPDATE songs SET lyrics = ? WHERE id = ?', array($lyrics, $id));
 

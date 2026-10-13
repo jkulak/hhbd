@@ -20,9 +20,6 @@
 #
 # Usage: tests/review-test.sh [base URL of the running site, default http://localhost:8080]
 #
-# DB_ENGINE=postgresql runs it against the stack on PostgreSQL (compose.postgresql.yaml, #234):
-# the same checks, the resets through DB_ENGINE=postgresql make reset-db.
-#
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 # shellcheck source=tests/lib-test-db.sh

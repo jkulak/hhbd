@@ -26,9 +26,10 @@ jobs:
         uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962  # 2.40.0
         with:
           php-version: '8.4'
-          # gd for the importer's image sizes (#96), as the importer image has it. No coverage:
-          # its upload failed on every run and nobody received it (#206).
-          extensions: mbstring, xml, pdo, pdo_mysql, gd
+          # gd for the importer's image sizes (#96), as the importer image has it; pdo_pgsql for
+          # Jkl_Db's connection options. No coverage: its upload failed on every run and nobody
+          # received it (#206).
+          extensions: mbstring, xml, pdo, pdo_pgsql, gd
           coverage: none
 
       # No cache: a pull request's Actions cache is read by its own later pushes alone, and

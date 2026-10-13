@@ -11,8 +11,7 @@
 # Where it looks, DB_TARGET: local (this checkout's compose project, the default; the files
 # in its nginx container) or ovh (production's database over ssh, and the files in a running
 # container of hhbd's that mounts the content volume: the live colour's nginx, or both while a
-# deploy overlaps them, which see the same files). DB_ENGINE=postgresql reads the catalogue from
-# PostgreSQL's database instead (#234); the SQL below runs on both.
+# deploy overlaps them, which see the same files).
 #
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"

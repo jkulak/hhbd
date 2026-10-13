@@ -7,15 +7,12 @@ class Bootstrap extends Zend_Application_Bootstrap_Bootstrap
     {
         $options = $this->getOptions();
 
-        // Database configuration: MariaDB, or PostgreSQL when DB_ADAPTER says pdo_pgsql (#232).
-        // The default adapter, Zend_Db_Table's, connects as Jkl_Db's does (#231).
-        if (getenv('DB_ADAPTER')) {
-            $options['resources']['db']['adapter'] = getenv('DB_ADAPTER');
-        }
+        // Database configuration: PostgreSQL (#229). The default adapter, Zend_Db_Table's,
+        // connects as Jkl_Db's does (#231).
         if (getenv('DB_PORT')) {
             $options['resources']['db']['params']['port'] = getenv('DB_PORT');
         }
-        $options['resources']['db']['params'] = Jkl_Db::connectionOptions($options['resources']['db']['adapter']) + $options['resources']['db']['params'];
+        $options['resources']['db']['params'] = Jkl_Db::connectionOptions() + $options['resources']['db']['params'];
         if (getenv('DB_HOST')) {
             $options['resources']['db']['params']['host'] = getenv('DB_HOST');
         }

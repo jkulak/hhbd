@@ -79,8 +79,8 @@ share (#102): the error lists their `hhbd:artist:` ids to use instead.
 A document is matched to a row by its external ids first, its `hhbd_id` second and its natural
 key third, and only a document that matches nothing makes a new row:
 
-- a label by its name, an artist by its name, compared under the catalogue's collation
-  (`utf8mb4_polish_ci`, so "Żabson" is not "Zabson" but "żabson" is "Żabson", #71);
+- a label by its name, an artist by its name, compared without case but with Polish letters
+  (`lower()`, so "Żabson" is not "Zabson" but "żabson" is "Żabson", #71, #232);
 - a release by its first main artist, its title and its year give or take one.
 
 Two external ids that point at two different rows are a conflict: the document is refused, and

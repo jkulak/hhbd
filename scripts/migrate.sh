@@ -6,34 +6,27 @@
 #   database/migrations/NNNN-slug.down.sql    how to undo it; every migration has one
 #
 # Applied versions are recorded in the table schema_migrations of the database itself, so a
-# migration runs once and status is a query. 0001-baseline is the schema as it was when the
-# migrations began; a database that already has that schema records it with `baseline`
-# instead of running it, and `up` refuses to run on such a database until that is done.
+# migration runs once and status is a query. The first, 0039-postgresql, is the whole schema as
+# MariaDB had it after its own 0001-0038 (#232), which left the tree with MariaDB (#237); a
+# database is built by `up` from empty, and `up` refuses one with tables but no record.
 #
 #   migrate.sh status             every migration: applied when, or pending
 #   migrate.sh up [<version>]     apply what is pending, up to and including <version>
 #   migrate.sh down [<n>|all]     revert the last <n> applied migrations, one by default
-#   migrate.sh baseline           record 0001 as applied on a database that already has its schema
 #   migrate.sh new <slug>         two empty files with the next version number
 #
 # Where it runs, MIGRATE_TARGET:
 #   local       this checkout's compose project on the local Docker engine (the default), with
-#               the same refusals as make reset-db: a remote engine, no running db, a db from
-#               another directory or from production's compose file
+#               the same refusals as make reset-db: a remote engine, no running postgres, one
+#               from another directory or from production's compose file
 #   container   the container MIGRATE_CONTAINER names, on the local engine: for tests, and for
 #               a stack under another project name
 #   ovh         production's database on the OVH host, over ssh as the admin account, with
 #               OVH_HOST from gcloud-ovh-migrate's .env; `down` asks for a typed confirmation there
 #
-# Each file runs as one mariadb session, as root with the container's own password; nothing
-# secret passes through here. MariaDB commits DDL as it goes, so a file that fails halfway has
-# done part of its work and is not recorded: undo by hand what ran, fix the file, run again.
-# Keep a migration small for that reason. MIGRATIONS_DIR replaces the directory, for tests.
-#
-# DB_ENGINE=postgresql (#232) runs database/migrations-postgresql in the postgres service with
-# psql instead: each file and its record in one transaction, so a file that fails leaves
-# nothing behind. Its track starts at 0039, the MariaDB schema after 0038 as one baseline; a
-# PostgreSQL database is built by `up` from empty, and `baseline` is MariaDB's alone.
+# Each file runs with psql as the image's superuser over the container's socket; nothing secret
+# passes through here. A file and its record are one transaction, so a file that fails leaves
+# nothing behind. MIGRATIONS_DIR replaces the directory, for tests.
 #
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
@@ -41,18 +34,14 @@ cd "$(git rev-parse --show-toplevel)"
 . scripts/lib-db.sh
 REFUSE_AS=migrate
 
-if [ "$DB_ENGINE" = postgresql ]; then
-    DIR=${MIGRATIONS_DIR:-database/migrations-postgresql}
-else
-    DIR=${MIGRATIONS_DIR:-database/migrations}
-fi
+DIR=${MIGRATIONS_DIR:-database/migrations}
 TARGET=${MIGRATE_TARGET:-local}
 TABLE=schema_migrations
 cmd=${1:-}
 arg=${2:-}
 
-usage() { echo "usage: $0 {status | up [<version>] | down [<n>|all] | baseline | new <slug>}" >&2; exit 2; }
-case "$cmd" in status|up|down|baseline|new) ;; *) usage ;; esac
+usage() { echo "usage: $0 {status | up [<version>] | down [<n>|all] | new <slug>}" >&2; exit 2; }
+case "$cmd" in status|up|down|new) ;; *) usage ;; esac
 
 # --- The migrations on disk ---------------------------------------------------------------
 
@@ -102,43 +91,21 @@ fi
 use_db_target "$TARGET"
 
 query() { printf '%s\n' "$1" | db_sql; }
-# run_file <file> <record SQL>: the file, then the SQL that records it. On MariaDB every file
-# runs in a session that allows zero dates, which the older migrations need (lib-db.sh), and is
-# recorded once it has run; on PostgreSQL the two are one transaction.
+# run_file <file> <record SQL>: the file and the SQL that records it, in one transaction
 run_file() {
-    if [ "$DB_ENGINE" = postgresql ]; then
-        { printf 'BEGIN;\n'; cat "$1"; printf '\n%s;\nCOMMIT;\n' "$2"; } | db_sql
-    else
-        { printf '%s\n' "$LEGACY_DATES_SESSION"; cat "$1"; } | db_sql && query "$2"
-    fi
+    { printf 'BEGIN;\n'; cat "$1"; printf '\n%s;\nCOMMIT;\n' "$2"; } | db_sql
 }
-# What a failed file left, and what a database with tables but no record takes instead of up:
-# baseline on MariaDB, and on PostgreSQL, which refuses baseline, an empty database (#234)
-if [ "$DB_ENGINE" = postgresql ]; then
-    FAILED_NOTE="nothing of it took effect, as it ran in one transaction"
-    UNRECORDED_NOTE="baseline is MariaDB's alone: a PostgreSQL database is built by up from empty"
-else
-    FAILED_NOTE="MariaDB commits DDL as it goes, so check what of it took effect before running again"
-    UNRECORDED_NOTE="a database that already has the schema takes 'baseline' first"
-fi
+FAILED_NOTE="nothing of it took effect, as it ran in one transaction"
 
 [ "$(query 'SELECT 1' 2>/dev/null)" = 1 ] || refuse "cannot reach the database at $where"
 
 has_table() { [ "$(query "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = $SCHEMA_SQL AND table_name = '$1'")" = 1 ]; }
 ensure_table() {
-    if [ "$DB_ENGINE" = postgresql ]; then
-        query "CREATE TABLE IF NOT EXISTS $TABLE (
-            version varchar(4) NOT NULL PRIMARY KEY,
-            name varchar(190) NOT NULL,
-            applied_at timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )"
-    else
-        query "CREATE TABLE IF NOT EXISTS $TABLE (
-            version CHAR(4) NOT NULL PRIMARY KEY,
-            name VARCHAR(190) NOT NULL,
-            applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-    fi
+    query "CREATE TABLE IF NOT EXISTS $TABLE (
+        version varchar(4) NOT NULL PRIMARY KEY,
+        name varchar(190) NOT NULL,
+        applied_at timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )"
 }
 # applied: "version<TAB>name<TAB>applied_at" per recorded migration, in order; nothing before
 # the table exists.
@@ -182,10 +149,10 @@ up() {
     local to=$1 recs tables version name f n=0
     recs=$(applied)
     if [ -z "$recs" ]; then
-        # A database with tables but no record is one that predates the migrations: production,
-        # or a dump loaded by hand. Running the baseline on it would recreate its tables.
+        # A database with tables but no record is a dump loaded by hand, or one the migrations
+        # did not make; the first migration would create its tables again.
         tables=$(app_tables)
-        [ "$tables" = 0 ] || refuse "$where has $tables tables but no migration is recorded; $UNRECORDED_NOTE"
+        [ "$tables" = 0 ] || refuse "$where has $tables tables but no migration is recorded; a database is built by up from empty"
         ensure_table
     fi
     [ -z "$to" ] || [ -n "$(name_of "$to")" ] || refuse "no migration $to in $DIR"
@@ -238,34 +205,8 @@ down() {
     echo "ok $where: $n down; $(status | tail -1)"
 }
 
-# --- baseline -----------------------------------------------------------------------------
-
-# The columns the baseline creates, "table<TAB>column": mysqldump writes one column per line,
-# indented two spaces and backquoted; keys and constraints start with a word instead.
-baseline_columns() { awk '/^CREATE TABLE `/ { t = $3; gsub(/`/, "", t) } /^  `/ { c = $1; gsub(/`/, "", c); print t "\t" c }' "$1" | sort; }
-db_columns() { query "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = $SCHEMA_SQL AND table_name <> '$TABLE'" | sort; }
-list_columns() { awk -F'\t' '{ printf "%s.%s ", $1, $2 }'; }
-
-baseline() {
-    local recs f missing extra
-    [ "$DB_ENGINE" = mariadb ] || refuse "baseline records MariaDB's 0001 on a database that has its schema; a PostgreSQL database is built by up from empty"
-    recs=$(applied)
-    [ -z "$recs" ] || refuse "$where already records $(printf '%s\n' "$recs" | grep -c .) migration(s); baseline is for a database with none"
-    f=$(printf '%s\n' "$DIR"/0001-*.up.sql | head -1)
-    [ -f "$f" ] || refuse "no 0001-*.up.sql in $DIR"
-    # Every column the baseline would create must be there, or this is not that schema.
-    missing=$(comm -23 <(baseline_columns "$f") <(db_columns))
-    [ -z "$missing" ] || refuse "$where lacks columns the baseline creates, so it is not at the baseline (an empty database takes 'up' instead): $(printf '%s\n' "$missing" | list_columns)"
-    extra=$(comm -13 <(baseline_columns "$f") <(db_columns))
-    [ -z "$extra" ] || echo "note: $where also has columns no migration describes: $(printf '%s\n' "$extra" | list_columns)"
-    ensure_table
-    query "INSERT INTO $TABLE (version, name) VALUES ('0001', '$(name_of 0001)')"
-    echo "ok $where: 0001 $(name_of 0001) recorded as applied without running it, $(baseline_columns "$f" | grep -c .) columns checked"
-}
-
 case "$cmd" in
     status)   status ;;
     up)       up "$arg" ;;
     down)     down "$arg" ;;
-    baseline) baseline ;;
 esac

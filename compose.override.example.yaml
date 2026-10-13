@@ -13,8 +13,8 @@ services:
       # code is re-read on every change
       - ./conf/php/development.ini:/etc/php/8.4/fpm/conf.d/zz-development.ini:ro
 
-  db:
+  postgres:
     volumes:
-      # A dump at database/dev/init.sql (git-ignored), loaded on the first start of an empty
+      # A pg_dump at database/dev/init.sql (git-ignored), loaded on the first start of an empty
       # volume; see database/README.md
       - ./database/dev:/docker-entrypoint-initdb.d

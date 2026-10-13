@@ -14,8 +14,7 @@
 #   - an operation is undone once, and an undo is not undone
 #   - the merges and deletes know every albumid and labelid column the schema has
 #
-# It ends with make reset-db, so the database ends as a reset leaves it. DB_ENGINE=postgresql
-# runs it all on PostgreSQL, on the stack compose.postgresql.yaml makes (#234).
+# It ends with make reset-db, so the database ends as a reset leaves it.
 #
 # Usage: tests/edit-test.sh [base URL of the running site, default http://localhost:8080]
 #
@@ -34,20 +33,15 @@ bad() { echo "x    $1"; fail=$((fail + 1)); }
 check() { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1"; echo "     expected: $2"; echo "     got:      $3"; fi; }
 
 # The database's own schema, for information_schema
-if is_pg; then SCHEMA='current_schema()'; else SCHEMA='DATABASE()'; fi
+SCHEMA='current_schema()'
 # Every row of every table but the journal's own, one line a row, sorted: a table without a
 # primary key gives its rows back in another order after an undo, and that is no difference.
-# MariaDB's dump has one INSERT a line. PostgreSQL's is in COPY's form, a row a line with its
-# table put in front: its INSERTs would carry a value's line breaks onto lines of their own.
+# pg_dump's COPY form, a row a line with its table put in front: INSERTs would carry a value's
+# line breaks onto lines of their own.
 dump() {
-    if is_pg; then
-        # shellcheck disable=SC2016 # expanded in the container
-        docker compose exec -T postgres sh -c 'exec pg_dump -U "${POSTGRES_USER:?}" --data-only --exclude-table-data=edit_operations --exclude-table-data=edit_journal "${POSTGRES_DB:?}"' \
-            | awk '/^COPY / { table = $2; next } /^\\\.$/ { table = ""; next } table != "" { print table "\t" $0 }' | sort
-    else
-        # shellcheck disable=SC2016 # expanded in the container
-        docker compose exec -T db sh -c 'MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?}" exec mariadb-dump -uroot --no-create-info --skip-extended-insert --skip-comments --skip-dump-date --ignore-table="$MYSQL_DATABASE.edit_operations" --ignore-table="$MYSQL_DATABASE.edit_journal" "$MYSQL_DATABASE"' | grep '^INSERT' | sort
-    fi
+    # shellcheck disable=SC2016 # expanded in the container
+    docker compose exec -T postgres sh -c 'exec pg_dump -U "${POSTGRES_USER:?}" --data-only --exclude-table-data=edit_operations --exclude-table-data=edit_journal "${POSTGRES_DB:?}"' \
+        | awk '/^COPY / { table = $2; next } /^\\\.$/ { table = ""; next } table != "" { print table "\t" $0 }' | sort
 }
 # edit <name> <DO> [MODE] [VALUE]: make edit as the fixtures' admin; output in $T/<name>, make's
 # status echoed (2 for any failure of the tool)
@@ -185,10 +179,10 @@ dump >"$T/set.after"
 check "set: the data as it was before, again" "same" "$(diff -q "$T/set.before" "$T/set.after" >/dev/null && echo same)"
 
 echo "> setting several columns at once"
-# album_1 <columns>: those of album 1, "|" between them, NULL as NULL on both engines
+# album_1 <columns>: those of album 1, "|" between them, NULL as NULL
 album_1() { sql "SELECT $1 FROM albums WHERE id = 1" | tr '\t' '|'; }
 # catalog_cd where edit_operations keeps it in the arguments, under values: deeper than json_get
-if is_pg; then kept="args->'values'->>'catalog_cd'"; else kept="JSON_VALUE(args, '\$.values.catalog_cd')"; fi
+kept="args->'values'->>'catalog_cd'"
 columns='{"title": "Żółć \"na odmułę\"", "catalog_cd": "ALK 003", "notes": "z okładki", "year": null}'
 before=$(album_1 'title, catalog_cd, year')
 edit set-many-dry "set albums 1" "" "$columns" >/dev/null
