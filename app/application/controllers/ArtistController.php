@@ -91,10 +91,11 @@ class ArtistController extends Zend_Controller_Action
 
         if (!empty($artist->projects->items)) {
             $projectAlbums = new Jkl_List('Projects list');
-            $temp = new Jkl_List('Temp');
-            foreach ($artist->projects->items as $key => $value) {
-                $temp = Model_Album_Api::getInstance()->getArtistsAlbums($value->id, array(), false, 'year');
-                $projectAlbums->items = array_merge($temp->items, $projectAlbums->items);
+            $albums = Model_Album_Api::getInstance()->getArtistsAlbumsByYear(array_map(function ($project) {
+                return $project->id;
+            }, $artist->projects->items));
+            foreach ($artist->projects->items as $value) {
+                $projectAlbums->items = array_merge($albums[(int) $value->id]->items, $projectAlbums->items);
             }
             $artist->addProjectAlbums($projectAlbums);
         }

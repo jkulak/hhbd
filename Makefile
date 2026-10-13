@@ -212,3 +212,7 @@ test-migrate: ## Check the migration runner against the running local stack
 .PHONY: test-schema
 test-schema: ## Check the rules the migrations put on the schema (engines, audit columns) on the running local stack: make test-schema URL=http://localhost:8080
 	./tests/schema-test.sh $(or $(URL),http://localhost:8080)
+
+.PHONY: test-query-count
+test-query-count: ## Check each page sends at most 25 queries, however many rows it lists, on the running local stack: make test-query-count URL=http://localhost:8080
+	./tests/query-count-test.sh $(or $(URL),http://localhost:8080)

@@ -72,20 +72,36 @@ class Model_Image_Api extends Jkl_Model_Api
         return (int) $this->_db->lastInsertId();
     }
 
-    public function getArtistPhoto($id)
+    /**
+     * Each of these artists' main photo, or the drawing that stands in for none, in one query
+     * for a whole list of artists rather than one for each (#255)
+     *
+     * @param int[] $artistIds
+     * @return array artist id => Jkl_List
+     */
+    public function getMainPhotos(array $artistIds)
     {
-        $result = $this->_db->fetchAll("SELECT * FROM artists_photos WHERE artistid = ? AND main = 'y'", array((int) $id));
-        $pictures = new Jkl_List('Picture list');
-        if (sizeof($result) != 0) {
-            foreach ($result as $key => $value) {
+        $artistIds = array_values(array_unique(array_map('intval', $artistIds)));
+        $rows = array_fill_keys($artistIds, array());
+        if (!empty($artistIds)) {
+            $query = 'SELECT * FROM artists_photos WHERE artistid IN (' . implode(', ', $artistIds) . ") AND main = 'y' ORDER BY artistid, id";
+            foreach ($this->_db->fetchAll($query) as $row) {
+                $rows[(int) $row['artistid']][] = $row;
+            }
+        }
+        $photos = array();
+        foreach ($rows as $artistId => $result) {
+            $pictures = new Jkl_List('Picture list');
+            foreach ($result as $value) {
                 $value['url'] = $this->_appConfig['paths']['artistPhotoPath'] . $value['filename'];
                 $pictures->add(new Model_Image_Container($value));
             }
-        } else {
-            $params['url'] = $this->_appConfig['paths']['artistPhotoPath'] . 'no.png';
-            $pictures->add(new Model_Image_Container($params));
+            if (empty($result)) {
+                $pictures->add(new Model_Image_Container(array('url' => $this->_appConfig['paths']['artistPhotoPath'] . 'no.png')));
+            }
+            $photos[$artistId] = $pictures;
         }
-        return $pictures;
+        return $photos;
     }
 
     public function getArtistPhotos($id)

@@ -162,6 +162,13 @@ jobs:
           # date and type, and forms that must not count; it ends with a reset (#103).
           ./tests/review-test.sh http://localhost:8080
 
+      - name: Check how many queries a page sends
+        if: startsWith(matrix.part, 'site')
+        run: |
+          # The album, artist, song and label pages, the home page and the lists: at most 25
+          # queries each, and as many with many more rows as with one (#255).
+          ./tests/query-count-test.sh http://localhost:8080
+
       # The tools' half
 
       - name: Check make reset-db

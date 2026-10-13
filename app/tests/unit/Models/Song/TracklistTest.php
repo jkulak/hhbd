@@ -55,4 +55,25 @@ class Model_Song_TracklistTest extends TestCase
         $this->assertSame(array('1-01', '1-02', '2-01'), $labels($old));
         $this->assertSame($labels($old), $labels($new));
     }
+
+    /**
+     * An album's length, summed by the query that reads the album (#255), shown as before
+     *
+     * @dataProvider durationsProvider
+     */
+    public function testAnAlbumsLengthIsShownInMinutesAndSeconds($seconds, $shown): void
+    {
+        $this->assertSame($shown, Model_Song_Api::formatDuration($seconds));
+    }
+
+    public function durationsProvider(): array
+    {
+        return array(
+            'three quarters of an hour, as PostgreSQL gives it' => array('2707', '45:07'),
+            'under a minute' => array('59', '00:59'),
+            'over an hour, in minutes' => array('3725', '62:05'),
+            'no song with a length' => array(null, 0),
+            'nothing' => array('0', 0),
+        );
+    }
 }
