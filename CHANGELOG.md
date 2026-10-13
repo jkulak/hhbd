@@ -34,6 +34,11 @@ which the note leaves out. The sections before, by version, stay as they were.
   logged-in account change the query; a percent sign searched for is no longer a wildcard.
 
 ### Internal
+- Production runs PostgreSQL 17 beside MariaDB, empty until the move (#236): its own container,
+  sorting in Polish, the whole database held in memory (128 MB of shared buffers, pg_prewarm
+  across restarts), labelled for the host's nightly backup; the app stays on MariaDB. `make
+  ovh-pg-up` starts it, and the production stack's test builds its schema and runs the copy
+  into it as `make ovh-pg-copy` will.
 - The move to PostgreSQL was rehearsed on a dump of production (#235): the copy took 2.8 s and
   proved every table, the smoke test passed alike on both engines, and PostgreSQL's pages came
   within a tenth of MariaDB's once each statement goes in one round trip.
