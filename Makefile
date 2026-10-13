@@ -21,6 +21,11 @@ ovh-db-up: ## Start only the database on the OVH host, so the data can go in bef
 	ssh -o BatchMode=yes "$${OVH_SSH_USER:-ubuntu}@$${OVH_HOST:?OVH_HOST is not set}" \
 	  'cd /srv/hhbd && sudo IMAGE_TAG=none SOPS_AGE_KEY_FILE=/etc/sops/age.key /usr/local/bin/sops exec-env hhbd.enc.env "docker compose up -d --wait db"'
 
+.PHONY: ovh-pg-up
+ovh-pg-up: ## Start PostgreSQL on the OVH host beside MariaDB; a deploy starts the request path's colours alone (#236)
+	ssh -o BatchMode=yes "$${OVH_SSH_USER:-ubuntu}@$${OVH_HOST:?OVH_HOST is not set}" \
+	  'cd /srv/hhbd && sudo SOPS_AGE_KEY_FILE=/etc/sops/age.key /usr/local/bin/sops exec-env hhbd.enc.env "docker compose up -d --no-deps --wait postgres"'
+
 .PHONY: ovh-ps
 ovh-ps: ## Show hhbd's containers on the OVH host and their health
 	ssh -o BatchMode=yes "$${OVH_SSH_USER:-ubuntu}@$${OVH_HOST:?OVH_HOST is not set}" \
