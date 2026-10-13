@@ -1,5 +1,5 @@
 # The application on PostgreSQL (#232), on the way from MariaDB (#229): laid over compose.yaml,
-# and compose.ci.yaml in CI, it adds PostgreSQL 17, as production will run it, and points the
+# and compose.ci.yaml in CI, it adds PostgreSQL 17, as production runs it, and points the
 # app and the importer at it. MariaDB keeps running beside it: it is what the copy reads from
 # (app/tools/mariadb-to-postgres.php) and what make reset-db fills first.
 #

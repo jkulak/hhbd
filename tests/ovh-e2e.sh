@@ -6,10 +6,11 @@
 #
 # What it proves:
 #   - every container becomes healthy (`up --wait`, which is how ci-deploy judges a deploy)
-#   - PostgreSQL beside MariaDB sorts in Polish, carries the backup's labels, takes its schema
-#     from its migration and the copy as make ovh-pg-copy makes it (#236)
-#   - nothing is published on the host, and the database runs the cache sizes chosen in #67,
-#     which compose.yaml and compose.ci.yaml share
+#   - PostgreSQL, the app's database since #236, sorts in Polish, carries the backup's labels,
+#     holds the whole database in memory with the flags compose.postgresql.yaml shares, takes
+#     its schema from its migration and its rows from MariaDB as make ovh-pg-copy copies them
+#   - nothing is published on the host, and MariaDB, kept beside it until #237, runs the cache
+#     sizes chosen in #67, which compose.yaml and compose.ci.yaml share
 #   - the importer's image writes the fixtures' images into the content volume, and the smoke
 #     test passes through the edge
 #   - nginx takes the client's address from X-Real-IP sent by the edge, and from nobody else
@@ -144,8 +145,8 @@ CADDY
 docker run -d --name "$EDGE" --network edge --ip 172.30.0.2 -p "127.0.0.1:$PORT:80" \
     -v "$T/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2.11.4-alpine >/dev/null
 
-echo "> the database alone, migrated from scratch and seeded with the test fixtures, as before a first deploy"
-compose up -d --wait --wait-timeout 180 db
+echo "> the databases alone: MariaDB migrated from scratch and seeded with the test fixtures, PostgreSQL migrated and copied from it, as production moved (#236)"
+compose up -d --wait --wait-timeout 180 db postgres
 migrate() { MIGRATE_TARGET=container MIGRATE_CONTAINER="$PROJECT-db-1" ./scripts/migrate.sh "$@" >/dev/null; }
 migrate up 0001
 seed() { docker exec -i "$PROJECT-db-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -uroot --default-character-set=utf8mb4 "$MYSQL_DATABASE"' <"$1"; }
@@ -153,6 +154,15 @@ seed database/tests/fixtures.sql
 migrate up
 # The rows for the tables the migrations add, as make reset-db loads them.
 seed database/tests/fixtures-latest.sql
+DB_ENGINE=postgresql MIGRATE_TARGET=container MIGRATE_CONTAINER="$PROJECT-postgres-1" ./scripts/migrate.sh up >/dev/null
+# The copy, as make ovh-pg-copy runs it, in a one-off app container of this stack. It comes
+# before the stack, as nginx's healthcheck renders the home page from PostgreSQL.
+if compose run --rm --no-deps -T app php /var/www/html/app/tools/mariadb-to-postgres.php copy >"$T/pg-copy" 2>&1 \
+    && grep -q 'every one the same on both sides' "$T/pg-copy"; then
+    copied=yes
+else
+    copied=no
+fi
 
 echo "> the whole stack"
 if compose up -d --wait --wait-timeout 180; then
@@ -172,25 +182,26 @@ check "the database runs with production's cache sizes (buffer pool, key cache, 
     "$(docker exec "$PROJECT-db-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -uroot -N -B -e "SELECT CONCAT_WS(\" \", @@innodb_buffer_pool_size, @@key_buffer_size, @@aria_pagecache_buffer_size)"')"
 check "the database runs with NO_ZERO_IN_DATE and NO_ZERO_DATE (#88)" "1 1" \
     "$(docker exec "$PROJECT-db-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -uroot -N -B -e "SELECT CONCAT_WS(\" \", FIND_IN_SET(\"NO_ZERO_IN_DATE\", @@GLOBAL.sql_mode) > 0, FIND_IN_SET(\"NO_ZERO_DATE\", @@GLOBAL.sql_mode) > 0)"')"
-# PostgreSQL beside MariaDB, on the way to it (#236): its cluster sorts in Polish, the host's
-# backup finds it by its labels, the schema comes from its migration, and the copy the move
-# makes runs as make ovh-pg-copy runs it, in a one-off app container of this stack.
-check "PostgreSQL's database sorts in Polish (ICU pl-PL)" "i pl-PL" \
-    "$(docker exec "$PROJECT-postgres-1" psql -U hhbd -d hhbd -Atc "SELECT datlocprovider::text || ' ' || datlocale FROM pg_database WHERE datname = 'hhbd'")"
-check "the host's backup dumps it as hhbd (CONTRACT.md §8)" "hhbd hhbd" \
-    "$(docker inspect "$PROJECT-postgres-1" --format '{{index .Config.Labels "backup.postgres"}} {{index .Config.Labels "backup.user"}}')"
-DB_ENGINE=postgresql MIGRATE_TARGET=container MIGRATE_CONTAINER="$PROJECT-postgres-1" ./scripts/migrate.sh up >/dev/null
-if compose run --rm --no-deps -T app php /var/www/html/app/tools/mariadb-to-postgres.php copy >"$T/pg-copy" 2>&1 \
-    && grep -q 'every one the same on both sides' "$T/pg-copy"; then
+# PostgreSQL, the app's database (#236): its cluster sorts in Polish, the host's backup finds it
+# by its labels, and the copy above proved every table.
+if [ "$copied" = yes ]; then
     ok "the copy into PostgreSQL runs in the stack's app container and proves every table"
 else
     bad "the copy into PostgreSQL runs in the stack's app container and proves every table"
     tail -5 "$T/pg-copy"
 fi
+check "PostgreSQL's database sorts in Polish (ICU pl-PL)" "i pl-PL" \
+    "$(docker exec "$PROJECT-postgres-1" psql -U hhbd -d hhbd -Atc "SELECT datlocprovider::text || ' ' || datlocale FROM pg_database WHERE datname = 'hhbd'")"
+check "the host's backup dumps it as hhbd (CONTRACT.md §8)" "hhbd hhbd" \
+    "$(docker inspect "$PROJECT-postgres-1" --format '{{index .Config.Labels "backup.postgres"}} {{index .Config.Labels "backup.user"}}')"
+check "PostgreSQL holds the whole database in memory, and loads it back at start" "128MB pg_prewarm" \
+    "$(docker exec "$PROJECT-postgres-1" psql -U hhbd -d hhbd -Atc "SELECT current_setting('shared_buffers') || ' ' || current_setting('shared_preload_libraries')")"
 
-db_flags() { sed -n '/^  db:/,/^  [a-z]/p' "$1" | sed -n '/command: >/{n;p;}' | sed 's/^ *//'; }
-check "compose.yaml and compose.ci.yaml run the database with production's flags" \
-    "$(db_flags deploy/ovh/compose.yaml) | $(db_flags deploy/ovh/compose.yaml)" "$(db_flags compose.yaml) | $(db_flags compose.ci.yaml)"
+db_flags() { sed -n "/^  $2:/,/^  [a-z]/p" "$1" | sed -n '/command: >/{n;p;}' | sed 's/^ *//'; }
+check "compose.yaml and compose.ci.yaml run MariaDB with production's flags" \
+    "$(db_flags deploy/ovh/compose.yaml db) | $(db_flags deploy/ovh/compose.yaml db)" "$(db_flags compose.yaml db) | $(db_flags compose.ci.yaml db)"
+check "compose.postgresql.yaml runs PostgreSQL with production's flags" \
+    "$(db_flags deploy/ovh/compose.yaml postgres)" "$(db_flags compose.postgresql.yaml postgres)"
 
 for _ in $(seq 1 30); do
     via_edge -o /dev/null http://hhbd.pl/ && break
@@ -284,12 +295,12 @@ line=$(app_log | grep '"msg":"stacktest-php-error"' || true)
 check "a PHP error reaches the app's output as one JSON line with error, stack and the edge's request id" "1 warn yes yes yes" \
     "$(grep -c . <<<"$line") $(jq -r '[.level, (if (.error // "") != "" then "yes" else "no" end), (if (.stack // "") != "" then "yes" else "no" end), (if (.request_id // "") != "" then "yes" else "no" end)] | join(" ")' <<<"$line" 2>/dev/null)"
 
-docker stop "$PROJECT-db-1" >/dev/null
+docker stop "$PROJECT-postgres-1" >/dev/null
 status=$(via_edge -o /dev/null -w '%{http_code}' http://hhbd.pl/albumy.html)
 sleep 1
 check "a request while the database is down gets a 500" "500" "$status"
-check "and the application logs it once, at error, with its path and the database's 2002" "1" \
-    "$(app_log | jq -c 'select(.level == "error" and .path == "/albumy.html" and .status == 500 and (.error | test("2002")))' 2>/dev/null | grep -c . || true)"
+check "and the application logs it once, at error, with its path and PostgreSQL's 08006" "1" \
+    "$(app_log | jq -c 'select(.level == "error" and .path == "/albumy.html" and .status == 500 and (.error | test("08006")))' 2>/dev/null | grep -c . || true)"
 check "every line the app container wrote is one JSON object with time, level and msg" "" "$(app_log | not_contract)"
 
 check "the app container wrote no log files" "" "$(written_logs "$PROJECT-app-blue-1")"

@@ -3,8 +3,8 @@
 # checkout's local db container, what to refuse first, and how to run a client inside a
 # container. Sourced, never run. The caller sets REFUSE_AS to its own name.
 #
-# DB_ENGINE says which database (#232): mariadb, the compose service db, as production runs
-# today; or postgresql, the service postgres, which production moves to (#229). The rest of
+# DB_ENGINE says which database (#232): mariadb, the compose service db, the local stack's
+# default until #237; or postgresql, the service postgres, production's since #236. The rest of
 # a script reads the engine from here.
 
 refuse() { echo "x ${REFUSE_AS:-db}: $1; nothing was touched" >&2; exit 1; }
