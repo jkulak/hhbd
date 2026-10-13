@@ -411,6 +411,9 @@ class Model_Import_Importer extends Jkl_Model_Api
 
     private function readArtist(array $doc)
     {
+        if (isset($doc['review']['kind']) && 'duplicate' === $doc['review']['kind']) {
+            return $this->askDuplicate($doc);
+        }
         $name = trim($doc['name']);
         // A namesake the batch tells apart is matched by its name and qualifier together,
         // never by the name alone (#102).
@@ -469,6 +472,37 @@ class Model_Import_Importer extends Jkl_Model_Api
             $this->addPhoto($id, $photo);
         }
         return array('artist', $id, $created);
+    }
+
+    /**
+     * An artist hhbd has that may be the same as others it has (#192): a review item on its row,
+     * and nothing else written, as the schema lets such a document carry nothing else. A
+     * suggestion merged since is the artist it went into; one that is this artist now is no
+     * longer a question.
+     */
+    private function askDuplicate(array $doc)
+    {
+        $id = $this->match('artist', $doc, function () {
+            return null;
+        });
+        $suggestions = array();
+        foreach ($doc['review']['suggestions'] as $other) {
+            $other = $this->reviews->mergedInto($other) ?: (int) $other;
+            if (!$this->exists('artist', $other)) {
+                throw new RuntimeException(sprintf('hhbd has no artist %d', $other));
+            }
+            $suggestions[] = $other;
+        }
+        $item = $this->reviews->askDuplicate($id, $suggestions, $doc['review']['reason'], $this->runId);
+        if (null !== $item) {
+            $this->warnings[] = sprintf(
+                'artist %d is for a person to review: %s (hhbd artist %s)',
+                $id,
+                $doc['review']['reason'],
+                implode(', ', $this->reviews->find($item)->getSuggestions())
+            );
+        }
+        return array('artist', $id, false);
     }
 
     /** A city by name, made when it is new (#64) */

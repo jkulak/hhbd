@@ -43,6 +43,16 @@ $form = function ($item, $do, $value, $label, $field = null) {
         <?php endforeach ?>
         <?php echo $form($item, 'keep', '', 'To inny wykonawca') ?>
         <?php echo $form($item, 'qualifier', '', 'Zmień dopisek', '<input type="text" name="value" maxlength="190" placeholder="np. raper z Poznania" />') ?>
+      <?php elseif ('duplicate' === $item->reason): ?>
+        <?php foreach ($item->getSuggestions() as $id): ?>
+          <?php $other = $id === $item->entityId ? null : Model_Artist_Api::getInstance()->find($id) ?>
+          <?php if (null !== $other): ?>
+            <p>Może to ten sam wykonawca co <a href="<?php echo $other->getUrl() ?>"><?php echo $this->escape($other->qualifiedName) ?></a> (id <?php echo (int) $id ?>).</p>
+            <?php echo $form($item, 'merge', $id, 'Połącz z: ' . $other->qualifiedName . ' (id ' . $id . ')') ?>
+            <p>Tam przejdą wszystkie albumy, utwory, zdjęcia i komentarze tego wykonawcy, a ta strona przekieruje.</p>
+          <?php endif ?>
+        <?php endforeach ?>
+        <?php echo $form($item, 'keep', '', 'To różni wykonawcy') ?>
       <?php elseif ('cover_placeholder' === $item->reason): ?>
         <p>Lepsza okładka przyjdzie z następnym importem i zastąpi tę.</p>
         <?php echo $form($item, 'accept', '', 'Ta okładka zostaje') ?>

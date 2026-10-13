@@ -133,13 +133,14 @@
           "maxLength": 190
         },
         "review": {
-          "description": "Why a person should look at the artist once it is in, such as a name hhbd already has: {\"reason\": \"same name as hhbd artist 2311\", \"suggestions\": [2311]}. An artist with a review has a disambiguation. It opens a review item on the artist's page, where an admin merges it into a suggestion, keeps it apart, or changes its qualifier (#103).",
+          "description": "Why a person should look at the artist once it is in. It opens a review item on the artist's page. Its kind is namesake unless it says otherwise: a name hhbd already has, {\"reason\": \"same name as hhbd artist 2311\", \"suggestions\": [2311]}, for which the artist has a disambiguation, and an admin merges it into a suggestion, keeps it apart, or changes its qualifier (#103). Or duplicate: an artist hhbd has, named by its hhbd_id, that may be the same as others it has, {\"kind\": \"duplicate\", \"reason\": \"the same Discogs artist 1718051 as hhbd artist 2210\", \"suggestions\": [2210]}; such a document carries nothing else, nothing about the row changes, and an admin merges it into a suggestion or says they are different artists. A pair asked about once, on either row, is not asked again, settled or not (#192).",
           "oneOf": [
             { "type": "null" },
             {
               "type": "object",
               "required": ["reason"],
               "properties": {
+                "kind": { "enum": ["namesake", "duplicate"] },
                 "reason": { "type": "string", "minLength": 1, "maxLength": 255 },
                 "suggestions": { "type": "array", "items": { "type": "integer", "minimum": 1 } }
               }
@@ -169,8 +170,23 @@
         "external_ids": { "$ref": "#/$defs/external_ids" },
         "provenance": { "$ref": "#/$defs/provenance" }
       },
-      "if": { "required": ["review"], "properties": { "review": { "type": "object" } } },
-      "then": { "required": ["disambiguation"], "properties": { "disambiguation": { "type": "string", "minLength": 1 } } }
+      "allOf": [
+        {
+          "if": { "required": ["review"], "properties": { "review": { "type": "object", "properties": { "kind": { "const": "namesake" } } } } },
+          "then": { "required": ["disambiguation"], "properties": { "disambiguation": { "type": "string", "minLength": 1 } } }
+        },
+        {
+          "if": { "required": ["review"], "properties": { "review": { "type": "object", "required": ["kind"], "properties": { "kind": { "const": "duplicate" } } } } },
+          "then": {
+            "required": ["hhbd_id"],
+            "propertyNames": { "enum": ["kind", "ref", "hhbd_id", "name", "review"] },
+            "properties": {
+              "hhbd_id": { "type": "integer" },
+              "review": { "required": ["suggestions"], "properties": { "suggestions": { "minItems": 1 } } }
+            }
+          }
+        }
+      ]
     },
     "release": {
       "type": "object",

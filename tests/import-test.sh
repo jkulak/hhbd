@@ -8,6 +8,8 @@
 #   - a document that does not hold up (a file that is not what it says, a reference to a
 #     refused document, a line that is not JSON, a field the schema refuses) is refused alone,
 #     with nothing of it left, while the rest of the batch goes in
+#   - a row that may be the same artist as another opens one item and changes nothing else;
+#     each pair is asked once, from either row, whether the item is open or settled (#192)
 #
 # The importer runs in its own image, as make import runs it. The test ends with make reset-db
 # and removes the files the imports wrote, so the stack ends as a reset leaves it.
@@ -201,6 +203,33 @@ check "nothing of the refused album in the database" "0" "$(sql "SELECT COUNT(*)
 check "nor in content/, not even half-written" "0" "$(find content -name "$cover.jpg*" -o -name "$single.jpg*" | wc -l | tr -d ' ')"
 check "and the rest went in" "1 1" "$(sql "SELECT CONCAT((SELECT COUNT(*) FROM artists WHERE name = 'Testowy Skład'), ' ', (SELECT COUNT(*) FROM albums WHERE id = 1 AND catalog_cd = 'TEST 0001'))")"
 [ "$rows_fresh" != "$(rows)" ] && ok "the database changed by the documents that held up" || bad "the database changed by the documents that held up"
+
+echo "> a row that may be the same artist as another, asked about (#192)"
+# What hhbd-content's backfill sends for a row two catalogue ids claim: its row by hhbd_id, the
+# question, and nothing else.
+duplicate() { # duplicate <name> <artist> <suggestions as JSON>: a batch of the one question, applied
+    mkdir -p "$T/$1"
+    printf '{"kind": "artist", "ref": "artist:%s", "hhbd_id": %s, "name": "%s", "review": {"kind": "duplicate", "reason": "the same Discogs artist 1 as hhbd artist %s", "suggestions": %s}}\n' \
+        "$1" "$2" "$1" "$(jq -r 'join(", ")' <<<"$3")" "$3" >"$T/$1/batch.ndjson"
+    import "$T/$1" apply "$1"
+}
+# The duplicate items on the three rows, as row:suggestions:state, | between them
+items() {
+    local suggestions="JSON_EXTRACT(detail, '\$.suggestions')"
+    is_pg && suggestions="CAST(detail->'suggestions' AS text)"
+    sql "SELECT COALESCE($(agg "CONCAT(entity_id, ':', $suggestions, ':', CASE WHEN resolved IS NULL THEN 'open' ELSE 'settled' END)" id '|'), '-') FROM review_items WHERE reason = 'duplicate' AND entity_id IN (43, 44, 45)"
+}
+slon() { sql "SELECT CONCAT_WS(' ', name, COALESCE(disambiguation, ''), COALESCE($(txt updated), '-'), (SELECT COUNT(*) FROM external_ids WHERE entity_type = 'artist' AND entity_id = 44), (SELECT COUNT(*) FROM import_provenance WHERE entity_type = 'artist' AND entity_id = 44)) FROM artists WHERE id = 44"; }
+slon_before=$(slon)
+check "Słoń asked about VNM: one item, on Słoń's row, and the report warns of it" "0 44:[43]:open 1" \
+    "$(duplicate dup1 44 '[43]') $(items | tr -d ' ') $(jq '[.documents[].warnings[] | select(test("artist 44 is for a person to review: the same Discogs artist 1 as hhbd artist 43 \\(hhbd artist 43\\)"))] | length' "$T/dup1.json")"
+check "and nothing else about the row changed: no name, qualifier, id or provenance" "$slon_before" "$(slon)"
+check "the same question again asks nothing more" "0 44:[43]:open 0" "$(duplicate dup2 44 '[43]') $(items | tr -d ' ') $(jq '[.documents[].warnings[]] | length' "$T/dup2.json")"
+check "nor the same pair asked from VNM's row" "0 44:[43]:open" "$(duplicate dup3 43 '[44]') $(items | tr -d ' ')"
+check "a new pair joins the item open on the row" "0 44:[43,45]:open" "$(duplicate dup4 44 '[43, 45]') $(items | tr -d ' ')"
+sql "UPDATE review_items SET resolved = NOW(), resolved_by = 10, resolution = 'kept' WHERE reason = 'duplicate' AND entity_id = 44" >/dev/null
+check "a pair an admin settled is not asked again, from either row" "0 0 44:[43,45]:settled" "$(duplicate dup5 44 '[43, 45]') $(duplicate dup6 45 '[44]') $(items | tr -d ' ')"
+check "an artist hhbd does not have is refused" "hhbd has no artist 99999" "$([ "$(duplicate dup7 44 '[99999]')" != 0 ] && jq -r '.documents[0].errors[0]' "$T/dup7.json")"
 
 echo ""
 echo "$pass passed, $fail failed"
