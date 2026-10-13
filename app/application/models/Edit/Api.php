@@ -2,9 +2,10 @@
 
 /**
  * An admin's edits to the catalogue, each journalled and each undoable (#115): merging two
- * albums or two artists, deleting an album, an artist or a label, setting a row's fields. The command
- * line (app/tools/edit.php) and the review panel's merge (#103) both come here, so a change
- * leaves the same record whichever way it came.
+ * albums or two artists, deleting an album, an artist or a label, setting a row's fields,
+ * releasing a queued album. The command line (app/tools/edit.php), the review panel's merge
+ * (#103) and the daily release (#258) all come here, so a change leaves the same record
+ * whichever way it came.
  *
  * An operation is one row of edit_operations (what, to which rows, who, why, through which
  * path) and one edit_journal row per row it inserted, changed or deleted, with the row before
@@ -23,7 +24,26 @@ class Model_Edit_Api extends Jkl_Model_Api
         'delete-artist' => array('id'),
         'delete-label'  => array('id'),
         'set'           => array('table', 'id', 'column', 'value'),
+        'release'       => array('id'),
         'undo'          => array('operation'),
+    );
+
+    /** The ways an operation arrives: an admin's command line or panel, or a scheduled job */
+    public const PATHS = array('cli', 'panel', 'job');
+
+    /**
+     * The columns a visit changes, the page views (#235), which undo neither compares nor puts
+     * back: a page seen since the operation is no change to refuse it for.
+     */
+    public const COUNTERS = array('viewed');
+
+    /** The song links whose artists a song's page names, as table => artist column */
+    public const SONG_CREDITS = array(
+        'artist_lookup'  => 'artistid',
+        'feature_lookup' => 'artistid',
+        'music_lookup'   => 'artistid',
+        'remix_lookup'   => 'artistid',
+        'scratch_lookup' => 'artistid',
     );
 
     /**
@@ -129,12 +149,16 @@ class Model_Edit_Api extends Jkl_Model_Api
     /**
      * Runs one operation and journals it, inside the caller's transaction.
      *
-     * @param array $options for the panel: 'keep_review_items' (ids a merge leaves where they are)
+     * @param int    $userId  the admin's hhb_users account; for a job, the users row it writes as
+     * @param array  $options for the panel: 'keep_review_items' (ids a merge leaves where they are)
      *                       and 'review_item' (the item a merge settles, kept in artist_merges)
      * @return int the operation's id
      */
     public function run($operation, array $args, $userId, $why, $path = 'cli', array $options = array())
     {
+        if (!in_array($path, self::PATHS, true)) {
+            throw new InvalidArgumentException(sprintf('No path "%s"; there are %s.', $path, implode(', ', self::PATHS)));
+        }
         if (!isset(self::OPERATIONS[$operation])) {
             throw new InvalidArgumentException(sprintf('No operation "%s"; there are %s.', $operation, implode(', ', array_keys(self::OPERATIONS))));
         }
@@ -159,7 +183,8 @@ class Model_Edit_Api extends Jkl_Model_Api
             throw new InvalidArgumentException('Every edit says why.');
         }
         $this->userId = (int) $userId;
-        $this->auditUserId = Model_Audit_Api::getInstance()->userIdFor($this->userId);
+        // A job has no account; it writes as its users row, the import's for the release.
+        $this->auditUserId = 'job' === $path ? $this->userId : Model_Audit_Api::getInstance()->userIdFor($this->userId);
         $this->lines = array();
         $this->_db->query(
             'INSERT INTO edit_operations (operation, args, user_id, why, path) VALUES (?, ?, ?, ?, ?)',
@@ -189,6 +214,9 @@ class Model_Edit_Api extends Jkl_Model_Api
                 } else {
                     $this->setColumns($args['table'], $this->id($args['id']), array($args['column'] => $args['value']), false);
                 }
+                break;
+            case 'release':
+                $this->release($this->id($args['id']));
                 break;
             case 'undo':
                 $this->undo($this->id($args['operation']));
@@ -368,6 +396,49 @@ class Model_Edit_Api extends Jkl_Model_Api
     }
 
     /**
+     * Publishes an album from the release queue (#258), as the daily job does with the next few:
+     * shown from now and added now, so it leads the lists of what the catalogue gained like an
+     * album an admin added today. So do the songs nothing published showed before, and the
+     * artists that waited for it: those it credits, those its songs credit, and the members of
+     * the bands it credits. Undone, all of it waits again, the album in its old place.
+     */
+    private function release($id)
+    {
+        $album = $this->one('albums', $id);
+        if (Model_Album_Api::PUBLISHED === (int) $album['status']) {
+            throw new RuntimeException(sprintf('Album %d is published already.', $id));
+        }
+        if (null === $album['queued']) {
+            throw new RuntimeException(sprintf('Album %d is not in the release queue.', $id));
+        }
+        $now = $this->now();
+        $songs = $this->_db->fetchAll(
+            'SELECT s.* FROM songs s WHERE s.id IN (SELECT songid FROM album_lookup WHERE albumid = ?)
+               AND NOT EXISTS (SELECT 1 FROM album_lookup l JOIN albums a ON a.id = l.albumid
+                               WHERE l.songid = s.id AND a.id <> ? AND a.status = ?)
+             ORDER BY s.id',
+            array($id, $id, Model_Album_Api::PUBLISHED)
+        );
+        $named = array('SELECT artistid FROM album_artist_lookup WHERE albumid = ?');
+        foreach (self::SONG_CREDITS as $table => $column) {
+            $named[] = 'SELECT ' . $this->q($column) . ' FROM ' . $this->q($table) . ' WHERE songid IN (SELECT songid FROM album_lookup WHERE albumid = ?)';
+        }
+        $named[] = 'SELECT artistid FROM band_lookup WHERE bandid IN (SELECT artistid FROM album_artist_lookup WHERE albumid = ?)';
+        $artists = $this->_db->fetchAll(
+            'SELECT * FROM artists WHERE queued IS NOT NULL AND id IN (' . implode(' UNION ', $named) . ') ORDER BY id',
+            array_fill(0, count($named), $id)
+        );
+
+        $this->changeRow('albums', $album, array('status' => Model_Album_Api::PUBLISHED, 'queued' => null, 'added' => $now));
+        foreach ($songs as $song) {
+            $this->changeRow('songs', $song, array('added' => $now));
+        }
+        foreach ($artists as $artist) {
+            $this->changeRow('artists', $artist, array('queued' => null, 'added' => $now));
+        }
+    }
+
+    /**
      * Sets a row's columns in one change, a null value to NULL, with updatedby and updated as
      * the admin and now. A column the row lacks refuses them all.
      *
@@ -423,16 +494,22 @@ class Model_Edit_Api extends Jkl_Model_Api
                 continue;
             }
             $now = $this->find($entry['table_name'], $after);
-            if (null === $now || $this->json($now) !== $this->json($after)) {
+            if (null === $now || $this->json($this->uncounted($now)) !== $this->json($this->uncounted($after))) {
                 throw new RuntimeException(sprintf('A row of %s changed since operation %d, so it cannot be undone: %s', $entry['table_name'], $operationId, $this->json($after)));
             }
             if ('inserted' === $entry['action']) {
                 $this->deleteRow($entry['table_name'], $now);
             } else {
-                $this->changeRow($entry['table_name'], $now, $before);
+                $this->changeRow($entry['table_name'], $now, $this->uncounted($before));
             }
         }
         $this->_db->query('UPDATE edit_operations SET undone_by = ? WHERE id = ?', array($this->operationId, $operationId));
+    }
+
+    /** A row without its COUNTERS */
+    private function uncounted(array $row)
+    {
+        return array_diff_key($row, array_flip(self::COUNTERS));
     }
 
     // --- Rows, journalled --------------------------------------------------------------------

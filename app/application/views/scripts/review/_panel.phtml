@@ -4,8 +4,9 @@
  * form posting to admin/do-przejrzenia/rozstrzygnij.html with the session's token; it comes
  * back here.
  *
- * Takes: items (Model_Review_Container[]), messages (string[]), back (this page's path), and
- * unpublished (an album only admins see, #168).
+ * Takes: items (Model_Review_Container[]), messages (string[]), back (this page's path),
+ * unpublished (an album only admins see, #168), and queue (its place in the release queue,
+ * #258, from Model_Release_Api::place(), or null).
  */
 $types = array('album' => 'album', 'ep' => 'EP', 'mixtape' => 'mixtape', 'compilation' => 'kompilacja', 'beat_tape' => 'beat tape', 'single' => 'singiel', 'other' => 'inne');
 $form = function ($item, $do, $value, $label, $field = null) {
@@ -25,6 +26,9 @@ $form = function ($item, $do, $value, $label, $field = null) {
   <h2>Do przejrzenia <small>(widzi to tylko admin; <a href="<?php echo $this->url(array(), 'adminReview') ?>">wszystkie</a>)</small></h2>
   <?php if (!empty($this->unpublished)): ?>
     <p class="review-unpublished"><strong>Album nieopublikowany:</strong> odwiedzający dostają 404 i nie znajdą go na listach, w wyszukiwarce ani w mapie strony.</p>
+    <?php if (!empty($this->queue)): ?>
+      <p class="review-queue"><strong>W kolejce do publikacji:</strong> <?php echo (int) $this->queue['place'] ?>. z <?php echo (int) $this->queue['of'] ?>, od <?php echo $this->escape(substr($this->queue['queued'], 0, 10)) ?>. Codzienna publikacja wypuszcza kolejne albumy z kolejki, po kilka dziennie.</p>
+    <?php endif ?>
   <?php endif ?>
   <?php foreach ((array) $this->messages as $message): ?>
     <p class="review-message"><?php echo $this->escape($message) ?></p>

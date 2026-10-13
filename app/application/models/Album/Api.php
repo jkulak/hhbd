@@ -255,6 +255,10 @@ class Model_Album_Api extends Jkl_Model_Api
         "ORDER BY t3.id";
         $result = $this->_db->fetchAll($query);
         $params = $result[0];
+        // SELECT * brings the parent release's id as epfor; the container takes epfor for the
+        // album itself, which only a full find of a published parent gives. An id left there
+        // broke the page of a single whose album waits unpublished (#258).
+        unset($params['epfor']);
         $credits = $this->getCredits(array($id));
         if (isset($credits[$id])) {
             $params['credits'] = $credits[$id];

@@ -238,11 +238,12 @@ renaming them across 45 tables would risk more than it would clear up.
 
 | Column | Means | Kept by |
 |---|---|---|
-| `added` | when the row was added | the database: `DEFAULT CURRENT_TIMESTAMP`, and no trigger, so an update cannot rewrite it |
+| `added` | when the row was added; for an album the release queue brought out, and the songs and artists that came with it, when it came out (#258) | the database: `DEFAULT CURRENT_TIMESTAMP`, and no trigger, so an update cannot rewrite it; the day's release sets it as it publishes |
 | `addedby` | who added it: an `ID` in the old `users` table; `0` means unknown, `1100` the import | whoever inserts; the archived backoffice did, the importer does |
 | `updated` | when the row was last **edited**, by a person or by the import | whoever edits; nothing automatic |
 | `updatedby` | who edited it, an `ID` in `users`; `1100` the import | whoever edits; the review panel and `make edit` through the admin's linked row (below) |
-| `status` | `999` published, counted by the site; `0` not published (the only two values production holds). An unpublished album is nowhere for a visitor, its page a 404, and its songs with it where they are on no other; an admin opens its page (#168) | the editor |
+| `status` | `999` published, counted by the site; `0` not published (the only two values production holds). An unpublished album is nowhere for a visitor, its page a 404, and its songs with it where they are on no other; an admin opens its page (#168). On artists nothing reads it: 456 rows of 2004 hold `0` | the editor |
+| `queued` | albums and artists: when an import put the row in the release queue (#258), NULL when it does not wait; docs/import.md has the rules | the importer sets it, the day's release clears it |
 | `viewed` | page views since the site began | the application, as it shows the page, once per visit and day, bots and admins aside (#68); `page_views` keeps the same by day |
 
 **One table for who (#132).** `addedby` and `updatedby` name `users`, the old site's accounts,
@@ -252,7 +253,9 @@ panel (#103) and `make edit` (#115) write that row's `ID` (`Model_Audit_Api::use
 admin without a row gets one the first time, under the account's display name. The two admins'
 accounts are linked to the old accounts they built the catalogue with (0033): Kuba to `fee` (1),
 Marcin Kaźmiruk to `muuody` (3). The journal of their edits (`edit_operations.user_id`) and a
-settled review item's `resolved_by` name the account itself, in `hhb_users`.
+settled review item's `resolved_by` name the account itself, in `hhb_users`; the day's release
+(#258), a job with no account, writes its operations (`path` `job`) as `users` row 1100, the
+import.
 
 A logged-in admin sees `added` and `addedby` on the album, artist, song and label pages, as
 one more line of the page's details: "Dodano: 12 maja 2009, 14:03 (Kuba)", with the name from

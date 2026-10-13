@@ -14,7 +14,8 @@ day, and with it every script that deployed there.
 | `deploy/ovh/hhbd.enc.env` | `/srv/hhbd/hhbd.enc.env` | the secrets, SOPS-encrypted to the host and personal age keys |
 | `deploy/ovh/hhbd.pl.caddyfile` | `/srv/edge/sites/hhbd.pl.caddyfile` | how the shared edge reaches nginx: through the live upstream below |
 | | `/srv/edge/live/hhbd.caddyfile` | the live colour's nginx (`hhbd-blue-web:80` or `hhbd-green-web:80`), which `ci-deploy` rewrites at each switch |
-| `deploy/ovh/service.env` | | what the shared scripts and the deploy workflow read: the service, its images, and the containers whose log format is still to come |
+| `deploy/ovh/systemd/hhbd-release.{service,timer}` | `/etc/systemd/system/` | the day's release from the release queue (#258), once a day between 09:00 and 21:00 Warsaw time |
+| `deploy/ovh/service.env` | | what the shared scripts and the deploy workflow read: the service, its images, its timers, and the containers whose log format is still to come |
 | | `/srv/hhbd/.env` | `IMAGE_TAG=<running tag>`, written by the host's `ci-deploy` |
 | | volumes `hhbd_pg_data`, `hhbd_content` | the database, and `content/` |
 
@@ -76,6 +77,9 @@ ssh -t ubuntu@$OVH_HOST 'sudo docker exec -it hhbd-postgres-1 psql -U hhbd hhbd'
 
 `deploy/ovh/hhbd.enc.env` holds `DB_PASSWORD`, `GHCR_USER` and `GHCR_READ_TOKEN`, every value
 `ENC[...]`; `DB_ROOT_PASSWORD`, MariaDB's root password until #237, is read by nothing.
+`HEALTHCHECKS_ENABLED=true` and `HEALTHCHECKS_PROJECT_PING_KEY`, the host's Healthchecks project
+key, let the release timer's job ping its check (CONTRACT.md §7); without them it runs all the
+same, unwatched.
 `make ovh-secrets-check` (and the `Deploy checks` workflow) refuses a plaintext value or a file
 the two keys in `.sops.yaml` do not both open.
 
@@ -128,12 +132,29 @@ ssh, so no copy is left on the host. Progress comes back on stderr, the report o
 run's row in `import_runs` keeps the report too. A batch applied twice changes nothing the
 second time. A release from before the importer has no importer image to pull.
 
+What an apply would publish waits in the release queue (#258), and the `hhbd-release` timer
+publishes the next five to ten albums every day, at a time of its own between 09:00 and 21:00
+Warsaw time; docs/import.md has the rules. `RELEASE=now` on `make ovh-import` publishes at once.
+
+```bash
+make ovh-release-queue          # how many wait, by year, the next ten, and about when the last comes out
+make ovh-release DRY_RUN=1      # what the day's release would publish
+make ovh-release N=3            # three now, by hand, as the timer runs it
+```
+
+The timer runs `app/tools/release.php run` in a one-off `app` container of the running tag, the
+`jobs` profile's, under `hc-wrap` with the check `hhbd-release`; its lines reach Grafana Cloud
+as `component=release`. `make ovh-install` installs and enables it, as `TIMERS` in
+`deploy/ovh/service.env` names it; leaving it out of `TIMERS` and installing again stops it.
+gcloud-ovh-migrate's `make healthchecks-push` sets the check to follow the timer.
+
 ### IndexNow
 
 Bing, whose index ChatGPT search and Copilot answer from, and IndexNow's other engines hear of
-new pages as they appear (#220): an applied import tells IndexNow the artists and labels it
-added or changed and every published album with its songs, and an admin publishing an album
-tells it that album's. The key is `INDEXNOW_KEY` in `compose.yaml`, for the app and the
+new pages as they appear (#220): an applied import tells IndexNow the labels it added or
+changed, the artists with something to show and every published album with its songs, an
+admin publishing an album tells it that album's, and the day's release the albums it brings
+out, with their songs, artists and labels (#258). The key is `INDEXNOW_KEY` in `compose.yaml`, for the app and the
 importer: not a secret, since the site serves it at `https://hhbd.pl/<key>.txt` for IndexNow to
 check, and set nowhere else, so nothing local, in CI or in a stack test sends anything. A
 failed request is a `logger=indexnow` line, never a failed import.
