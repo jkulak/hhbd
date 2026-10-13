@@ -9,11 +9,12 @@ services:
       - ./app:/var/www/html/app
       - ./content:/var/www/html/content
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
     environment:
       # Database
-      DB_HOST: db
+      DB_HOST: postgres
+      DB_PORT: "5432"
       DB_NAME: hhbd
       DB_USER: hhbd
       DB_PASSWORD: hhbd_password
@@ -45,10 +46,11 @@ services:
       - ./app:/var/www/html/app
       - ./content:/var/www/html/content
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
     environment:
-      DB_HOST: db
+      DB_HOST: postgres
+      DB_PORT: "5432"
       DB_NAME: hhbd
       DB_USER: hhbd
       DB_PASSWORD: hhbd_password
@@ -68,38 +70,38 @@ services:
       app:
         condition: service_started
 
-  # MariaDB Database (Alpine-based, ~50MB)
-  db:
-    image: mariadb:10.11.8
+  # PostgreSQL 17, production's version (#229), sorting in Polish: ICU's pl, set when the
+  # cluster is made
+  postgres:
+    image: postgres:17-alpine
     ports:
-      - "3306:3306"
+      - "5432:5432"
     # The same flags as production (deploy/ovh/compose.yaml has the reasoning)
     command: >
-      --innodb-buffer-pool-size=96M --innodb-buffer-pool-dump-at-shutdown=1 --innodb-buffer-pool-load-at-startup=1 --max-connections=20 --innodb-log-file-size=16M --innodb-flush-log-at-trx-commit=2 --innodb-read-io-threads=4 --innodb-write-io-threads=1 --table-open-cache=400 --innodb-stats-on-metadata=0 --transaction-isolation=READ-COMMITTED --skip-name-resolve --key-buffer-size=8M --aria-pagecache-buffer-size=32M --sql-mode=STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,NO_ZERO_IN_DATE,NO_ZERO_DATE
+      postgres -c shared_buffers=128MB -c effective_cache_size=192MB -c random_page_cost=1.1 -c shared_preload_libraries=pg_prewarm -c max_connections=40
     environment:
-      MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: hhbd
-      MYSQL_USER: hhbd
-      MYSQL_PASSWORD: hhbd_password
+      POSTGRES_USER: hhbd
+      POSTGRES_PASSWORD: hhbd_password
+      POSTGRES_DB: hhbd
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=pl-PL --locale=C.UTF-8"
     volumes:
-      - db_data:/var/lib/mysql
+      - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password" ]
-      interval: 10s
+      test: ["CMD", "pg_isready", "-U", "hhbd", "-d", "hhbd"]
+      interval: 5s
       timeout: 5s
-      retries: 5
-      start_period: 30s
+      retries: 12
 
-  # Adminer (lightweight database management)
+  # Adminer (lightweight database management): System PostgreSQL, user hhbd
   adminer:
     image: adminer:latest
     ports:
       - "8082:8080"
     environment:
-      ADMINER_DEFAULT_SERVER: db
+      ADMINER_DEFAULT_SERVER: postgres
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
 
 volumes:
-  db_data:
+  pg_data:

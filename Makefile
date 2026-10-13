@@ -19,12 +19,7 @@ include deploy/ovh/ovh.mk
 .PHONY: ovh-db-up
 ovh-db-up: ## Start only the database on the OVH host, so the data can go in before the first deploy
 	ssh -o BatchMode=yes "$${OVH_SSH_USER:-ubuntu}@$${OVH_HOST:?OVH_HOST is not set}" \
-	  'cd /srv/hhbd && sudo IMAGE_TAG=none SOPS_AGE_KEY_FILE=/etc/sops/age.key /usr/local/bin/sops exec-env hhbd.enc.env "docker compose up -d --wait db"'
-
-.PHONY: ovh-pg-up
-ovh-pg-up: ## Start PostgreSQL on the OVH host beside MariaDB; a deploy starts the request path's colours alone (#236)
-	ssh -o BatchMode=yes "$${OVH_SSH_USER:-ubuntu}@$${OVH_HOST:?OVH_HOST is not set}" \
-	  'cd /srv/hhbd && sudo SOPS_AGE_KEY_FILE=/etc/sops/age.key /usr/local/bin/sops exec-env hhbd.enc.env "docker compose up -d --no-deps --wait postgres"'
+	  'cd /srv/hhbd && sudo IMAGE_TAG=none SOPS_AGE_KEY_FILE=/etc/sops/age.key /usr/local/bin/sops exec-env hhbd.enc.env "docker compose up -d --no-deps --wait postgres"'
 
 .PHONY: ovh-ps
 ovh-ps: ## Show hhbd's containers on the OVH host and their health
@@ -35,25 +30,17 @@ ovh-ps: ## Show hhbd's containers on the OVH host and their health
 ovh-smoke: ## Smoke-test https://hhbd.pl on production's data, as a release is checked before it is kept
 	./deploy/ovh/smoke.sh
 
-# Production's engine since the move (#236). DB_ENGINE=mariadb reaches MariaDB, which keeps the
-# data as it was then until #237.
-OVH_DB_ENGINE = DB_ENGINE=$${DB_ENGINE:-postgresql}
-
 .PHONY: ovh-migrate-status
 ovh-migrate-status: ## Show which migrations production's database on the OVH host has applied
-	$(OVH_DB_ENGINE) MIGRATE_TARGET=ovh ./scripts/migrate.sh status
+	MIGRATE_TARGET=ovh ./scripts/migrate.sh status
 
 .PHONY: ovh-migrate
 ovh-migrate: ## Apply the pending migrations to production's database, before the release that needs them
-	$(OVH_DB_ENGINE) MIGRATE_TARGET=ovh ./scripts/migrate.sh up
+	MIGRATE_TARGET=ovh ./scripts/migrate.sh up
 
 .PHONY: ovh-migrate-down
 ovh-migrate-down: ## Revert the last applied migration on production's database, after typing a confirmation; N=2 for two
-	$(OVH_DB_ENGINE) MIGRATE_TARGET=ovh ./scripts/migrate.sh down $(or $(N),1)
-
-.PHONY: ovh-migrate-baseline
-ovh-migrate-baseline: ## Once: record the baseline on production's database, which already has its schema
-	MIGRATE_TARGET=ovh ./scripts/migrate.sh baseline
+	MIGRATE_TARGET=ovh ./scripts/migrate.sh down $(or $(N),1)
 
 # A one-off app container on the host with the content volume mounted read-only, for the
 # backfills. `docker compose run -v` names a volume as Docker does, without the project prefix
@@ -73,7 +60,7 @@ ovh-photos-backfill: ## Record the size, type and hash of production's artist ph
 
 .PHONY: ovh-check-images
 ovh-check-images: ## List the covers, photos and logos production's catalogue names but its content volume lacks
-	$(OVH_DB_ENGINE) DB_TARGET=ovh ./scripts/check-images.sh
+	DB_TARGET=ovh ./scripts/check-images.sh
 
 .PHONY: ovh-indexnow
 ovh-indexnow: ## Tell IndexNow every address in production's sitemaps, at the start and after a gap (#220); DRY_RUN=1 to only count them
@@ -88,34 +75,21 @@ ovh-import: ## Read an import batch into production's catalogue: make ovh-import
 ovh-edit: ## Edit production's catalogue, journalled: make ovh-edit DO="merge-albums 850 841" BY=<admin> WHY="..." (a dry run without MODE=apply); DO="undo <operation>" takes one back
 	@./scripts/edit.sh ovh
 
-# The copy of production's MariaDB into its PostgreSQL (#235, #236), in a one-off app container
-# of the running release on the host, both databases on the stack's own network.
-OVH_PG_COPY = ssh -o BatchMode=yes "$${OVH_SSH_USER:-ubuntu}@$${OVH_HOST:?OVH_HOST is not set}" \
-	'cd /srv/hhbd && sudo SOPS_AGE_KEY_FILE=/etc/sops/age.key /usr/local/bin/sops exec-env hhbd.enc.env "docker compose run --rm --no-deps -T app php /var/www/html/app/tools/mariadb-to-postgres.php $(1)"'
-
-.PHONY: ovh-pg-copy
-ovh-pg-copy: ## Copy production's MariaDB into its empty PostgreSQL and prove the copy, table by table (the move, #236)
-	$(call OVH_PG_COPY,copy)
-
-.PHONY: ovh-pg-verify
-ovh-pg-verify: ## Compare production's MariaDB and PostgreSQL table by table, writing nothing
-	$(call OVH_PG_COPY,verify)
-
 .PHONY: ovh-dump
-ovh-dump: ## Dump production's database to ~/Developer/hhbd-dumps/hhbd-prod-<date>.pg.sql.gz, outside every repository (read-only on production; DB_ENGINE=mariadb for MariaDB's, until #237)
+ovh-dump: ## Dump production's database to ~/Developer/hhbd-dumps/hhbd-prod-<date>.pg.sql.gz, outside every repository (read-only on production)
 	@./scripts/ovh-dump.sh
 
 .PHONY: ovh-import-runs
 ovh-import-runs: ## List the last import runs on production's database, newest first; N=50 for more
-	$(OVH_DB_ENGINE) DB_TARGET=ovh ./scripts/import-runs.sh $(or $(N),20)
+	DB_TARGET=ovh ./scripts/import-runs.sh $(or $(N),20)
 
 # --- Secrets ------------------------------------------------------------------------------
 # ovh-secrets-set, -show, -edit and -check come with deploy/ovh/ovh.mk.
 
 .PHONY: ovh-secrets-init
-ovh-secrets-init: ## Create deploy/ovh/hhbd.enc.env once, with database passwords generated straight into it
+ovh-secrets-init: ## Create deploy/ovh/hhbd.enc.env once, with the database password generated straight into it
 	@[ ! -e $(OVH_SECRETS) ] || { echo "x $(OVH_SECRETS) exists; change a value with make ovh-secrets-set" >&2; exit 1; }
-	@for key in DB_PASSWORD DB_ROOT_PASSWORD; do \
+	@for key in DB_PASSWORD; do \
 	  LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32 | ./scripts/secrets.sh set $(OVH_SECRETS) $$key || exit 1; \
 	done
 	@printf 'jkulak' | ./scripts/secrets.sh set $(OVH_SECRETS) GHCR_USER
@@ -124,7 +98,7 @@ ovh-secrets-init: ## Create deploy/ovh/hhbd.enc.env once, with database password
 # --- The local database -------------------------------------------------------------------
 
 .PHONY: reset-db
-reset-db: ## Drop the local hhbd database and build it from the migrations and the test fixtures, or load the kept result of that (local stack only; RESET_DB_FULL=1 always builds; DB_ENGINE=postgresql copies it into PostgreSQL too)
+reset-db: ## Drop the local hhbd database and build it from the migrations and the test fixtures (local stack only)
 	./scripts/reset-db.sh
 
 .PHONY: test-images
@@ -146,10 +120,6 @@ migrate-status: ## Show which migrations the local database has applied and whic
 .PHONY: migrate-new
 migrate-new: ## Create the next migration's up and down files: make migrate-new NAME=add-album-isrc
 	./scripts/migrate.sh new "$(NAME)"
-
-.PHONY: migrate-baseline
-migrate-baseline: ## Record the baseline on a local database that already has the schema, such as a loaded production dump
-	./scripts/migrate.sh baseline
 
 .PHONY: covers-backfill
 covers-backfill: ## Describe the local covers on content/ in album_covers (size, hash, type); running it again adds nothing; DRY_RUN=1 to only report

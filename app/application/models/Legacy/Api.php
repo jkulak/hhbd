@@ -26,7 +26,7 @@ class Model_Legacy_Api extends Jkl_Model_Api
     /**
      * The ids whose slug is the one given, two at most: one is the page, two mean the slug does
      * not tell which (songs share theirs often, "intro"). Case does not count, as the old links
-     * were written both ways: lower() says so, which MariaDB's collation did by itself (#232).
+     * were written both ways: lower() says so (#232).
      *
      * @return int[]
      */

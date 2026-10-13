@@ -37,7 +37,7 @@ The old admin panel (`backoffice/`) left `main` on 2026-01-04 and lives on the b
 
 ### Docker Services
 
-The project runs in Docker Compose with 4 services (app, nginx, db, adminer):
+The project runs in Docker Compose with 4 services (app, nginx, postgres, adminer):
 
 ```bash
 # Development mode: copy compose.override.example.yaml to compose.override.yaml once
@@ -57,7 +57,7 @@ docker compose down
 **Service ports:**
 - Frontend: http://localhost:8080
 - Adminer (DB): http://localhost:8082
-- MariaDB: localhost:3306
+- PostgreSQL: localhost:5432
 
 There is no PHP on the host: PHP runs in the stack's images, the `make` targets below run it there, and in development mode the app runs the `builder` stage, which has composer.
 
@@ -76,13 +76,13 @@ docker compose exec app composer install
 make hooks
 ```
 
-For production-like data instead, load a dump and record the baseline with `make migrate-baseline`; see [database/README.md](database/README.md).
+For production-like data instead, load a dump from `make ovh-dump`; see [database/README.md](database/README.md).
 
 ### The database
 
-- `make reset-db` drops the local `hhbd` database and builds it again from the migrations and the fixtures, or loads the kept result of that build while those files have not changed (`RESET_DB_FULL=1` always builds). Run it before and after a piece of work. It acts only on the running db container of this checkout's compose project on the local Docker engine, and refuses anything else.
-- Every schema or data change is a migration in `database/migrations/`, `NNNN-slug.up.sql` with its `.down.sql`: `make migrate-new NAME=...`, `make migrate`, `make migrate-down`, `make migrate-status`. Keep each one small and compatible with the release that is running. Production gets them with `make ovh-migrate` before the release that needs them ([deploy/ovh/README.md](deploy/ovh/README.md)). Details in [database/README.md](database/README.md).
-- Production runs on PostgreSQL 17 since 2026-10-13 (#236); MariaDB stays beside it, locally the default, until #237 removes it. `compose.postgresql.yaml` over `compose.yaml` puts the app on PostgreSQL, `DB_ENGINE=postgresql make reset-db` builds it from `database/migrations-postgresql/` and a verified copy of MariaDB's rows (`app/tools/mariadb-to-postgres.php`). The `ovh-*` database targets go to PostgreSQL unless `DB_ENGINE=mariadb`. No new migration until #237: database/README.md says why.
+- The database is PostgreSQL 17 (#229), here and in production, since MariaDB left on 2026-10-13 (#237).
+- `make reset-db` drops the local `hhbd` database and builds it again from the migrations and the fixtures (`database/tests/fixtures.sql`), in a second or two. Run it before and after a piece of work. It acts only on the running postgres container of this checkout's compose project on the local Docker engine, and refuses anything else.
+- Every schema or data change is a migration in `database/migrations/`, `NNNN-slug.up.sql` with its `.down.sql`: `make migrate-new NAME=...`, `make migrate`, `make migrate-down`, `make migrate-status`. Each file runs in one transaction with its record. A migration that changes a table the fixtures fill changes `fixtures.sql` with it. Keep each one small and compatible with the release that is running. Production gets them with `make ovh-migrate` before the release that needs them ([deploy/ovh/README.md](deploy/ovh/README.md)). Details in [database/README.md](database/README.md).
 
 ## Common Commands
 
@@ -243,7 +243,7 @@ Production itself runs `deploy/ovh/compose.yaml` on the shared OVH host, behind 
   - Library: `Jkl_Tools_String`, `Jkl_Db`
 - File paths match class names (e.g., `Jkl_Tools_String` → `library/Jkl/Tools/String.php`)
 - A value from a request reaches SQL as a bound parameter, `$this->_db->fetchAll($sql, $bind)`, never concatenated or escaped into the query; a LIKE pattern is `Jkl_Db::contains()` or `startsWith()` (#230)
-- SQL is written so MariaDB and PostgreSQL both run it (#231, on the way to PostgreSQL, #229): single quotes for strings, no backticks, `CURRENT_DATE` and `EXTRACT()`, every shown column in GROUP BY, NULLs placed with `col IS NULL` where a column has them, lowercase aliases. The application's MariaDB sessions run with `ANSI_QUOTES` and `ONLY_FULL_GROUP_BY` (`Jkl_Db::MARIADB_SESSION`), so a slip fails its test. What the engines say differently goes through `Jkl_Db`: `upsert()`, `searchLike()`, `updateOne()`/`deleteOne()`, `uniqueKeys()`, `isDuplicateKey()`, `inOrder()`, `quoteIdentifier()`
+- SQL is PostgreSQL's (#229): single quotes for strings, `CURRENT_DATE` and `EXTRACT()`, every shown column in GROUP BY, NULLs placed with `col IS NULL` where a column has them, lowercase aliases, a name compared without case through `lower()` on both sides. A few things are said once, in `Jkl_Db`: `upsert()`, `searchLike()` (unaccent, so "lona" finds "Łona"), `updateOne()`/`deleteOne()`, `uniqueKeys()`, `isDuplicateKey()`, `inOrder()`, `quoteIdentifier()`
 
 ## CI/CD
 
@@ -266,7 +266,7 @@ After a deploy the host runs `deploy/ovh/smoke.sh`, `SMOKE_TARGET=release`: each
 
 - **Legacy codebase**: Uses Zend Framework 1 (EOL but maintained by shardj/zf1-future)
 - **PHP 8.4**: Debian 13's own packages in every image (`Dockerfile-php`): nothing is compiled, a rebuild takes Debian's security updates, and both Debian 13 and PHP 8.4 are supported to 2028. shardj/zf1-future runs on it. Classes that fill properties they do not declare (the model containers, the controllers' `$params`) carry `#[\AllowDynamicProperties]` (#37)
-- **Database**: PostgreSQL 17 in production since 2026-10-13 (#236), MariaDB 10.11 locally and beside it until #237, credentials in environment variables
+- **Database**: PostgreSQL 17, sorting in Polish (ICU's pl), credentials in environment variables
 - **Content directory**: User uploads stored in `content/` - excluded from git, shared across services via Docker volumes
 - **Polish language**: Many UI strings, comments, and routes are in Polish
 

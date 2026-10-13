@@ -25,13 +25,11 @@ jobs:
       matrix:
         # Two halves at once, each on its own runner with its own stack and database: the site's
         # pages, and the tools that change the database. One after the other they took eight
-        # minutes. And both halves again on PostgreSQL, its database copied from MariaDB's
-        # fixtures, on the way to it (#229, #232, #234).
-        part: [site, tools, site-postgresql, tools-postgresql]
+        # minutes.
+        part: [site, tools]
     env:
       COMPOSE_PROJECT_NAME: hhbd
-      COMPOSE_FILE: ${{ endsWith(matrix.part, '-postgresql') && 'compose.yaml:compose.ci.yaml:compose.postgresql.yaml' || 'compose.yaml:compose.ci.yaml' }}
-      DB_ENGINE: ${{ endsWith(matrix.part, '-postgresql') && 'postgresql' || 'mariadb' }}
+      COMPOSE_FILE: compose.yaml:compose.ci.yaml
       HAS_DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN != '' }}
 
     steps:
@@ -97,7 +95,7 @@ jobs:
       - name: Start Docker Compose services
         run: |
           # compose.ci.yaml runs the app on the builder stage, which has composer, unzip and git;
-          # COMPOSE_FILE names it, and compose.postgresql.yaml in the PostgreSQL part
+          # COMPOSE_FILE names it
           docker compose up -d
           echo "Waiting for services to start..."
 
@@ -110,14 +108,13 @@ jobs:
       - name: Wait for database to be healthy
         run: |
           echo "Waiting for database..."
-          timeout 60 bash -c 'until docker compose exec -T db mysqladmin ping -h localhost -u root -proot_password --silent; do sleep 2; done'
+          timeout 60 bash -c 'until docker compose exec -T postgres pg_isready -U hhbd -d hhbd; do sleep 2; done'
           echo "Database is ready!"
 
       - name: Load the schema and the fixtures
         run: |
-          # The schema from the migrations, the fixtures onto the baseline, the later migrations
-          # over that data: the one way a database is set up here, locally and in CI alike. With
-          # DB_ENGINE=postgresql, then that copied into PostgreSQL and proved.
+          # The schema from the migrations, then the fixtures: the one way a database is set up
+          # here, locally and in CI alike.
           make reset-db
 
       - name: Generate test images
@@ -154,8 +151,8 @@ jobs:
       - name: Check the schema rules
         if: startsWith(matrix.part, 'site')
         run: |
-          # Every table InnoDB (#45); added never changes on update, the catalog's added has a
-          # default, no zero-date defaults, and a page view leaves added and updated alone (#48).
+          # added never changes on update, the catalog's added has a default, and a page view
+          # leaves added and updated alone (#48); names and the collation as #232 set them.
           ./tests/schema-test.sh http://localhost:8080
 
       - name: Check settling what an import left
@@ -170,15 +167,14 @@ jobs:
       - name: Check make reset-db
         if: startsWith(matrix.part, 'tools')
         run: |
-          # Resets, row counts, the kept result against a build from the migrations, and the
-          # cases it must refuse.
+          # Resets, row counts, and the cases it must refuse.
           ./tests/reset-db-test.sh
 
       - name: Check the migration runner
         if: startsWith(matrix.part, 'tools')
         run: |
-          # Up, down, a failing migration, the baseline, the refusals, and the ssh path through
-          # a stand-in, all on the same stack; it ends with a reset.
+          # Up, down, a failing migration, the refusals, and the ssh path through a stand-in,
+          # all on the same stack; it ends with a reset.
           ./tests/migrate-test.sh
 
       - name: Check the importer
