@@ -27,6 +27,9 @@ services:
       INDEXNOW_KEY: ${INDEXNOW_KEY:-}
       # Feature flags
       SHOW_ADS: "true"
+      # Each page's number of queries in the header X-Query-Count (#255), for
+      # tests/query-count-test.sh; production's compose file leaves it out
+      QUERY_COUNT_HEADER: "true"
     healthcheck:
       test: [ "CMD", "php-fpm-healthcheck" ]
       interval: 30s

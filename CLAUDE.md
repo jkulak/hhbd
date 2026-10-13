@@ -95,9 +95,12 @@ make test-unit
 # Smoke tests (integration tests - requires running services)
 make smoke
 make smoke URL=http://localhost:8080  # custom URL
+
+# How many queries each page sends (requires running services; ends with make reset-db)
+make test-query-count URL=http://localhost:8080
 ```
 
-Unit tests cover library classes (`Jkl_*`), view helpers, and model logic with mocked dependencies. Smoke tests verify key pages load with database data.
+Unit tests cover library classes (`Jkl_*`), view helpers, and model logic with mocked dependencies. Smoke tests verify key pages load with database data. `tests/query-count-test.sh` holds an album's, an artist's, a song's and a label's page, the home page, the album and artist lists and the top 10 to 25 queries each, and to as many with many more rows as with one (#255), by the `X-Query-Count` header that compose.yaml's `QUERY_COUNT_HEADER` turns on.
 
 ### Code Style
 
@@ -165,6 +168,8 @@ models/
 
 When writing new code that follows existing patterns, use the Api/Container split for consistency.
 
+A page reads its rows' details a kind at a time, never row by row (#255): a list's alt names, album counts, photos, a tracklist's credits and albums, each in one query for all the rows (`Model_Artist_Api::getSongsCredits(array)`, `Model_Album_Api::getArtistsAlbumsCounts(array)`, `Model_Image_Api::getMainPhotos(array)`, `Model_Song_Api::getTracklists(array)`), and an album row carries its credits, covers and label as JSON columns (`Model_Album_Api::unpack()`). An artist or a label read by id is kept for the rest of the request (`Jkl_Model_Api::remembered()`), until the database is written to (`Jkl_Db::writes()`).
+
 ### Custom Library (Jkl_*)
 
 Located in `app/library/Jkl/`, autoloaded via PSR-0 (`Jkl_` prefix):
@@ -213,6 +218,7 @@ Below 992 px the layout is the phones' and tablets' (#149): one column, a header
 - Analytics: `GA_MEASUREMENT_ID`, GA4's measurement id, set in production's compose file only, so nothing local or in CI is measured (#161)
 - IndexNow: `INDEXNOW_KEY`, set in production's compose file only, so nothing local or in CI tells IndexNow of a page (#220); deploy/ovh/README.md has the rest
 - Feature flags: `SHOW_ADS` (true/false)
+- Query count: `QUERY_COUNT_HEADER`, set in compose.yaml only, turns on Zend_Db's profilers and the `X-Query-Count` header that `tests/query-count-test.sh` reads (#255); production's compose file leaves it out, and the smoke test checks no page sends the header there
 
 ### Backoffice
 
@@ -249,7 +255,7 @@ Production itself runs `deploy/ovh/compose.yaml` on the shared OVH host, behind 
 
 GitHub Actions workflows (`.github/workflows/`):
 - **unit-tests.yml** - PHPUnit tests, no coverage (nobody received it, #206)
-- **smoke-tests.yml** - Integration tests with Docker, in two halves at once on two runners: the site's pages, and the tools that change the database
+- **smoke-tests.yml** - Integration tests with Docker, in two halves at once on two runners: the site's pages with their query counts, and the tools that change the database
 - **deploy-checks.yml** - The secrets gate, and the production stack behind a stand-in edge
 - **release.yml** - For a merge to `main`: refuses one whose pull request did not pass, publishes the release `vYYYY.MM.N` with a note from `CHANGELOG.md` (`scripts/release-notes.py`), and dispatches `deploy.yml`; the shared host's template, word for word
 - **deploy.yml** - For a release, builds the app, nginx and importer images, with their layer cache in the registry, and rolls the first two out on the OVH host; the shared host's template, word for word

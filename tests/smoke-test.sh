@@ -1261,6 +1261,9 @@ run_production_tests() {
     local key
     key=$(grep -o 'INDEXNOW_KEY-[A-Za-z0-9-]\{8,128\}' "$(dirname "$0")/../deploy/ovh/compose.yaml" | head -1 | cut -d- -f2-)
     test_page "IndexNow's key is served where its requests say it is (#220)" "/${key}.txt" "^${key}$"
+    # The count of a page's queries is for tests/query-count-test.sh: production's compose file
+    # leaves QUERY_COUNT_HEADER out, and its profilers with it (#255)
+    test_header "No page says how many queries it sent (#255)" "/" "^x-query-count:" absent
     echo ""
 }
 

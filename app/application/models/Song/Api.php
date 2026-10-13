@@ -98,11 +98,12 @@ class Model_Song_Api extends Jkl_Model_Api
     private function _getListWithArtists($query)
     {
         $result = $this->_db->fetchAll($query);
+        // Every song's artists in one query, not one for each (#255)
+        $credits = Model_Artist_Api::getInstance()->getSongsCredits(array_column($result, 'song_id'));
         $list = new Jkl_List();
 
         foreach ($result as $params) {
-            // Populate artist data properly using Artist API
-            $params['artist'] = Model_Artist_Api::getInstance()->getSongArtist($params['song_id']);
+            $params['artist'] = $credits[(int) $params['song_id']]['artist'];
             $list->add(new Model_Song_Container($params));
         }
 
@@ -126,14 +127,24 @@ class Model_Song_Api extends Jkl_Model_Api
         $id = intval($id);
         $query = 'select *, id as song_id from songs where id=' . $id;
         $result = $this->_db->fetchAll($query);
-        $params = $result[0];
+        $credits = Model_Artist_Api::getInstance()->getSongsCredits(array($id));
+        return $this->_song($result[0], $credits[$id], Model_Album_Api::getInstance()->getSongAlbums($id, null), $full);
+    }
 
-        $params['featuring'] = Model_Artist_Api::getInstance()->getSongFeaturing($id);
-        $params['music'] = Model_Artist_Api::getInstance()->getSongMusic($id);
-        $params['scratch'] = Model_Artist_Api::getInstance()->getSongScratch($id);
-        $params['artist'] = Model_Artist_Api::getInstance()->getSongArtist($id);
-
-        $params['featured'] = Model_Album_Api::getInstance()->getSongAlbums($id, null);
+    /**
+     * A song from its row, its credits (Model_Artist_Api::getSongsCredits()) and its albums,
+     * alike for its own page and for an album's tracklist (#255): the album's artist it is
+     * shown under, who is its artist when it names none, and on its own page ($full) the
+     * video it has none of yet.
+     */
+    private function _song(array $params, array $credits, Jkl_List $albums, $full)
+    {
+        $id = (int) $params['song_id'];
+        $params['featuring'] = $credits['featuring'];
+        $params['music'] = $credits['music'];
+        $params['scratch'] = $credits['scratch'];
+        $params['artist'] = $credits['artist'];
+        $params['featured'] = $albums;
 
         $albumArtist = null;
         $max = isset($params['featured']->items) ? count($params['featured']->items) : 0;
@@ -179,28 +190,53 @@ class Model_Song_Api extends Jkl_Model_Api
 
     public function getTracklist($id)
     {
-        $id = intval($id);
-        // t2.*: album_lookup's disc column when it has one (#59), and the code reads both shapes.
-        $query = 'SELECT t1.id as song_id, t2.* ' .
-            'FROM songs AS t1, album_lookup AS t2 ' .
-            'WHERE (t1.id=t2.songid AND t2.albumid=' . $id . ')';
-        $positions = array();
-        foreach ($this->_db->fetchAll($query) as $row) {
-            list($disc, $track) = self::trackPosition($row);
-            $positions[] = array('disc' => $disc, 'track' => $track, 'song_id' => $row['song_id']);
-        }
-        usort($positions, function ($a, $b) {
-            return array($a['disc'], $a['track']) <=> array($b['disc'], $b['track']);
-        });
-        $multiDisc = count(array_unique(array_column($positions, 'disc'))) > 1;
+        return $this->getTracklists(array($id))[(int) $id];
+    }
 
-        $tracklist = new Jkl_List();
-        foreach ($positions as $position) {
-            $song = $this->find($position['song_id'], false);
-            $song->track = self::trackLabel($position['disc'], $position['track'], $multiDisc);
-            $tracklist->add($song);
+    /**
+     * The tracklists of these albums: the songs' rows with their places, then everyone credited
+     * on them and the albums they are on, a query each for all the albums rather than six for
+     * each track (#255). A song's page shows the tracklist of every album it is on.
+     *
+     * @param int[] $ids albums' ids
+     * @return array album id => Jkl_List of its songs, in their order
+     */
+    public function getTracklists(array $ids)
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        $positions = array_fill_keys($ids, array());
+        $songs = array();
+        if (!empty($ids)) {
+            $query = 'SELECT t1.*, t1.id AS song_id, t2.albumid AS on_album, t2.disc AS on_disc, t2.track AS on_track ' .
+                'FROM songs AS t1, album_lookup AS t2 ' .
+                'WHERE (t1.id=t2.songid AND t2.albumid IN (' . implode(', ', $ids) . '))';
+            foreach ($this->_db->fetchAll($query) as $row) {
+                list($disc, $track) = self::trackPosition(array('disc' => $row['on_disc'], 'track' => $row['on_track']));
+                $albumId = (int) $row['on_album'];
+                unset($row['on_album'], $row['on_disc'], $row['on_track']);
+                $songs[(int) $row['song_id']] = $row;
+                $positions[$albumId][] = array('disc' => $disc, 'track' => $track, 'song_id' => (int) $row['song_id']);
+            }
         }
-        return $tracklist;
+        $credits = Model_Artist_Api::getInstance()->getSongsCredits(array_keys($songs));
+        $albums = Model_Album_Api::getInstance()->getSongsAlbums(array_keys($songs));
+
+        $tracklists = array();
+        foreach ($positions as $albumId => $places) {
+            usort($places, function ($a, $b) {
+                return array($a['disc'], $a['track']) <=> array($b['disc'], $b['track']);
+            });
+            $multiDisc = count(array_unique(array_column($places, 'disc'))) > 1;
+            $tracklist = new Jkl_List();
+            foreach ($places as $position) {
+                $songId = $position['song_id'];
+                $song = $this->_song($songs[$songId], $credits[$songId], $albums[$songId], false);
+                $song->track = self::trackLabel($position['disc'], $position['track'], $multiDisc);
+                $tracklist->add($song);
+            }
+            $tracklists[$albumId] = $tracklist;
+        }
+        return $tracklists;
     }
 
     /**
@@ -230,21 +266,10 @@ class Model_Song_Api extends Jkl_Model_Api
         return $multiDisc ? sprintf('%d-%02d', $disc, $track) : (string) $track;
     }
 
-    public function getAlbumDuration($id)
+    /** An album's length in seconds as its page shows it, "45:07", or 0 for none */
+    public static function formatDuration($seconds)
     {
-        $id = intval($id);
-        $query = 'SELECT sum(t1.length) as duration ' .
-          'FROM songs AS t1, album_lookup AS t2 ' .
-          'WHERE (t2.songid=t1.id AND t2.albumid=' . $id . ')';
-        if (empty($duration)) {
-            $result = $this->_db->fetchAll($query);
-            if ($result[0]['duration'] > 0) {
-                $duration = sprintf("%02.2d:%02.2d", floor($result[0]['duration'] / 60), $result[0]['duration'] % 60);
-            } else {
-                $duration = 0;
-            }
-        }
-        return $duration;
+        return $seconds > 0 ? sprintf('%02.2d:%02.2d', floor($seconds / 60), $seconds % 60) : 0;
     }
 
     public function getMostPopularByArtist($id, $limit = 10)
@@ -382,50 +407,6 @@ class Model_Song_Api extends Jkl_Model_Api
               ORDER BY t1.added DESC" .
                   (($limit != null) ? ' LIMIT ' . $limit : '');
         return $this->_getList($query);
-    }
-
-    /**
-     * getArtists
-     *
-     * returns array with objects of songs artists
-     **/
-    public function getArtists($id)
-    {
-        // skladanka, gdzie chcemy wziac artist (album artist mamy v/a wtedy)
-        // plyta producencka, gdzie chcemy wziac feat
-        // normalna plyta gdzie wykonawca jest autor plyty (ale nie mamy jak odroznic od producenckiej)
-
-        // moze jako wykonawce traktowac zawsze album artist, ale dawac w nawiasie feat ?
-        // hhbd.pl/Dj 600v/_/Merctedes (feat. Tede),4581.html
-        // hhbd.pl/VA/Letnie hity 2010/Merctedes (feat. Tede),4581.html
-        $artists = new Jkl_List();
-        //set feat as artist
-        $featuring = Model_Artist_Api::getInstance()->getSongFeaturing($id);
-        foreach ($featuring->items as $key => $value) {
-            $artists->add($value);
-        }
-
-        //if empty
-        //get list of albums
-        // seat first album artist not v/a as artist
-        if (count($artists->items) < 1) {
-            $featured = Model_Album_Api::getInstance()->getSongAlbums($id, null);
-            foreach ($featured->items as $key => $value) {
-                if ($value->artist->name != 'V/A') {
-                    $artists->add($value->artist);
-                }
-            }
-        }
-
-        // if still empty
-        // set song's artist
-        if (count($artists->items) < 1) {
-            $artist = Model_Artist_Api::getInstance()->getSongArtist($id);
-            foreach ($featured->items as $key => $value) {
-                $artists->add($value);
-            }
-        }
-        return $artists;
     }
 
     /** A song's id as a request carries it, a whole number from 1, or null for anything else (#178) */

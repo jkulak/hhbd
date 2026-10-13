@@ -82,15 +82,7 @@ class Model_Artist_Api extends Jkl_Model_Api
                   (($limit != null) ? ' LIMIT ' . $limit . ' OFFSET ' . ($page * $limit) : '');
 
         $result = $this->_db->fetchAll($query, array(Jkl_Db::startsWith($like)));
-        $artists = new Jkl_List();
-
-        foreach ($result as $params) {
-            $params['aka'] = $this->_getAka($params['art_id']);
-            $params['album_count'] = Model_Album_Api::getInstance()->getArtistsAlbumsCount($params['art_id']);
-            $artists->add(new Model_Artist_Container($params));
-        }
-
-        return Model_Artist_Container::qualifyNamesakes($artists);
+        return $this->_listed($result);
     }
 
     public function getLike($like = '', $limit = 15, $page = 1)
@@ -106,15 +98,7 @@ class Model_Artist_Api extends Jkl_Model_Api
                   (($limit != null) ? ' LIMIT ' . $limit . ' OFFSET ' . ($page * $limit) : '');
 
         $result = $this->_db->fetchAll($query, array(Jkl_Db::contains($like)));
-        $artists = new Jkl_List();
-
-        foreach ($result as $params) {
-            $params['aka'] = $this->_getAka($params['art_id']);
-            $params['album_count'] = Model_Album_Api::getInstance()->getArtistsAlbumsCount($params['art_id']);
-            $artists->add(new Model_Artist_Container($params));
-        }
-
-        return Model_Artist_Container::qualifyNamesakes($artists);
+        return $this->_listed($result);
     }
 
     public function getNicknamesLike($like = '', $limit = 15, $page = 1)
@@ -131,15 +115,7 @@ class Model_Artist_Api extends Jkl_Model_Api
                   ' OFFSET ' . ($page * $limit);
 
         $result = $this->_db->fetchAll($query, array(Jkl_Db::contains($like)));
-        $artists = new Jkl_List();
-
-        foreach ($result as $params) {
-            $params['aka'] = $this->_getAka($params['art_id']);
-            $params['album_count'] = Model_Album_Api::getInstance()->getArtistsAlbumsCount($params['art_id']);
-            $artists->add(new Model_Artist_Container($params));
-        }
-
-        return Model_Artist_Container::qualifyNamesakes($artists);
+        return $this->_listed($result);
     }
 
     public function getMostPopular($limit = 40)
@@ -150,7 +126,7 @@ class Model_Artist_Api extends Jkl_Model_Api
           'FROM artists AS t1 ' .
           'ORDER BY t1.viewed DESC ' .
           (($limit) ? 'LIMIT ' . $limit : '');
-        return $this->_popularList($this->_db->fetchAll($query));
+        return $this->_listed($this->_db->fetchAll($query), true);
     }
 
     /**
@@ -179,18 +155,29 @@ class Model_Artist_Api extends Jkl_Model_Api
             '(SELECT COUNT(*) FROM hhb_comments WHERE com_object_id = t1.id AND com_object_type = \'p\') as comment_count ' .
             'FROM artists AS t1 WHERE t1.id IN (' . implode(', ', $ids) . ') ORDER BY ' . Jkl_Db::inOrder('t1.id', $ids)
         );
-        return array($this->_popularList($rows), $counted);
+        return array($this->_listed($rows, true), $counted);
     }
 
-    /** Artists rows as a ranking lists them: with their other names, album count and photo */
-    private function _popularList(array $result)
+    /**
+     * Artists' rows as a list shows them: with their other names and album count, and as a
+     * ranking ($photo) with their main photo, a query each for the whole list rather than for
+     * each artist (#255)
+     */
+    private function _listed(array $result, $photo = false)
     {
+        $ids = array_column($result, 'art_id');
+        $aka = $this->_getAkas($ids);
+        $counts = Model_Album_Api::getInstance()->getArtistsAlbumsCounts($ids);
+        $photos = $photo ? Model_Image_Api::getInstance()->getMainPhotos($ids) : array();
         $artists = new Jkl_List();
 
         foreach ($result as $params) {
-            $params['aka'] = $this->_getAka($params['art_id']);
-            $params['album_count'] = Model_Album_Api::getInstance()->getArtistsAlbumsCount($params['art_id']);
-            $params['photo'] = Model_Image_Api::getInstance()->getArtistPhoto($params['art_id']);
+            $id = (int) $params['art_id'];
+            $params['aka'] = $aka[$id];
+            $params['album_count'] = $counts[$id];
+            if ($photo) {
+                $params['photo'] = $photos[$id];
+            }
             $artists->add(new Model_Artist_Container($params));
         }
 
@@ -208,22 +195,29 @@ class Model_Artist_Api extends Jkl_Model_Api
         return $this->getList($query);
     }
 
+    /**
+     * An artist by id. The row is read once a request (#255): a page credits the same artist on
+     * many albums and songs. A $full one, for the artist's own page, is read every time.
+     */
     public function find($id, $full = false)
     {
         $id = intval($id);
-        $query = 'select *, id as art_id from artists where id=' . $id;
-        $result = $this->_db->fetchAll($query);
-        if (empty($result)) {
-            return null;
+        $params = $full ? null : $this->remembered($id);
+        if (null === $params) {
+            $result = $this->_db->fetchAll('select *, id as art_id from artists where id=' . $id);
+            if (empty($result)) {
+                return null;
+            }
+            $params = $result[0];
+            $this->remember($id, $params);
         }
-        $params = $result[0];
 
         if ($full) {
             // photos
             $params['photos'] = Model_Image_Api::getInstance()->getArtistPhotos($id);
 
             // also known as
-            $params['aka'] = $this->_getAka($id);
+            $params['aka'] = $this->_getAkas(array($id))[$id];
 
             // band members
             $params['members'] = $this->_getMembers($id);
@@ -237,6 +231,19 @@ class Model_Artist_Api extends Jkl_Model_Api
 
         $item = new Model_Artist_Container($params, $full);
         return $item;
+    }
+
+    /**
+     * Artists' rows a query read along with its own, kept for find() (#255): what a container
+     * that is not $full reads, art_id, name, disambiguation, since, till and viewed, is enough.
+     */
+    public function rememberRows(array $rows)
+    {
+        foreach ($rows as $row) {
+            if (null === $this->remembered($row['art_id'])) {
+                $this->remember($row['art_id'], $row);
+            }
+        }
     }
 
     private function _getMembers($id)
@@ -255,69 +262,84 @@ class Model_Artist_Api extends Jkl_Model_Api
         return $this->getList($query);
     }
 
-    private function _getAka($id)
+    /**
+     * The other names of each of these artists, in one query for a whole list (#255)
+     *
+     * @param int[] $ids
+     * @return array artist id => Jkl_List, empty for an artist with none
+     */
+    private function _getAkas(array $ids)
     {
-        $query = 'SELECT t1.altname FROM altnames_lookup AS t1 ' .
-                  'WHERE (t1.artistid=' . $id . ') ORDER BY t1.altname';
-        $result = $this->_db->fetchAll($query);
-        $aka = new Jkl_List('Also known as list');
-        foreach ($result as $key => $value) {
-            $aka->add($value['altname']);
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        $aka = array();
+        foreach ($ids as $id) {
+            $aka[$id] = new Jkl_List('Also known as list');
+        }
+        if (!empty($ids)) {
+            $query = 'SELECT t1.artistid, t1.altname FROM altnames_lookup AS t1 ' .
+                      'WHERE t1.artistid IN (' . implode(', ', $ids) . ') ORDER BY t1.artistid, t1.altname';
+            foreach ($this->_db->fetchAll($query) as $value) {
+                $aka[(int) $value['artistid']]->add($value['altname']);
+            }
         }
         return $aka;
     }
 
-    public function getSongFeaturing($id)
+    /**
+     * Who is credited on each of these songs, in one query for a whole tracklist rather than
+     * four for each song (#255): its guests with their role, who made its music, who scratched
+     * on it, and its own artists, each list by name.
+     *
+     * @param int[] $songIds
+     * @return array song id => array('featuring', 'music', 'scratch', 'artist'), each a Jkl_List
+     */
+    public function getSongsCredits(array $songIds)
     {
-        $id = intval($id);
-        // Sorting a join needs a temporary table, which goes to disk when it holds a TEXT
-        // column (#69): the role's name is cut to the length a role has.
-        $query = 'SELECT t1.id as art_id, LEFT(t3.feattype, 64) AS feattype ' .
-          'FROM artists t1, feature_lookup t2, feattypes t3 ' .
-          'WHERE (t2.artistid=t1.id AND t3.id=t2.feattype AND t2.songid = ?) ' .
-          'ORDER BY t1.name';
-        $result = $this->_db->fetchAll($query, array($id));
-        $featuring = new Jkl_List();
-        foreach ($result as $params) {
-            $artist = $this->find($params['art_id']);
-            $artist->featType = $params['feattype'];
-            $featuring->add($artist);
+        $songIds = array_values(array_unique(array_map('intval', $songIds)));
+        $credits = array();
+        foreach ($songIds as $songId) {
+            $credits[$songId] = array('featuring' => new Jkl_List(), 'music' => new Jkl_List(), 'scratch' => new Jkl_List(), 'artist' => new Jkl_List());
         }
-
-        return Model_Artist_Container::qualifyNamesakes($featuring);
-    }
-
-    public function getSongMusic($id)
-    {
-        $id = intval($id);
-        $query = 'SELECT ' . self::CREDIT_COLUMNS . ' ' .
-          'FROM artists AS t1, music_lookup AS t2 ' .
-          'WHERE (t1.id=t2.artistid AND t2.songid=' . $id . ') ' .
-          'ORDER BY t1.name';
-
-        return $this->getList($query);
-    }
-
-    public function getSongScratch($id)
-    {
-        $id = intval($id);
-        $query = 'SELECT ' . self::CREDIT_COLUMNS . ' ' .
-          'FROM artists AS t1, scratch_lookup AS t2 ' .
-          'WHERE (t1.id=t2.artistid AND t2.songid=' . $id . ') ' .
-          'ORDER BY t1.name';
-
-        return $this->getList($query);
-    }
-
-    public function getSongArtist($id)
-    {
-        $id = intval($id);
-        $query = 'SELECT ' . self::CREDIT_COLUMNS . ' ' .
-          'FROM artists AS t1, artist_lookup AS t2 ' .
-          'WHERE (t1.id=t2.artistid AND t2.songid=' . $id . ') ' .
-          'ORDER BY t1.name';
-
-        return $this->getList($query);
+        if (empty($songIds)) {
+            return $credits;
+        }
+        $in = implode(', ', $songIds);
+        $lookup = function ($credit, $table) use ($in) {
+            return "SELECT '" . $credit . "', t2.songid, " . self::CREDIT_COLUMNS . ', NULL, NULL, NULL, NULL, NULL '
+                . 'FROM artists t1 JOIN ' . $table . ' t2 ON t2.artistid = t1.id WHERE t2.songid IN (' . $in . ')';
+        };
+        // A guest's row brings what find() reads of an artist, for find() to keep. Sorting needs
+        // a temporary table, which goes to disk when it holds a TEXT column (#69): the role's
+        // name is cut to the length a role has. A guest in several roles has them in the order
+        // of the roles' ids, the order the song's page has always shown them in.
+        $rows = $this->_db->fetchAll(
+            "SELECT 'featuring' AS credit, t2.songid, t1.id AS art_id, t1.name, t1.disambiguation, t1.since, t1.till, t1.viewed, LEFT(t3.feattype, 64) AS feattype, t2.feattype AS role "
+            . 'FROM artists t1 JOIN feature_lookup t2 ON t2.artistid = t1.id JOIN feattypes t3 ON t3.id = t2.feattype WHERE t2.songid IN (' . $in . ')'
+            . ' UNION ALL ' . $lookup('music', 'music_lookup')
+            . ' UNION ALL ' . $lookup('scratch', 'scratch_lookup')
+            . ' UNION ALL ' . $lookup('artist', 'artist_lookup')
+            . ' ORDER BY credit, songid, name, art_id, role'
+        );
+        $guests = array();
+        foreach ($rows as $row) {
+            if ('featuring' === $row['credit']) {
+                $guests[] = array_intersect_key($row, array_flip(array('art_id', 'name', 'disambiguation', 'since', 'till', 'viewed')));
+            }
+        }
+        $this->rememberRows($guests);
+        foreach ($rows as $row) {
+            if ('featuring' === $row['credit']) {
+                $artist = $this->find($row['art_id']);
+                $artist->featType = $row['feattype'];
+            } else {
+                $artist = new Model_Artist_Container(array('art_id' => $row['art_id'], 'name' => $row['name'], 'disambiguation' => $row['disambiguation']));
+            }
+            $credits[(int) $row['songid']][$row['credit']]->add($artist);
+        }
+        foreach ($credits as $lists) {
+            array_map(array('Model_Artist_Container', 'qualifyNamesakes'), $lists);
+        }
+        return $credits;
     }
 
     public function getWithMostProjectAlbums($limit = 10)
