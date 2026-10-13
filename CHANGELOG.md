@@ -14,6 +14,14 @@ which the note leaves out. The sections before, by version, stay as they were.
 
 ## 2026-10-13
 
+- Imported albums come out a few a day instead of a whole year at once (#258): an import puts
+  what it would publish in a release queue, and every day at a time of its own between 09:00
+  and 21:00 the next five to ten albums are published and lead the home page's "Nowe w bazie".
+  The artists an import makes wait with their albums, out of the lists, the sitemap and
+  IndexNow until then. `make ovh-release-queue` shows what waits, `make ovh-release` runs a
+  day's release by hand, `RELEASE=now` on `make ovh-import` publishes at once, and each
+  release is an edit `make ovh-edit` can undo. The page of a single whose album is not out yet,
+  as the queue brings a single out before its album, no longer fails.
 - MariaDB is gone from hhbd: PostgreSQL alone holds the catalogue, in production and in every
   local and CI stack, a week sooner than planned (#237). Production's MariaDB container and
   volume leave the host; `php8.4-mysql` leaves the images.
@@ -46,6 +54,9 @@ which the note leaves out. The sections before, by version, stay as they were.
   logged-in account change the query; a percent sign searched for is no longer a wildcard.
 
 ### Internal
+- The release queue is tested end to end on every pull request (`tests/release-test.sh`, #258),
+  and the production stack's test checks the `hhbd-release` timer as CONTRACT.md §7 asks;
+  an undo no longer refuses a row only because its page was seen since.
 - The tools and the tests are PostgreSQL's alone (#237): MariaDB's migrations 0001-0038 left the
   tree, 0039 is the first; the fixtures are one PostgreSQL file, dumped from the database
   MariaDB's fixtures and migrations made and proved the same table by table; `make reset-db`

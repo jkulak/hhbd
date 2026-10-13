@@ -1,0 +1,17 @@
+# The day's release (#258): the next 5-10 albums of the release queue published, in a one-off
+# app container of the running tag, as CONTRACT.md §7 runs a job. make ovh-install copies it to
+# /etc/systemd/system/; make ovh-release runs the same by hand.
+[Unit]
+Description=hhbd: release
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/hhbd
+Environment=SOPS_AGE_KEY_FILE=/etc/sops/age.key
+Environment=HEALTHCHECKS_SLUG=hhbd-release
+LogExtraFields=SERVICE=hhbd JOB=release
+# A release takes seconds; the time limit leaves room for a pull of the app image.
+TimeoutStartSec=10min
+ExecStart=/usr/local/bin/sops exec-env /srv/hhbd/hhbd.enc.env '/usr/local/bin/hc-wrap docker compose run --rm --no-deps -T app php /var/www/html/app/tools/release.php run'

@@ -14,16 +14,18 @@ class Model_Artist_Api extends Jkl_Model_Api
     /**
      * An artist whose page has something of its own (#243): a published album, a credit on a
      * song, a group it belongs to or members, or a profile. A page with none of them asks
-     * search engines not to index it and stays out of the sitemap; the condition is on the
-     * artists table aliased t1, for both.
+     * search engines not to index it and stays out of the sitemap and the lists of artists
+     * added; the condition is on the artists table aliased t1, for all three. An artist an
+     * import made, waiting in the release queue with its album (queued, #258), has nothing of
+     * its own until a published album credits it.
      */
-    public const HAS_CONTENT = "(t1.profile <> ''
-        OR EXISTS (SELECT 1 FROM album_artist_lookup c JOIN albums a ON a.id = c.albumid WHERE c.artistid = t1.id AND a.status = 999)
-        OR EXISTS (SELECT 1 FROM artist_lookup r WHERE r.artistid = t1.id)
-        OR EXISTS (SELECT 1 FROM music_lookup m WHERE m.artistid = t1.id)
-        OR EXISTS (SELECT 1 FROM feature_lookup f WHERE f.artistid = t1.id)
-        OR EXISTS (SELECT 1 FROM scratch_lookup x WHERE x.artistid = t1.id)
-        OR EXISTS (SELECT 1 FROM band_lookup b WHERE b.artistid = t1.id OR b.bandid = t1.id))";
+    public const HAS_CONTENT = "(EXISTS (SELECT 1 FROM album_artist_lookup c JOIN albums a ON a.id = c.albumid WHERE c.artistid = t1.id AND a.status = 999)
+        OR (t1.queued IS NULL AND (t1.profile <> ''
+            OR EXISTS (SELECT 1 FROM artist_lookup r WHERE r.artistid = t1.id)
+            OR EXISTS (SELECT 1 FROM music_lookup m WHERE m.artistid = t1.id)
+            OR EXISTS (SELECT 1 FROM feature_lookup f WHERE f.artistid = t1.id)
+            OR EXISTS (SELECT 1 FROM scratch_lookup x WHERE x.artistid = t1.id)
+            OR EXISTS (SELECT 1 FROM band_lookup b WHERE b.artistid = t1.id OR b.bandid = t1.id))))";
 
     private static $_instance;
 
@@ -358,12 +360,14 @@ class Model_Artist_Api extends Jkl_Model_Api
             WHERE ' . self::HAS_CONTENT . ' ORDER BY t1.added DESC LIMIT ' . (int) $limit);
     }
 
+    /** The artists added last that have something to show (HAS_CONTENT), newest first, an unknown date last */
     public function getRecentlyAdded($limit = 10)
     {
         $limit = intval($limit);
         $query = "SELECT t1.id AS art_id, t1.name, t1.disambiguation
     FROM artists t1
-    ORDER BY t1.added DESC" .
+    WHERE " . self::HAS_CONTENT . "
+    ORDER BY t1.added IS NULL, t1.added DESC, t1.id DESC" .
         (($limit != null) ? ' LIMIT ' . $limit : '');
 
         return $this->getList($query);

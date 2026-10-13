@@ -11,6 +11,10 @@
  * differs from the catalogue's is a warning in the report, for a person to decide. So the same
  * batch read twice reports every document unchanged the second time.
  *
+ * What it would publish waits in the release queue instead (#258), and so does every artist it
+ * makes, until the daily release brings their album out; an import told to release at once
+ * publishes as it reads.
+ *
  * A dry run reads the whole batch in one transaction, each document behind a savepoint, and
  * rolls it all back, so documents can refer to rows earlier ones would make and nothing stays
  * but the run's own record; its images are written to a temporary directory and deleted, so a
@@ -45,6 +49,13 @@ class Model_Import_Importer extends Jkl_Model_Api
     private $runId;
     private $scratchDir;
 
+    /** Whether what it makes is shown at once, rather than queued for the daily release (#258) */
+    private $releaseNow;
+
+    /** The albums this run put in the release queue, and those the document being read did */
+    private $queued = array();
+    private $queuedNow = array();
+
     /** The rows documents of this batch were read into: ref => array(entity, id) */
     private $refs = array();
 
@@ -68,11 +79,13 @@ class Model_Import_Importer extends Jkl_Model_Api
 
     /**
      * @param string $contentDir where content/ is: covers under a/, photos under p/, logos under l/
+     * @param bool   $releaseNow publish what it makes as it reads, rather than queue it (#258)
      */
-    public function __construct($contentDir)
+    public function __construct($contentDir, $releaseNow = false)
     {
         parent::__construct();
         $this->contentDir = rtrim($contentDir, '/');
+        $this->releaseNow = (bool) $releaseNow;
         $this->schema = Jkl_JsonSchema::fromFile(APPLICATION_PATH . '/../docs/import.schema.json');
         $this->externalIds = Model_ExternalId_Api::getInstance();
         $this->provenance = Model_Provenance_Api::getInstance();
@@ -108,6 +121,7 @@ class Model_Import_Importer extends Jkl_Model_Api
         $this->userId = $this->provenance->getImportUserId();
         $this->runId = $this->provenance->startRun(basename($file), hash_file('sha256', $file), $mode);
         $this->refs = array();
+        $this->queued = array();
 
         $lines = array_values(array_filter(file($file, FILE_IGNORE_NEW_LINES), function ($line) {
             return '' !== trim($line);
@@ -140,6 +154,7 @@ class Model_Import_Importer extends Jkl_Model_Api
             'mode'      => $mode,
             'batch'     => basename($file),
             'totals'    => $totals,
+            'queued'    => $this->queued,
             'documents' => $documents,
         );
         $this->provenance->finishRun($this->runId, $totals, $report);
@@ -168,6 +183,7 @@ class Model_Import_Importer extends Jkl_Model_Api
         $this->warnings = array();
         $this->staged = array();
         $this->touched = array();
+        $this->queuedNow = array();
         $apply = 'apply' === $this->mode;
         $apply ? $this->_db->beginTransaction() : $this->_db->query('SAVEPOINT import_document');
         try {
@@ -179,6 +195,7 @@ class Model_Import_Importer extends Jkl_Model_Api
             if ($apply) {
                 $this->moveStaged();
             }
+            $this->queued = array_merge($this->queued, $this->queuedNow);
             $result['action'] = $created ? 'created' : (empty($this->touched) ? 'unchanged' : 'updated');
             $result['entity'] = $entity;
             $result['hhbd_id'] = $id;
@@ -429,9 +446,10 @@ class Model_Import_Importer extends Jkl_Model_Api
         );
         $created = null === $id;
         if ($created) {
+            // Waiting, unless released at once, for the release of an album it comes with (#258).
             $this->_db->query(
-                "INSERT INTO artists (name, disambiguation, urlname, realname, type, since, website, profile, trivia, addedby, added, status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, NOW(), 999)",
+                "INSERT INTO artists (name, disambiguation, urlname, realname, type, since, website, profile, trivia, addedby, added, status, queued)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, NOW(), 999, " . ($this->releaseNow ? 'NULL' : 'NOW()') . ')',
                 array($name, $disambiguation, $this->slug(Model_Artist_Container::qualifiedNameOf($name, $disambiguation), 40),
                     $this->value($doc, 'real_name'), $type, $facts['since'], (string) $facts['website'], $facts['profile'], $this->userId)
             );
@@ -684,16 +702,17 @@ class Model_Import_Importer extends Jkl_Model_Api
     }
 
     /**
-     * Shows an album an import made once it has what a visitor is shown, and holds back one that
-     * lacks a part, with a review item naming the parts (#168): a label or a self-release, a
-     * date to the day, a tracklist. A later batch that brings the rest publishes it and closes
-     * the item. An album hhbd had before any import, or one an admin published as it was, keeps
-     * its status whatever it lacks.
+     * Queues an album an import made for the daily release once it has what a visitor is shown
+     * (#258), and holds back one that lacks a part, with a review item naming the parts (#168):
+     * a label or a self-release, a date to the day, a tracklist. A later batch that brings the
+     * rest queues it and closes the item. Released at once, the import publishes it instead. An
+     * album hhbd had before any import, or one an admin published as it was, keeps its status
+     * whatever it lacks.
      */
     private function settlePublication($id, $created)
     {
         $lacks = Model_Album_Api::getInstance()->lacksOf($id);
-        $row = $this->_db->fetchAll('SELECT status, addedby FROM albums WHERE id = ?', array($id));
+        $row = $this->_db->fetchAll('SELECT status, addedby, queued FROM albums WHERE id = ?', array($id));
         $published = Model_Album_Api::PUBLISHED === (int) $row[0]['status'];
         $open = null;
         foreach ($this->reviews->openFor('album', $id) as $item) {
@@ -703,12 +722,14 @@ class Model_Import_Importer extends Jkl_Model_Api
         }
 
         if (empty($lacks)) {
-            if (!$published) {
+            if (!$published && $this->releaseNow) {
                 $this->setStatus($id, Model_Album_Api::PUBLISHED, $created);
+            } elseif (!$published && null === $row[0]['queued']) {
+                $this->queue($id, $created);
             }
             if (null !== $open) {
                 $this->reviews->close($open->id, Model_Review_Api::COMPLETED, 'An import brought what it lacked.', $this->userId);
-                $this->warnings[] = sprintf('album %d has all it lacked now, and is published', $id);
+                $this->warnings[] = sprintf('album %d has all it lacked now, and is %s', $id, $this->releaseNow ? 'published' : 'queued for release');
             }
             return;
         }
@@ -728,6 +749,24 @@ class Model_Import_Importer extends Jkl_Model_Api
             $this->setStatus($id, 0, $created);
         }
         $this->review('album', $id, 'incomplete', $detail);
+    }
+
+    /**
+     * Puts an album in the release queue (#258), saying the import did it, unless the import has
+     * just made it, as setStatus() does. It joins when its run started, as every album of the
+     * run does, so a run's albums come out by their release dates, not by their lines in the
+     * batch. The report lists every album the run queued.
+     */
+    private function queue($id, $created)
+    {
+        $joined = '(SELECT started FROM import_runs WHERE id = ' . (int) $this->runId . ')';
+        if ($created) {
+            $this->_db->query('UPDATE albums SET queued = ' . $joined . ' WHERE id = ?', array($id));
+        } else {
+            $this->_db->query('UPDATE albums SET queued = ' . $joined . ', updatedby = ?, updated = NOW() WHERE id = ?', array($this->userId, $id));
+            $this->touched['queued'] = true;
+        }
+        $this->queuedNow[] = $id;
     }
 
     /**

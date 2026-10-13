@@ -191,6 +191,13 @@ jobs:
           # before and after; it ends with a reset (#115).
           ./tests/edit-test.sh http://localhost:8080
 
+      - name: Check the release queue
+        if: startsWith(matrix.part, 'tools')
+        run: |
+          # The test batch queued, released a day at a time, undone and released again, with
+          # what waits shown nowhere until then; it ends with a reset (#258).
+          ./tests/release-test.sh http://localhost:8080
+
       - name: Show logs on failure
         if: failure()
         run: |

@@ -1,0 +1,10 @@
+# Once a day at a time of its own between 09:00 and 21:00 Warsaw time (#258), as an editor
+# would add albums during the day, never at the same minute twice. Persistent: a run missed
+# while the host was down comes when it is up again.
+[Timer]
+OnCalendar=*-*-* 09:00:00 Europe/Warsaw
+RandomizedDelaySec=12h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
