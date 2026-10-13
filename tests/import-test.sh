@@ -31,9 +31,11 @@ ok()  { echo "ok   $1"; pass=$((pass + 1)); }
 bad() { echo "x    $1"; fail=$((fail + 1)); }
 check() { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1"; echo "     expected: $2"; echo "     got:      $3"; fi; }
 
+# Released at once: what an import publishes and holds back is tested here, and how its albums
+# wait in the release queue instead, by default, in tests/release-test.sh (#258).
 import() { # import <batch dir> <mode> <name>: the report in $T/<name>.json, the progress in $T/<name>.err
     local status=0
-    make -s import BATCH="$1" MODE="$2" >"$T/$3.json" 2>"$T/$3.err" || status=$?
+    make -s import BATCH="$1" MODE="$2" RELEASE=now >"$T/$3.json" 2>"$T/$3.err" || status=$?
     echo "$status"
 }
 totals() { jq -r '.totals | "\(.created) created, \(.updated) updated, \(.unchanged) unchanged, \(.refused) refused"' "$T/$1.json"; }

@@ -68,8 +68,21 @@ ovh-indexnow: ## Tell IndexNow every address in production's sitemaps, at the st
 		'cd /srv/hhbd && sudo SOPS_AGE_KEY_FILE=/etc/sops/age.key /usr/local/bin/sops exec-env hhbd.enc.env "docker compose run --rm --no-deps -T app php /var/www/html/app/tools/indexnow.php all $(if $(DRY_RUN),--dry-run)"'
 
 .PHONY: ovh-import
-ovh-import: ## Read an import batch into production's catalogue: make ovh-import BATCH=<dir> MODE=apply (a dry run without MODE)
+ovh-import: ## Read an import batch into production's catalogue: make ovh-import BATCH=<dir> MODE=apply (a dry run without MODE); its albums wait for the daily release, RELEASE=now publishes them at once
 	@./deploy/ovh/import.sh "$${BATCH:?BATCH is the batch directory}" $(or $(MODE),dry-run)
+
+# The release queue (#258), in a one-off app container of the running tag, as the hhbd-release
+# timer runs the day's release.
+OVH_RELEASE = ssh -o BatchMode=yes "$${OVH_SSH_USER:-ubuntu}@$${OVH_HOST:?OVH_HOST is not set}" \
+	'cd /srv/hhbd && sudo SOPS_AGE_KEY_FILE=/etc/sops/age.key /usr/local/bin/sops exec-env hhbd.enc.env "docker compose run --rm --no-deps -T app php /var/www/html/app/tools/release.php $(1)"'
+
+.PHONY: ovh-release-queue
+ovh-release-queue: ## Show production's release queue: how many albums wait, by year, the next ten, and about when the last comes out
+	@$(call OVH_RELEASE,queue)
+
+.PHONY: ovh-release
+ovh-release: ## Run the day's release on production by hand, as the hhbd-release timer does; N=3 for three albums, DRY_RUN=1 to only name them
+	@$(call OVH_RELEASE,run $(if $(N),--count=$(N)) $(if $(DRY_RUN),--dry-run))
 
 .PHONY: ovh-edit
 ovh-edit: ## Edit production's catalogue, journalled: make ovh-edit DO="merge-albums 850 841" BY=<admin> WHY="..." (a dry run without MODE=apply); DO="undo <operation>" takes one back
@@ -134,8 +147,17 @@ check-images: ## List the covers, photos and logos the local catalogue names but
 	./scripts/check-images.sh
 
 .PHONY: import
-import: ## Read an import batch into the local catalogue and content/: make import BATCH=<dir> MODE=apply (a dry run without MODE)
-	@COPYFILE_DISABLE=1 tar --no-xattrs -C "$${BATCH:?BATCH is the batch directory}" -cf - . | docker compose run --rm -T importer --$(or $(MODE),dry-run)
+import: ## Read an import batch into the local catalogue and content/: make import BATCH=<dir> MODE=apply (a dry run without MODE); its albums wait for the release, RELEASE=now publishes them at once
+	@case "$(RELEASE)" in ''|now) ;; *) echo "x RELEASE is now or nothing, not '$(RELEASE)'" >&2; exit 2 ;; esac
+	@COPYFILE_DISABLE=1 tar --no-xattrs -C "$${BATCH:?BATCH is the batch directory}" -cf - . | docker compose run --rm -T importer --$(or $(MODE),dry-run) $(if $(RELEASE),--release-now)
+
+.PHONY: release-queue
+release-queue: ## Show the local release queue: how many albums wait, by year, the next ten, and about when the last comes out
+	@docker compose exec -T app php /var/www/html/app/tools/release.php queue
+
+.PHONY: release
+release: ## Run a day's release on the local catalogue; N=3 for three albums, DRY_RUN=1 to only name them
+	@docker compose exec -T app php /var/www/html/app/tools/release.php run $(if $(N),--count=$(N)) $(if $(DRY_RUN),--dry-run)
 
 .PHONY: edit
 edit: ## Edit the local catalogue, journalled: make edit DO="merge-albums 850 841" BY=<admin> WHY="..." (a dry run without MODE=apply); DO="undo <operation>" takes one back

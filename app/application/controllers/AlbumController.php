@@ -180,6 +180,8 @@ class AlbumController extends Zend_Controller_Action
             $this->view->unpublished = !$published;
             if (!$published) {
                 $this->view->headMeta()->setName('robots', 'noindex,nofollow');
+                // Its place in the release queue, when it waits for the daily release (#258).
+                $this->view->queue = Model_Release_Api::getInstance()->place($album->id);
             }
         }
         $this->view->canonicalUrl = $this->getRequest()->getScheme() . '://' . $this->getRequest()->getHttpHost() . '/' . $canonicalSlug;

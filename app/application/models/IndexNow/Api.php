@@ -1,10 +1,11 @@
 <?php
 
 /**
- * What hhbd.pl tells IndexNow (#220), and when: the pages an import applies and an album an
- * admin publishes. Only with a key, INDEXNOW_KEY, which production's compose file alone sets, so
- * nothing local, in CI or in a stack test sends anything. A failure is logged and never stops
- * the import or the publishing that made the pages.
+ * What hhbd.pl tells IndexNow (#220), and when: the pages an import applies, an album an admin
+ * publishes and the albums the daily release brings out (#258). Only with a key, INDEXNOW_KEY,
+ * which production's compose file alone sets, so nothing local, in CI or in a stack test sends
+ * anything. A failure is logged and never stops the import or the publishing that made the
+ * pages.
  */
 class Model_IndexNow_Api extends Jkl_Model_Api
 {
@@ -52,8 +53,9 @@ class Model_IndexNow_Api extends Jkl_Model_Api
     }
 
     /**
-     * The pages an applied import created or changed, from its report: each artist's and
-     * label's, and each album's that is published, with its songs
+     * The pages an applied import created or changed, from its report: each label's, each
+     * artist's with something to show, and each album's that is published, with its songs. An
+     * artist waiting for its album in the release queue (#258) has nothing to show yet.
      */
     public function importPaths(array $report)
     {
@@ -64,9 +66,33 @@ class Model_IndexNow_Api extends Jkl_Model_Api
             }
             if ('album' === $document['entity']) {
                 $paths = array_merge($paths, $this->albumPaths($document['hhbd_id']));
-            } elseif (in_array($document['entity'], array('artist', 'label'), true) && !empty($document['url'])) {
+            } elseif ('artist' === $document['entity'] && !empty($document['url'])) {
+                if (Model_Artist_Api::getInstance()->hasContent($document['hhbd_id'])) {
+                    $paths[] = $document['url'];
+                }
+            } elseif ('label' === $document['entity'] && !empty($document['url'])) {
                 $paths[] = $document['url'];
             }
+        }
+        return array_values(array_unique($paths));
+    }
+
+    /**
+     * The pages a released album shows or changes (#258): its own and its songs', its artists'
+     * and its label's, where a new album now stands
+     */
+    public function releasePaths($albumId)
+    {
+        $paths = $this->albumPaths($albumId);
+        if (empty($paths)) {
+            return array();
+        }
+        $album = Model_Album_Api::getInstance()->find($albumId);
+        foreach ($this->_db->fetchAll('SELECT artistid FROM album_artist_lookup WHERE albumid = ? ORDER BY position, artistid', array((int) $albumId)) as $row) {
+            $paths[] = Model_Artist_Api::getInstance()->find($row['artistid'])->getUrl();
+        }
+        if (!empty($album->label)) {
+            $paths[] = $album->label->getUrl();
         }
         return array_values(array_unique($paths));
     }

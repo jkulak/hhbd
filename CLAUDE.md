@@ -232,7 +232,7 @@ In **production mode** (use `-f compose.yaml` only):
 - Opcache disabled timestamp validation
 - Vendor directory baked into container
 
-Production itself runs `deploy/ovh/compose.yaml` on the shared OVH host, behind its Caddy edge and Cloudflare, since 2026-10-08. Every merge to `main` is released and deployed by itself (see "Finished means running on hhbd.pl" above); [deploy/ovh/README.md](deploy/ovh/README.md) has the rest.
+Production itself runs `deploy/ovh/compose.yaml` on the shared OVH host, behind its Caddy edge and Cloudflare, since 2026-10-08. Every merge to `main` is released and deployed by itself (see "Finished means running on hhbd.pl" above); [deploy/ovh/README.md](deploy/ovh/README.md) has the rest. An import's albums wait in a release queue, and the host's `hhbd-release` timer publishes the next five to ten every day (#258, [docs/import.md](docs/import.md)).
 
 ## Code Style Conventions
 

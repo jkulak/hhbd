@@ -5,12 +5,13 @@
 # The batch goes over ssh as a tar on stdin into a one-off importer container (the `jobs`
 # profile in deploy/ovh/compose.yaml) of the running release's tag, so no copy of it is left on
 # the host. Each document's line comes back on stderr as it is read, the report, JSON, on
-# stdout; import_runs keeps the report too (make ovh-import-runs).
+# stdout; import_runs keeps the report too (make ovh-import-runs). What the batch would publish
+# waits in the release queue for the daily release (#258), unless RELEASE=now.
 #
 # ci-deploy pulls only the services `up` starts, so the importer image is pulled here first,
 # logged in to GHCR for exactly as long as the pull takes, as ci-deploy does.
 #
-# Usage: ./deploy/ovh/import.sh <batch directory> [dry-run|apply]     (or make ovh-import)
+# Usage: [RELEASE=now] ./deploy/ovh/import.sh <batch directory> [dry-run|apply]     (or make ovh-import)
 #
 set -euo pipefail
 
@@ -23,6 +24,11 @@ USER_=${OVH_SSH_USER:-ubuntu}
 case "$MODE" in
     dry-run|apply) ;;
     *) echo "x the mode is dry-run or apply, not '$MODE'" >&2; exit 2 ;;
+esac
+case "${RELEASE:-}" in
+    '') release='' how='queued for the daily release' ;;
+    now) release=' --release-now' how='released at once' ;;
+    *) echo "x RELEASE is now or nothing, not '$RELEASE'" >&2; exit 2 ;;
 esac
 ndjson=$(find "$BATCH" -maxdepth 1 -name '*.ndjson' | wc -l | tr -d ' ')
 [ "$ndjson" = 1 ] || { echo "x $BATCH holds $ndjson .ndjson files; a batch is one" >&2; exit 2; }
@@ -39,6 +45,6 @@ if ! in_stack 'printf %s "$GHCR_READ_TOKEN" | docker login ghcr.io -u "$GHCR_USE
     exit 2
 fi
 
-echo "> $MODE of $(basename "$BATCH") on $HOST" >&2
+echo "> $MODE of $(basename "$BATCH") on $HOST, $how" >&2
 # No resource forks or extended attributes from macOS's tar, which GNU tar would warn about.
-COPYFILE_DISABLE=1 tar --no-xattrs -C "$BATCH" -cf - . | in_stack "docker compose run --rm --no-deps -T importer --$MODE"
+COPYFILE_DISABLE=1 tar --no-xattrs -C "$BATCH" -cf - . | in_stack "docker compose run --rm --no-deps -T importer --$MODE$release"
