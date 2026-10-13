@@ -14,6 +14,11 @@ which the note leaves out. The sections before, by version, stay as they were.
 
 ## 2026-10-13
 
+- hhbd.pl runs on PostgreSQL 17 instead of MariaDB, the one engine of the services on its host,
+  with the whole database held in memory (#236). The data was copied once and proved table by
+  table; MariaDB stays beside it, untouched, for 7 days of a way back, and then goes (#237).
+  `make ovh-migrate`, `ovh-dump` and the other targets that read production's database go to
+  PostgreSQL, or to MariaDB with `DB_ENGINE=mariadb`.
 - The home page opens with the albums the catalogue gained last, each with the day it was added,
   and the news, the newest from 2016, follow under "Archiwum aktualności" instead of opening the
   page as current (#242).
