@@ -282,7 +282,9 @@ class Model_Edit_Api extends Jkl_Model_Api
         foreach ($this->_db->fetchAll('SELECT * FROM band_lookup WHERE artistid = ? AND bandid = ?', array($intoId, $intoId)) as $row) {
             $this->deleteRow('band_lookup', $row);
         }
-        $this->moveEntities('artist', $fromId, $intoId, isset($options['keep_review_items']) ? $options['keep_review_items'] : array());
+        $keepReviewItems = isset($options['keep_review_items']) ? $options['keep_review_items'] : array();
+        $this->closeDuplicates($fromId, $intoId, $keepReviewItems);
+        $this->moveEntities('artist', $fromId, $intoId, $keepReviewItems);
         $this->moveAll('artist_merges', 'into_id', $fromId, $intoId);
         $this->deleteRow('artists', $from);
         $this->insertRow('artist_merges', array(
@@ -291,6 +293,32 @@ class Model_Edit_Api extends Jkl_Model_Api
             'merged' => $this->now(),
         ));
         $this->touch('artists', $intoId);
+    }
+
+    /**
+     * The open items asking whether the two are one artist (#192), on either row, are answered
+     * by the merge: closed as merged, by whoever merges, journalled with it. The one the panel's
+     * merge settles itself is left to it.
+     */
+    private function closeDuplicates($fromId, $intoId, array $keepReviewItems)
+    {
+        $rows = $this->_db->fetchAll(
+            "SELECT * FROM review_items WHERE entity_type = 'artist' AND entity_id IN (?, ?) AND reason = 'duplicate' AND resolved IS NULL",
+            array($fromId, $intoId)
+        );
+        foreach ($rows as $row) {
+            $item = new Model_Review_Container($row);
+            $other = $item->entityId === $fromId ? $intoId : $fromId;
+            if (in_array($item->id, $keepReviewItems, true) || !in_array($other, $item->getSuggestions(), true)) {
+                continue;
+            }
+            $this->changeRow('review_items', $row, array(
+                'resolved'    => $this->now(),
+                'resolved_by' => $this->userId,
+                'resolution'  => Model_Review_Api::RESOLUTIONS['merge'],
+                'note'        => sprintf('edit operation %d merged artist %d into %d', $this->operationId, $fromId, $intoId),
+            ));
+        }
     }
 
     private function deleteAlbum($id)

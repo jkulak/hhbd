@@ -61,6 +61,10 @@ INSERT INTO `review_items` (`id`, `entity_type`, `entity_id`, `reason`, `detail`
 (4, 'album', 2, 'type_disputed', '{"values": ["single", "ep"]}', 1, '2026-10-09 12:00:03'),
 (5, 'album', 46, 'single_source', '{"text": "only Discogs knows it"}', 1, '2026-10-09 12:00:04');
 
+-- A possible duplicate (#192): Ten Typ Mes and Mes claim one Discogs artist.
+INSERT INTO `review_items` (`id`, `entity_type`, `entity_id`, `reason`, `detail`, `run_id`, `created`) VALUES
+(10, 'artist', 47, 'duplicate', '{"text": "the same Discogs artist 32418 as hhbd artist 35", "suggestions": [35]}', 1, '2026-10-11 12:00:00');
+
 -- The admin's password, adminpass, as password_hash() makes it (#41), which needs 0034's wider
 -- column; the tests log in with it.
 UPDATE `hhb_users` SET `usr_password` = '$2y$12$sxdWRc7n3UH1A8DiXi7iyutjX4TF22J4e/Tlgy99UZ5bQeSDDUZia' WHERE `usr_id` = 10;

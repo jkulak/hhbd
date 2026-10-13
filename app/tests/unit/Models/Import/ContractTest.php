@@ -73,6 +73,51 @@ class Model_Import_ContractTest extends TestCase
         $this->assertSame(array(), self::$schema->validate($document));
     }
 
+    public function testAPossibleDuplicateNamesItsRowAndNeedsNoQualifier(): void
+    {
+        $this->assertSame(array(), self::$schema->validate($this->duplicate()));
+    }
+
+    public function testANamesakeStillNeedsItsQualifierWhetherItSaysSoOrNot(): void
+    {
+        $namesake = array('kind' => 'artist', 'ref' => 'artist:y', 'name' => 'Pezet', 'review' => array('reason' => 'same name as hhbd artist 1'));
+        $this->assertContains('$: disambiguation is missing', self::$schema->validate($namesake));
+        $namesake['review']['kind'] = 'namesake';
+        $this->assertContains('$: disambiguation is missing', self::$schema->validate($namesake));
+    }
+
+    /** What hhbd-content's backfill sends for a row two catalogue ids claim (#192) */
+    private function duplicate(array $review = array()): array
+    {
+        return array(
+            'kind' => 'artist', 'ref' => 'artist:ten-typ-mes', 'hhbd_id' => 47, 'name' => 'Ten Typ Mes',
+            'review' => $review + array('kind' => 'duplicate', 'reason' => 'the same Discogs artist 32418 as hhbd artist 35', 'suggestions' => array(35)),
+        );
+    }
+
+    /**
+     * @dataProvider duplicateMistakesProvider
+     */
+    public function testAPossibleDuplicateIsAQuestionAboutARowHhbdHasAndNothingElse(array $remove, array $add, string $error): void
+    {
+        $document = array_diff_key($this->duplicate(), array_flip($remove));
+        foreach ($add as $key => $value) {
+            $document[$key] = 'review' === $key ? $value + $document['review'] : $value;
+        }
+        $this->assertContains($error, self::$schema->validate($document));
+    }
+
+    public function duplicateMistakesProvider(): array
+    {
+        return array(
+            'without the row it is about' => array(array('hhbd_id'), array(), '$: hhbd_id is missing'),
+            'with no artist it may be' => array(array(), array('review' => array('suggestions' => array())), '$.review.suggestions: fewer than 1 items'),
+            'with an external id it would write' => array(array(), array('external_ids' => array('discogs:artist' => '32418')), '$.external_ids (name): "external_ids" is not one of ["kind","ref","hhbd_id","name","review"]'),
+            'with a qualifier it would write' => array(array(), array('disambiguation' => 'raper z Warszawy'), '$.disambiguation (name): "disambiguation" is not one of ["kind","ref","hhbd_id","name","review"]'),
+            'of a kind there is not' => array(array(), array('review' => array('kind' => 'twin')), '$.review.kind: "twin" is not one of ["namesake","duplicate"]'),
+        );
+    }
+
     /**
      * @dataProvider mistakesProvider
      */

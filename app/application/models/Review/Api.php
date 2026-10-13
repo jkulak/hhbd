@@ -10,6 +10,7 @@ class Model_Review_Api extends Jkl_Model_Api
     /** Each reason, as the panel names it, with the actions that settle it */
     public const REASONS = array(
         'namesake'          => array('label' => 'Ta sama nazwa co inny wykonawca', 'actions' => array('merge', 'keep', 'qualifier')),
+        'duplicate'         => array('label' => 'Możliwy duplikat', 'actions' => array('merge', 'keep')),
         'cover_placeholder' => array('label' => 'Okładka zastępcza', 'actions' => array('accept')),
         'date_disputed'     => array('label' => 'Źródła nie zgadzają się co do daty', 'actions' => array('pick')),
         'type_disputed'     => array('label' => 'Źródła nie zgadzają się co do typu wydania', 'actions' => array('pick')),
@@ -62,6 +63,67 @@ class Model_Review_Api extends Jkl_Model_Api
             array($entityType, (int) $entityId, $reason, json_encode($detail, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $runId)
         );
         return (int) $this->_db->lastInsertId();
+    }
+
+    /**
+     * Asks whether artist $artistId is the same artist as each of $suggestions (#192), each pair
+     * once: a pair an item has named already, on either of its rows, open or settled, is not
+     * asked again, and an item open on the row takes in the pairs that are new.
+     *
+     * @param int[] $suggestions
+     * @return int|null the item that asks, or null when every pair was asked before
+     */
+    public function askDuplicate($artistId, array $suggestions, $text, $runId = null)
+    {
+        $artistId = (int) $artistId;
+        $suggestions = array_map('intval', $suggestions);
+        $rows = $this->_db->fetchAll(
+            "SELECT * FROM review_items WHERE entity_type = 'artist' AND reason = 'duplicate'
+               AND entity_id IN (" . implode(', ', array_unique(array_merge(array($artistId), $suggestions))) . ')
+             ORDER BY id'
+        );
+        $items = array_map(function ($row) {
+            return new Model_Review_Container($row);
+        }, $rows);
+        $new = self::unaskedPairs($artistId, $suggestions, $items);
+        if (empty($new)) {
+            return null;
+        }
+        foreach ($items as $item) {
+            if ($item->entityId === $artistId && null === $item->resolved) {
+                $this->setDetail($item->id, array(
+                    'text'        => implode('; ', array_filter(array($item->getText(), (string) $text), 'strlen')),
+                    'suggestions' => array_values(array_unique(array_merge($item->getSuggestions(), $new))),
+                ));
+                return $item->id;
+            }
+        }
+        return $this->add('artist', $artistId, 'duplicate', array('text' => (string) $text, 'suggestions' => $new), $runId);
+    }
+
+    /**
+     * The suggestions no item has asked about with artist $artistId yet (#192): not the artist
+     * itself, and not one an item on either row of the pair names, whether it is open or settled.
+     *
+     * @param int[] $suggestions
+     * @param Model_Review_Container[] $items the duplicate items on the artist and its suggestions
+     * @return int[]
+     */
+    public static function unaskedPairs($artistId, array $suggestions, array $items)
+    {
+        $asked = array();
+        foreach ($items as $item) {
+            foreach ($item->getSuggestions() as $other) {
+                $asked[min($item->entityId, $other) . '-' . max($item->entityId, $other)] = true;
+            }
+        }
+        $unasked = array();
+        foreach (array_unique(array_map('intval', $suggestions)) as $other) {
+            if ($other !== (int) $artistId && !isset($asked[min($artistId, $other) . '-' . max($artistId, $other)])) {
+                $unasked[] = $other;
+            }
+        }
+        return $unasked;
     }
 
     /** @return Model_Review_Container|null */
