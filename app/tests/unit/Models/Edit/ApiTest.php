@@ -17,6 +17,32 @@ class Model_Edit_ApiTest extends TestCase
         $this->assertSame(array('table', 'id', 'column', 'value'), Model_Edit_Api::OPERATIONS['set']);
     }
 
+    public function testAReleaseNamesTheQueuedAlbumItPublishes(): void
+    {
+        $this->assertSame(array('id'), Model_Edit_Api::OPERATIONS['release']);
+    }
+
+    public function testAnOperationComesFromTheCommandLineThePanelOrAJob(): void
+    {
+        $this->assertSame(array('cli', 'panel', 'job'), Model_Edit_Api::PATHS);
+    }
+
+    public function testUndoLeavesThePageViewsSinceAlone(): void
+    {
+        $this->assertSame(array('viewed'), Model_Edit_Api::COUNTERS);
+    }
+
+    public function testAReleaseShowsTheArtistsEverySongLinkCredits(): void
+    {
+        foreach (Model_Edit_Api::SONG_CREDITS as $table => $column) {
+            $this->assertSame(array($column), Model_Edit_Api::ARTIST_COLUMNS[$table], $table);
+        }
+        $this->assertSame(
+            array('artist_lookup', 'feature_lookup', 'music_lookup', 'remix_lookup', 'scratch_lookup'),
+            array_keys(Model_Edit_Api::SONG_CREDITS)
+        );
+    }
+
     public function testAnArtistMergeMovesABandsMembersAndTheBandsAMemberIsIn(): void
     {
         $this->assertSame(array('artistid', 'bandid'), Model_Edit_Api::ARTIST_COLUMNS['band_lookup']);

@@ -21,8 +21,9 @@
 #   - a request made while the database is down is logged by the application, at error
 #   - nothing is written to a log file in a container
 #   - `up` leaves the import job alone, and the job, fed a batch on stdin as make ovh-import
-#     feeds it, writes covers into the content volume that nginx then serves, and its progress
-#     lines are JSON too
+#     feeds it, queues its album and writes covers into the content volume; the release job,
+#     run as the hhbd-release timer runs it, publishes the album, whose page nginx then serves
+#     with its cover, and both jobs' lines are JSON too (#258)
 #
 # Everything it creates is removed on the way out: the compose project with its volumes, the
 # stand-in edge, the edge network, three image tags and one directory. With STACKTEST_PREBUILT=1
@@ -245,6 +246,17 @@ check "into the catalogue" "7 created, 3 updated, 1 unchanged, 0 refused" \
     "$(jq -r '.totals | "\(.created) created, \(.updated) updated, \(.unchanged) unchanged, \(.refused) refused"' "$T/import.json" 2>/dev/null)"
 cover=$(jq -r 'select(.ref == "release:testowy-album") | .cover.sha256' tests/import/batch/batch.ndjson)
 album=$(jq -r '.documents[] | select(.ref == "release:testowy-album") | .url' "$T/import.json" 2>/dev/null)
+check "the album waits in the release queue, a 404 through the edge" "1 404" \
+    "$(jq -r '.queued | length' "$T/import.json" 2>/dev/null) $(via_edge -o /dev/null -w '%{http_code}' "http://hhbd.pl$album")"
+echo "> the release job, as the hhbd-release timer runs it (#258)"
+if compose run --rm --no-deps -T app php /var/www/html/app/tools/release.php run >"$T/release.out" 2>"$T/release.err"; then
+    ok "the release job runs"
+else
+    bad "the release job runs"
+    tail -20 "$T/release.err"
+fi
+check "its lines are JSON in the host's format, one per album and one for the run" "2 " \
+    "$(grep -c '"logger":"release"' "$T/release.err") $(grep '^{' "$T/release.err" | not_contract)"
 check "the album's page, through the edge, shows the cover the importer wrote" "1" \
     "$(via_edge "http://hhbd.pl$album" | grep -c "src=\"/content/a/600/$cover.jpg\"" || true)"
 check "and nginx serves it from the content volume" "200 image/jpeg" \

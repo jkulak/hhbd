@@ -22,6 +22,9 @@ make ovh-import BATCH=/path/to/batch MODE=apply
 make import-runs                                      # the runs, newest first (ovh-import-runs)
 ```
 
+What an apply would publish waits in the **release queue** for the daily release (#258), below;
+`RELEASE=now` publishes it at once, for a correction or a premiere that should not wait.
+
 A **dry run** reads the whole batch in one transaction and rolls it back, so it reports exactly
 what an apply would do, references between documents included, and leaves nothing but its run in
 `import_runs`. It writes the images to a temporary directory and deletes them, so a file that
@@ -134,7 +137,7 @@ opens no second item.
 | a release's `review`, `{"reason": "date_disputed", "values": ["2013", "2013-05-17"]}` | `date_disputed` | picks one of the values, or types another |
 | a release's `review`, `{"reason": "type_disputed", "values": ["single", "ep"]}` | `type_disputed` | picks one, or another type |
 | a release's `review`, `{"reason": "single_source", "note": "..."}` | `single_source` | marks it checked |
-| an album the import made that lacks a part (below) | `incomplete` | publishes it as it is ("Opublikuj mimo braków"); a later batch that brings the rest publishes it and closes the item |
+| an album the import made that lacks a part (below) | `incomplete` | publishes it as it is ("Opublikuj mimo braków"); a later batch that brings the rest queues it and closes the item |
 
 ## What is published
 
@@ -148,11 +151,38 @@ Any other album is still added, unpublished (`albums.status` 0): a visitor finds
 its page answers 404, and an admin sees it with a review item saying what it lacks, as "brak:
 wytwórnia, data dzienna, tracklista". The report warns of it like any other item.
 
-A later batch that brings the rest publishes it and closes the item; one that brings part of it
-rewrites the item to what is still missing. A batch that finds an album the import made
+A later batch that brings the rest queues it for release and closes the item; one that brings
+part of it rewrites the item to what is still missing. A batch that finds an album the import made
 published but short of a part, as the albums of run 14 were, holds it back the same way. An
 album hhbd had before any import keeps its status whatever it lacks, and so does one an admin
 published as it was: no batch takes those back.
+
+## The release queue
+
+An album with all three is not shown at once: it waits in the release queue (#258), still
+unpublished, and every day `hhbd-release`, a timer on the host, publishes the next five to ten,
+a different number each day, at a time of its own between 09:00 and 21:00. So a year of 150
+albums comes out over three weeks or so, a few every day, and the home page's "Nowe w bazie"
+changes every day, rather than by a year at once and then not at all.
+
+- **Order.** An album joins the queue when its run started (`albums.queued`); the longest-waiting
+  come out first, and a run's albums by their release dates. Two years imported one after the
+  other come out one after the other.
+- **What waits with it.** An artist the import makes waits too (`artists.queued`): its page
+  answers, but search engines are asked not to index it, and it is left out of the sitemap, the
+  lists of artists added and IndexNow, until an album that credits it comes out. Songs on a
+  waiting album answer 404, as they do on any unpublished one.
+- **A release.** The album is published and `added` now, and so are the songs nothing published
+  showed before and the artists that waited for it (those it credits, those its songs credit,
+  the members of the bands it credits), so they lead the lists of what the catalogue gained like
+  rows an admin added that day. Their pages, its artists' and its label's go to IndexNow.
+- **The journal.** Each release is an operation of the edit journal, `release <album>`, written
+  as the import's user (`path` `job`). `make ovh-edit DO="undo <operation>"` puts it back in its
+  place in the queue; `make ovh-edit DO="release <album>"` brings one out at once.
+- **Seeing it.** `make release-queue` (`ovh-release-queue`) says how many wait, by year, which
+  come next, and about when the last comes out; an admin sees an album's place on its page.
+  `make release` (`ovh-release`) runs a day's release by hand, `N=3` for three, `DRY_RUN=1` to
+  only name them. `RELEASE_MIN` and `RELEASE_MAX` in the app's environment change the pace.
 
 ## A row hhbd has
 
@@ -230,6 +260,7 @@ document's rows are committed; a document that fails leaves none.
   "mode": "apply",
   "batch": "batch.ndjson",
   "totals": {"created": 6, "updated": 3, "unchanged": 1, "skipped": 0, "refused": 0},
+  "queued": [781],
   "documents": [
     {"line": 1, "kind": "label", "ref": "label:...", "action": "created", "entity": "label",
      "hhbd_id": 73, "url": "/...-l73.html", "warnings": [], "errors": []}
@@ -238,6 +269,7 @@ document's rows are committed; a document that fails leaves none.
 ```
 
 `action` is `created`, `updated` (a row hhbd had, changed), `unchanged` or `refused`, with the
-reasons in `errors`. `url` is the row's page after an apply. The job exits 0 when every document
+reasons in `errors`. `queued` lists the albums the run put in the release queue, empty with
+`RELEASE=now`. `url` is the row's page after an apply. The job exits 0 when every document
 was read, 1 when any was refused, 2 when the batch could not be read at all; `make` turns any
 failure into its own exit code 2.
