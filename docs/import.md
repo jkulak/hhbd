@@ -102,6 +102,23 @@ An artist document says which one it means:
   than one artist, the document is refused, and the error lists them. It needs an id or a
   qualifier.
 
+## Artists hhbd may hold twice
+
+Two rows can be one artist under two names, "Wigor" and "Vigor", found when two rows claim one
+catalogue id (#192). The sender sends that id to neither row, and asks instead:
+
+```json
+{"kind": "artist", "ref": "artist:vigor", "hhbd_id": 2209, "name": "Vigor",
+ "review": {"kind": "duplicate", "reason": "the same Discogs artist 1718051 as hhbd artist 2210", "suggestions": [2210]}}
+```
+
+The document names its row by `hhbd_id`, needs no `disambiguation`, and carries nothing else: no
+external id, qualifier, provenance or other field, as nothing about the row changes. It opens a
+`duplicate` item on that row. Each pair is asked once: a pair an item has named, on either of
+its rows, open or settled, is not asked again, and an item still open on the row takes in a
+new pair. A suggestion merged since is the artist it went into. Merging either row of a pair,
+on the panel or with `make ovh-edit`, closes the open items the pair has.
+
 ## What a person settles
 
 A document can say what the batch could not settle on its own. The importer opens a review item
@@ -112,6 +129,7 @@ opens no second item.
 | From | Reason | The admin |
 |---|---|---|
 | an artist's `review` | `namesake` | merges it into a suggested artist, keeps it apart, or changes its qualifier |
+| an artist's `review` with `"kind": "duplicate"` | `duplicate` | merges it into a suggested artist ("Połącz z: …"), or says they are different artists ("To różni wykonawcy") |
 | a cover with `needs_upgrade` | `cover_placeholder` | keeps it; a larger cover in a later batch replaces it and closes the item |
 | a release's `review`, `{"reason": "date_disputed", "values": ["2013", "2013-05-17"]}` | `date_disputed` | picks one of the values, or types another |
 | a release's `review`, `{"reason": "type_disputed", "values": ["single", "ep"]}` | `type_disputed` | picks one, or another type |
@@ -166,7 +184,7 @@ Links (aliases, members, cities, credits) are added where missing; none is remov
 | label | `name`, `website`, `profile` | `labels` |
 | label | `logo` | `content/l/<sha256>.png`, 300 px on the longer side, `labels.logo` |
 | artist | `name`, `disambiguation`, `type`, `real_name`, `active_since`, `website`, `profile` | `artists` |
-| artist | `review` | `review_items`, reason `namesake` (#103) |
+| artist | `review` | `review_items`, reason `namesake` (#103), or `duplicate` for `"kind": "duplicate"` (#192) |
 | release | `review` | `review_items`, its `reason` (#103) |
 | artist | `aliases` | `altnames_lookup` |
 | artist | `members` | `band_lookup`, and the artist's type becomes `b` (#65) |

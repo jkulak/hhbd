@@ -27,6 +27,42 @@ class Model_Review_ApiTest extends TestCase
         $this->assertArrayHasKey('cover_placeholder', Model_Review_Api::REASONS);
     }
 
+    public function testAPossibleDuplicateIsMergedOrKeptApartAndNothingElse(): void
+    {
+        $this->assertSame(array('merge', 'keep'), Model_Review_Api::REASONS['duplicate']['actions']);
+        $this->assertSame('Możliwy duplikat', Model_Review_Api::REASONS['duplicate']['label']);
+    }
+
+    private function duplicateItem(int $id, int $artistId, array $suggestions, ?string $resolved = null): Model_Review_Container
+    {
+        return new Model_Review_Container(array(
+            'id' => $id, 'entity_type' => 'artist', 'entity_id' => $artistId, 'reason' => 'duplicate',
+            'detail' => json_encode(array('suggestions' => $suggestions)), 'created' => '2026-10-13 12:00:00', 'resolved' => $resolved,
+        ));
+    }
+
+    public function testEveryPairIsAskedWhenNothingHasAskedAboutIt(): void
+    {
+        $this->assertSame(array(35, 48), Model_Review_Api::unaskedPairs(47, array(35, 48, 35), array()));
+    }
+
+    public function testAPairIsNotAskedAgainFromEitherOfItsRows(): void
+    {
+        $items = array($this->duplicateItem(1, 47, array(35)), $this->duplicateItem(2, 48, array(47)));
+        $this->assertSame(array(49), Model_Review_Api::unaskedPairs(47, array(35, 48, 49), $items));
+    }
+
+    public function testAPairAnAdminSettledIsNotAskedAgain(): void
+    {
+        $items = array($this->duplicateItem(1, 35, array(47), '2026-10-13 13:00:00'));
+        $this->assertSame(array(), Model_Review_Api::unaskedPairs(47, array(35), $items));
+    }
+
+    public function testAnArtistIsNeverAskedAboutItself(): void
+    {
+        $this->assertSame(array(), Model_Review_Api::unaskedPairs(47, array(47), array()));
+    }
+
     public function testAnAdminsDayIsWrittenWholeWithItsPrecision(): void
     {
         $this->assertSame(

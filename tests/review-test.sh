@@ -6,6 +6,8 @@
 #   - merging a namesake into the artist it is moves every reference, drops the ones the kept
 #     artist has already, deletes the duplicate, keeps its old URL as a redirect, and records
 #     what it moved so it can be undone; no column anywhere still names the duplicate
+#   - a possible duplicate merged from its page closes every item the pair has, on either row,
+#     in the merge's journal; "they are different artists" closes it and changes nothing (#192)
 #   - "keep apart", "change the qualifier", "accept the cover", "pick this date", "pick this
 #     type" and "publish it as it is" each do what they say and close the item with the admin
 #     and the time; completing an unpublished album's day and label goes through the edit
@@ -115,6 +117,22 @@ check "with the artist deleted, every row moved, and the membership it had alrea
 admin_row=$(sql "SELECT id FROM users WHERE hhb_usr_id = 10")
 check "the admin's account has a users row of its own, under its name" "Admin" "$(sql "SELECT login FROM users WHERE hhb_usr_id = 10")"
 check "the kept artist is recorded as changed by the admin's users row, not the account's id" "$admin_row" "$(sql "SELECT updatedby FROM artists WHERE id = 64")"
+
+echo "> a possible duplicate (#192): Ten Typ Mes merged into Mes, from its page"
+check "the admin sees the question, the artist it may be, and both answers" "3" \
+    "$(curl -s --max-time 10 -b "$T/jar" "$URL/ten-typ-mes-p47.html" | grep -cE 'Możliwy duplikat|Połącz z: Mes \(id 35\)|To różni wykonawcy')"
+# The same pair asked from Mes's row too, as it was before an import asked each pair once
+sql "INSERT INTO review_items (id, entity_type, entity_id, reason, detail) VALUES (11, 'artist', 35, 'duplicate', '{\"suggestions\": [47]}'), (12, 'artist', 35, 'duplicate', '{\"suggestions\": [48]}')"
+check "the merge goes through, and closes the item with the admin's note" "302 merged 10 1 jeden Discogs" "$(settle 10 merge 35 'jeden Discogs') $(item 10)"
+check "and the pair's item on Mes's row, as merged, by the admin, in the merge's journal" "merged 10 1 edit operation $(sql "SELECT CAST($(json_get undo_data operation) AS INTEGER) FROM review_items WHERE id = 10") merged artist 47 into 35" \
+    "$(item 11)"
+check "but not Mes's question about another artist" "open - 0 -" "$(item 12)"
+check "Ten Typ Mes's page redirects to Mes's" "301 /mes-p35.html" "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$URL/ten-typ-mes-p47.html" | sed "s|$URL||")"
+sql "INSERT INTO review_items (id, entity_type, entity_id, reason, detail) VALUES (13, 'artist', 44, 'duplicate', '{\"suggestions\": [43]}')"
+slon() { sql "SELECT CONCAT_WS(' ', name, COALESCE(disambiguation, ''), COALESCE($(txt updatedby), '-')) FROM artists WHERE id IN (43, 44) ORDER BY id"; }
+slon_before=$(slon)
+check "they are different artists: the item closed, nothing else changed" "302 kept 10 1 - $slon_before" "$(settle 13 keep '' '') $(item 13) $(slon)"
+check "Mes's other question is settled too, to leave the list empty" "302 kept 10 1 -" "$(settle 12 keep '' '') $(item 12)"
 
 echo "> keeping apart, and a new qualifier"
 sql "INSERT INTO review_items (id, entity_type, entity_id, reason, detail) VALUES (6, 'artist', 66, 'namesake', '{\"suggestions\": [64]}'), (7, 'artist', 66, 'namesake', '{\"suggestions\": [64]}')"
