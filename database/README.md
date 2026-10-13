@@ -5,15 +5,21 @@ How the schema is defined and changed, and how a local database is set up.
 ```
 database/
 ├── migrations/
-│   ├── 0001-baseline.up.sql     # the schema as it was when the migrations began
-│   ├── 0001-baseline.down.sql   # drops it
+│   ├── 0039-postgresql.up.sql   # the whole schema, the first migration (below)
+│   ├── 0039-postgresql.down.sql # drops it
 │   └── NNNN-slug.{up,down}.sql  # every change since, in order
 ├── tests/
-│   └── fixtures.sql             # deterministic test data for the smoke test, on the baseline
+│   └── fixtures.sql             # deterministic test data for the smoke test
 ├── dev/
 │   └── init.sql                 # a production dump for local work; git-ignored, optional
 └── README.md
 ```
+
+The database is PostgreSQL 17 (#229), production's since 2026-10-13 (#236), the one engine of
+the services on the shared OVH host. Until then it was MariaDB, whose migrations 0001-0038 made
+the schema; they left the tree with MariaDB (#237) and are in git's history up to v2026.10.42.
+Where this file names one of them, "0006, #51", it says which change made a table or a rule,
+which 0039 now holds.
 
 ## Setting a local database up
 
@@ -23,37 +29,25 @@ With the stack running (`docker compose up -d`):
 make reset-db
 ```
 
-It drops the `hhbd` database and builds it again the way production's is: the baseline schema
-from the migrations, the fixtures loaded onto it, and every later migration run over that data.
-It takes a few seconds, leaves the containers and the volume alone, and ends with the exact table
-and row counts. Run it before and after a piece of work, so the database never carries what the
-last one left. CI sets its database up the same way, so what passes here passes there.
+It drops the `hhbd` database and builds it again the way production's is: the schema from the
+migrations, then the fixtures. It takes a second or two, leaves the containers and the volume
+alone, and ends with the exact table and row counts. Run it before and after a piece of work, so
+the database never carries what the last one left. CI sets its database up the same way, so what
+passes here passes there.
 
-The first reset keeps its result as a dump inside the db container, under a key made of the
-migrations, the fixtures, the scripts that run them, and the day. Every later reset with the same
-key loads that dump instead, in under a second, and gets the same tables, columns, indexes and
-rows; a change to any of those files, or a new day, builds it from the migrations again. The
-last line says which of the two it was. Loaded from a dump, it is the database a restore of
-production's nightly backup gives, which MariaDB treats differently in one respect: see the
-rule on defaults under Migrations. `RESET_DB_FULL=1 make reset-db` always builds it. A
-dump outlives no container: a recreated db starts without one.
-
-It acts only on the running db container of this checkout's compose project, on the local
+It acts only on the running postgres container of this checkout's compose project, on the local
 Docker engine, and refuses anything else before a statement reaches a database: a Docker
-context or `DOCKER_HOST` that is not a local socket, a project with no running db, or a db
-container started from another directory or from `deploy/ovh/compose.yaml`.
-`make test-reset-db` checks all of that against the running stack, the kept dump against a
-build from the migrations included, checksum for checksum; CI runs it beside the smoke test.
+context or `DOCKER_HOST` that is not a local socket, a project with no running postgres, or a
+postgres container started from another directory or from `deploy/ovh/compose.yaml`.
+`make test-reset-db` checks all of that against the running stack, and that two resets give the
+same tables, indexes and rows, checksum for checksum; CI runs it beside the smoke test.
 
-For production-like data instead, put a dump at `database/dev/init.sql` (git-ignored; never
-commit it), mount `database/dev` as the db container's `/docker-entrypoint-initdb.d` in your
-`compose.override.yaml`, and start with an empty volume (`docker compose down -v && docker
-compose up -d`). A dump has the schema but no record of it, so before anything else:
-
-```bash
-make migrate-baseline   # records 0001-baseline as applied, after checking the schema matches
-make migrate            # applies what came after it
-```
+For production-like data instead, take a dump with `make ovh-dump` (it lands outside the
+repository, see [deploy/ovh/README.md](../deploy/ovh/README.md)), put it at
+`database/dev/init.sql` (git-ignored; never commit it), mount `database/dev` as the postgres
+container's `/docker-entrypoint-initdb.d` as `compose.override.example.yaml` does, and start
+with an empty volume (`docker compose down -v && docker compose up -d`). The dump carries its
+`schema_migrations`, so `make migrate` takes it from there.
 
 ## Migrations
 
@@ -62,7 +56,7 @@ two plain SQL files in `database/migrations/`, numbered in order, applied once a
 the table `schema_migrations` of the database itself.
 
 ```bash
-make migrate-new NAME=add-album-isrc   # 0002-add-album-isrc.up.sql and .down.sql, to fill in
+make migrate-new NAME=add-album-isrc   # 0040-add-album-isrc.up.sql and .down.sql, to fill in
 make migrate                           # apply what is pending to the local database
 make migrate-down                      # revert the last one; N=2 for the last two, N=all for every one
 make migrate-status                    # what is applied when, what is pending
@@ -72,110 +66,60 @@ Rules the runner (`scripts/migrate.sh`) enforces:
 
 - **Every migration has a down**, and the down undoes exactly what the up did. A migration
   without a down file is refused before anything runs.
-- **One small change per migration.** MariaDB commits DDL as it goes, so a file that fails
-  halfway has done part of its work and is not recorded; the runner stops there, says which file
-  failed, and nothing after it runs. Undo by hand what did run, fix the file, run again. Small
-  files make that a minute's work.
+- **A file and its record are one transaction.** A file that fails leaves nothing behind and is
+  not recorded; the runner stops there, says which file failed, and nothing after it runs.
 - **A migration must leave the running release working.** On the OVH host, `ci-deploy` takes a
   release that does not become healthy back to the one before, which then runs against whatever
   the migration did (CONTRACT.md §6 in `gcloud-ovh-migrate`). So: add a column in one release,
   use it in the next, drop the old one in a third, never all three at once.
 - **Slugs** are lowercase letters, digits and dashes; **versions** four digits, given by
   `make migrate-new`.
-- Files run as root inside the db container with `--default-character-set=utf8mb4`; a migration
-  that writes Polish text needs no `SET NAMES` of its own.
+- Files run with psql as the image's superuser, over the container's socket; the database is
+  UTF8, so a migration that writes Polish text needs nothing of its own.
 - **A migration that deletes or changes rows archives them first**, in `migration_archive`
   (0009): one row per row, with the migration's version, the table, what the up did to it
   (`deleted`, `inserted`, `changed`) and the row as JSON. The down puts them back from there
   and deletes its own archive rows, so it restores exactly what the up removed. The rows stay in
   the database, not in the migration file: the same file runs on the fixtures and on
   production, whose rows differ, and the repository is public while some rows (ratings,
-  collections) record what people did. 0010 is a worked example.
+  collections) record what people did. 0010, in git's history, is a worked example.
 
-- **A default changes with `MODIFY`**, restating the whole column, not with `ALTER COLUMN ...
-  SET DEFAULT`. MariaDB 10.11 ignores the latter, with no error, when the column's default is
-  an expression such as `current_timestamp()` that came with `CREATE TABLE`, which is how every
-  table of a database loaded from a dump came about: a restore of the nightly backup, or
-  `make reset-db`'s kept result. On a database built by the migrations it works, so only the
-  dump shows it; the downs of 0003 and 0004 were caught that way.
-
-And one rule `make test-schema` holds: **every table is InnoDB**, since 0005 (#45). A new table
-says `ENGINE=InnoDB`; MyISAM has no crash recovery, locks a whole table per write, and gives the
-nightly `mysqldump --single-transaction` no consistent snapshot.
-
-The fixtures are written for the baseline schema. `make reset-db` loads them onto the baseline
-and then runs the later migrations over them, exactly as production's data lives, so a migration
-that cannot cope with real rows fails here first. A migration that changes a table the fixtures
-fill does not need the fixtures changed, unless the smoke test should see something new.
+The fixtures are written for the latest schema: `make reset-db` loads them once every migration
+has run. A migration that changes a table they fill changes `fixtures.sql` with it, in the same
+pull request. To see a migration work on rows, run its down and its up over the fixtures:
+`make reset-db`, then `make migrate-down` and `make migrate`.
 
 `make test-migrate` exercises all of it against the running stack: up and down with the data
-intact, a failing migration, `down all` and back, the baseline, the refusals, and the ssh path
-to production through a stand-in. CI runs it in the smoke workflow's tools half.
+intact, a failing migration, `down all` and back, the refusals, and the ssh path to production
+through a stand-in. CI runs it in the smoke workflow's tools half.
 
-### The baseline
+### 0039, the first
 
-`0001-baseline` is the schema as it was when the migrations began: 45 tables and 286 columns,
-as production had them on 2026-10-08, when it recorded the baseline. The file is the
-`mysqldump --no-data` of 2026-01-04 the tests used to load, completed with the six `urlname`
-columns that dump lacked and production has. It runs only on an empty database. A database
-that already has that schema records it instead:
-
-```bash
-make migrate-baseline        # the local database
-make ovh-migrate-baseline    # production, once; see deploy/ovh/README.md
-```
-
-`baseline` compares every column the baseline would create with what the database has, refuses
-if any is missing (an empty database takes `make migrate`), and notes columns the database has
-that no migration describes. Until a database has a record, `make migrate` refuses to run on it
-when it has tables: the baseline would otherwise recreate them.
+`0039-postgresql` is the schema MariaDB had after its migration 0038, as one migration (#232),
+written from MariaDB's `information_schema` and read through by hand. Its header says what
+changed on the way: types, `json` for the JSON columns, Polish ICU order, `lower()` for the
+unique keys MariaDB enforced without case, `unaccent` for the search. It runs on an empty
+database only: `make migrate` refuses one that has tables but no record. Production's data came
+over once, copied from MariaDB and proved table by table (#233, #236).
 
 ### Production
 
-Production's database is migrated from the Mac, over ssh into `hhbd-db-1` on the OVH host, with
-`make ovh-migrate` before the release that needs the change; `make ovh-migrate-down` asks for a
-typed confirmation. [deploy/ovh/README.md](../deploy/ovh/README.md) has the order.
-
-## PostgreSQL
-
-hhbd moves from MariaDB 10.11 to PostgreSQL 17 (#229), as every service on the shared OVH host
-runs one engine, with a database of its own. Production runs on PostgreSQL since 2026-10-13
-(#236), with MariaDB beside it, untouched, for 7 days of a way back. Until MariaDB goes (#237)
-both run here: MariaDB stays what the default stack and the fixtures use, and PostgreSQL runs
-beside it.
-
-- **The schema** is `database/migrations-postgresql/0039-postgresql.up.sql`: MariaDB's after
-  0038 as one baseline, written from its `information_schema` and read through by hand (#232).
-  Its header says what changed on the way: types, `json` for the JSON columns, Polish ICU
-  order, `lower()` for the unique keys MariaDB enforced without case, `unaccent` for the search.
-  The PostgreSQL track goes on from 0039; MariaDB's 0001-0038 leave the tree with MariaDB.
-- **No new migration** lands between this baseline and #237: one would have to be written for
-  both engines, and production's MariaDB would have to stay the way back.
-- **The stack**: `compose.postgresql.yaml` over `compose.yaml` (and `compose.ci.yaml`) adds the
-  `postgres` service and points the app and the importer at it (`DB_ADAPTER=pdo_pgsql`).
-- **The tools** read `DB_ENGINE`: `DB_ENGINE=postgresql make reset-db` resets MariaDB as always,
-  then drops PostgreSQL's database, builds it by its migrations, and copies MariaDB's rows into
-  it; `make migrate` and the others run psql in the `postgres` service, each migration with its
-  record in one transaction.
-- **The copy**, `app/tools/mariadb-to-postgres.php copy` (#233), runs in the app's container:
-  every table in one transaction, then each read back from both sides and compared by its row
-  count and a checksum that the engines' different order cannot change; a difference rolls it
-  all back. `verify` compares without writing. Every reset runs it, with the fixtures, as it ran
-  once on production at the move.
+Production's database is migrated from the Mac, over ssh into `hhbd-postgres-1` on the OVH
+host, with `make ovh-migrate` before the release that needs the change; `make ovh-migrate-down`
+asks for a typed confirmation. [deploy/ovh/README.md](../deploy/ovh/README.md) has the order.
 
 ## Character set and collation
 
-The catalogue is `utf8mb4` with `utf8mb4_polish_ci` (0021, #71): any character fits, "Żabson"
-and "Zabson" are two names while "żabson" is "Żabson", and `ORDER BY name` follows the Polish
-alphabet. Tables that hold identifiers compare bytes instead (`utf8mb4_bin`: `external_ids`,
-`import_runs`, `import_provenance`, `migration_archive`, `album_covers`, `review_items`,
-`artist_merges`), and the runner's
-`schema_migrations` keeps its own. A new table says which of the two it is. The application
-connects with `utf8mb4` too; MariaDB's `utf8` is the three-byte `utf8mb3`.
+The database is UTF8 and sorts in Polish: ICU's `pl-PL`, set when the cluster is made
+(`POSTGRES_INITDB_ARGS` in every compose file), so `ORDER BY name` follows the Polish alphabet
+(0021, #71, #232). Tables that hold identifiers compare bytes instead, their text columns
+`COLLATE "C"`: `external_ids`, `import_runs`, `import_provenance`, `migration_archive`,
+`album_covers`, `review_items`, `artist_merges`. A new table says which of the two it is.
 
-0021's down restores every column exactly, but refuses once the catalogue holds what the old
-`utf8mb3_general_ci` cannot: a four-byte character, or two names kept apart only by a Polish
-letter.
+A name is unique without its case: "Żabson" and "Zabson" are two names while "żabson" is
+"Żabson", by unique keys on `lower()` (an artist's name with its qualifier, a label's name, a
+feat type, an alternative name). The search goes further and ignores the Polish letters too,
+"lona" finding "Łona", with `unaccent` (`Jkl_Db::searchLike`).
 
 ## Artists who share a name
 
@@ -196,10 +140,6 @@ Where the qualifier shows (`Model_Artist_Container`):
 
 Nothing in hhbd looks an artist up by its name except the importer. Where a name alone fits
 several artists, it names none of them (see [docs/import.md](../docs/import.md)).
-
-0022's down folds each qualifier into the name, "Solar (SBM Label)", so the old key on the name
-holds. It keeps the pair in `migration_archive`, and the up splits it again. Before it changes
-anything, the down refuses if a folded name is one another artist already has.
 
 ## Review items
 
@@ -298,7 +238,7 @@ renaming them across 45 tables would risk more than it would clear up.
 
 | Column | Means | Kept by |
 |---|---|---|
-| `added` | when the row was added | the database: `DEFAULT current_timestamp()`, and **never** `ON UPDATE`, so an update cannot rewrite it |
+| `added` | when the row was added | the database: `DEFAULT CURRENT_TIMESTAMP`, and no trigger, so an update cannot rewrite it |
 | `addedby` | who added it: an `ID` in the old `users` table; `0` means unknown, `1100` the import | whoever inserts; the archived backoffice did, the importer does |
 | `updated` | when the row was last **edited**, by a person or by the import | whoever edits; nothing automatic |
 | `updatedby` | who edited it, an `ID` in `users`; `1100` the import | whoever edits; the review panel and `make edit` through the admin's linked row (below) |
@@ -319,19 +259,17 @@ one more line of the page's details: "Dodano: 12 maja 2009, 14:03 (Kuba)", with 
 `users`, `import` for 1100 and `autor nieznany` for 0.
 
 The catalog tables (`albums`, `artists`, `songs`, `labels`, `news`) have no automatic
-`updated` on purpose: the application bumps `viewed` on every page view, and an `ON UPDATE`
-would turn "last edited" into "last viewed". `make test-schema` holds all of this to account,
+`updated` on purpose: the application bumps `viewed` on every page view, and a trigger setting
+it would turn "last edited" into "last viewed". `make test-schema` holds all of this to account,
 and CI runs it.
 
 For migrations that follow from it:
 
 - **A data fix leaves `updated` and `updatedby` alone.** Repairing encodings or links (#24, #27)
   is not an edit by a person; which migration changed what is recorded in `schema_migrations`.
-- **A new table records its own history**: `added datetime NOT NULL DEFAULT current_timestamp()`,
-  and an `updated` that only its writers set. `datetime`, like the catalog's own `added`: a
-  `timestamp` cannot hold a time after 2038-01-19. A log has its own name for it, as
-  `import_runs.started` does.
-- **No column defaults to a zero date** (`'0000-00-00 …'`): strict SQL modes reject it.
+- **A new table records its own history**: `added timestamp(0) NOT NULL DEFAULT
+  CURRENT_TIMESTAMP`, and an `updated` that only its writers set. A log has its own name for
+  it, as `import_runs.started` does.
 
 ### The import in addedby and updatedby
 
@@ -358,7 +296,8 @@ ORDER BY added, type, id;
 And what it changed that a person had added: the same with `updatedby = 1100 AND addedby <> 1100`.
 
 One thing is known lost and cannot be recovered from the database: 58 of the 120 `added`
-values in `artists_photos`, overwritten in one mass update while `added` still had `ON UPDATE`.
+values in `artists_photos`, overwritten in one mass update while MariaDB's `added` still had
+`ON UPDATE`.
 
 ## Page views
 
@@ -367,7 +306,7 @@ shown, a row per page and day: `entity_type`, `entity_id`, `day`, `views`. The p
 as it renders (`Model_PageView_Api::count`), adding one to the row's `viewed` and to today's
 row here: a GET from a browser, once per visit, page and day, and not from a bot, a HEAD request
 or an admin. The day is Warsaw's, as the application's timezone has it; the database's
-`CURDATE()` is UTC's and turns a day late. Nothing about who viewed is kept. The popularity
+`CURRENT_DATE` is UTC's and turns a day late. Nothing about who viewed is kept. The popularity
 over a period (#194) sums these rows.
 
 ## Passwords and the comment question
@@ -380,7 +319,7 @@ environment (`LEGACY_PASSWORD_SALT`, in `deploy/ovh/hhbd.enc.env` for production
 login writes a `password_hash()` in its place. How many MD5s are left:
 
 ```sql
-SELECT COUNT(*) FROM hhb_users WHERE usr_password REGEXP '^[0-9a-f]{32}$';
+SELECT COUNT(*) FROM hhb_users WHERE usr_password ~ '^[0-9a-f]{32}$';
 ```
 
 An account that never logs in again keeps its MD5, which the salt in git history opens to a
@@ -506,7 +445,7 @@ the volume (`DRY_RUN=1` to only report), and `make check-images` verifies each r
 `albums.year` is a whole date, or NULL when nothing is known (0018, #54).
 `release_date_precision` says how much of it is: `day`, `month` (stored as the month's first
 day) or `year` (stored as 1 January). The page shows "18 listopada 2016", "któregoś listopada
-2016" or "2016" accordingly. A CHECK refuses zero parts such as 2016-11-00, which the catalog
+2016" or "2016" accordingly. A date has no zero parts such as 2016-11-00, which the catalog
 used before.
 
 `announced` is 1 for a release that is not out yet, or not confirmed out. The album list shows
@@ -515,30 +454,19 @@ as announced the dates still to come and eight guessed ones entered years ahead 
 filled in, and removed four 2017 placeholders. An album without a label has `labelid` NULL
 (0017, #55); the placeholder label 27 "BRAK" is gone.
 
-## No zero dates
+## Dates not known whole
 
-No date, datetime or timestamp column holds a zero date or a zero part: what is not known is
-NULL (0018, 0024-0027, #88).
+No date column holds a zero date or a zero part: what is not known is NULL, and what is known
+to the month or the year has a precision (0018, 0024-0027, #88).
 
 | Column | Change |
 |---|---|
 | `artists.since`, `artists.till` | have a precision (`since_precision`, `till_precision`), as release dates do |
 | `band_lookup.insince`, `band_lookup.awaysince` | have a precision too (`insince_precision`, `awaysince_precision`) |
-| `hhb_users.usr_added`, `usr_updated`, `usr_last_login` | are nullable now, so a registration, which writes only `usr_added`, is no longer refused |
+| `hhb_users.usr_added`, `usr_updated`, `usr_last_login` | are nullable, so a registration, which writes only `usr_added`, goes in |
 | `news.expires` | NULL for a news item that never expires |
 
-A CHECK on each of these columns refuses a zero part, in any session.
-
-The server runs with `NO_ZERO_IN_DATE,NO_ZERO_DATE` in `sql_mode` on top of MariaDB's default,
-the same in all three compose files, so the application cannot write a zero date anywhere. The
-fixtures (`fixtures.sql`) and the migrations still need zero dates:
-- the fixtures hold them, as production did, for the migrations to clear;
-- the older migrations rebuild tables that hold them;
-- the downs write them back.
-
-So the fixtures load in a session of their own, and `scripts/migrate.sh` runs every file in a
-session without the two flags (`LEGACY_DATES_SESSION` in `scripts/lib-db.sh`).
-`make test-schema` checks every such column.
+`make test-schema` checks them.
 
 ## External ids
 
@@ -580,8 +508,8 @@ shows and the UPC-A `190295868383` MusicBrainz has for the same record are both
 `00190295868383`. Write through the model rather than with a bare `INSERT`; the model also binds
 every value instead of putting it into the query.
 
-The columns compare bytes (`utf8mb4_bin`): an id matches exactly or not at all, whatever
-collation the catalog tables move to (#71).
+The columns compare bytes (`COLLATE "C"`): an id matches exactly or not at all, whatever
+collation the catalog tables have (#71).
 
 Every id a row has:
 
@@ -632,7 +560,7 @@ nothing but its own row, and for a run already finished. Recording a field from 
 again replaces the reference, licence and time. A page reads a row's provenance with
 `getForEntity()` and asks it `cameFrom('cover', 'discogs')`.
 
-Both tables compare bytes (`utf8mb4_bin`), like `external_ids`: what they hold are identifiers,
+Both tables compare bytes (`COLLATE "C"`), like `external_ids`: what they hold are identifiers,
 not text to sort.
 
 **Credits follow provenance** (#62). Discogs's API terms ask for "Data provided by Discogs."
@@ -659,20 +587,22 @@ SELECT field, source, source_ref, licence, fetched, run_id FROM import_provenanc
 ## Test fixtures
 
 `database/tests/fixtures.sql` holds deterministic data with the IDs the smoke test expects,
-written for the baseline schema. Tables that later migrations add get their rows from
-`database/tests/fixtures-latest.sql`, which `make reset-db` loads after every migration has
-run: an import run with provenance, and external ids.
+for the latest schema: `make reset-db` loads it once every migration has run. It was written by
+`pg_dump --data-only` from the database MariaDB's fixtures made after its migrations (#237);
+why a group of rows is there is said beside it in v2026.10.42's `fixtures.sql` and
+`fixtures-latest.sql`. The rows that take the clock's time do so with `LOCALTIMESTAMP(0)`, so
+they are as new on the day of every reset.
 
 ### Records
 
 | Table | Records | Notes |
 |-------|---------|-------|
-| artists | 51 | Including Pezet, Eldo, Mes (ID 35), etc.; `fixtures-latest.sql` adds two Solars (64, 65) with qualifiers and their band (66) |
-| albums | 50 | Including "Jestem Hip Hopem", Superextra (ID 535) |
-| songs | 33 | Including Pogoda (ID 7329) with features, 6190 stored mangled for 0031 (#27), and 9100 on no album and by no artist (#37) |
+| artists | 61 | Including Pezet, Eldo, Mes (ID 35), etc.; two Solars (64, 65) with qualifiers and their band (66) |
+| albums | 55 | Including "Jestem Hip Hopem", Superextra (ID 535) |
+| songs | 35 | Including Pogoda (ID 7329) with features, 6190 stored mangled for 0031 (#27), and 9100 on no album and by no artist (#37) |
 | labels | 15 | Including Alkopoligamia (ID 58), Asfalt |
 | news | 6 | Including ID 1877 (Onar article) |
-| artists_photos | 30 | Linked to main artists |
+| artists_photos | 31 | Linked to main artists |
 | hhb_users | 11 | Test users for ratings/comments; the admin (10) logs in with `adminpass` and a `password_hash()`, `legacy@example.com` (11) with `legacypass` and an MD5 from before #41, salted with `fixtures-legacy-salt` |
 | ratings | 100 | For Top10 rankings |
 | ratings_avg | 50 | Average ratings for albums |
@@ -715,7 +645,8 @@ song lyrics, news content and photo descriptions.
 
 ### Changing the fixtures
 
-1. Edit `database/tests/fixtures.sql`, keeping the IDs above.
+1. Edit `database/tests/fixtures.sql`, keeping the IDs above: a new row is an `INSERT` under
+   its table's name, with its id; one past an identity's `setval()` at the end moves it too.
 2. Update image references if needed.
 3. `make reset-db`, then `make smoke`.
 

@@ -314,8 +314,7 @@ class Model_Import_Importer extends Jkl_Model_Api
      */
     private function artistNamed($name, $disambiguation = null)
     {
-        // Case does not count, as with MariaDB's collation, which compared without it by
-        // itself; lower() says so on either engine, and matches PostgreSQL's unique key (#232).
+        // Case does not count, and lower() matches the unique key on lower(name) (#232).
         $sql = 'SELECT id, disambiguation FROM artists WHERE lower(name) = lower(?)';
         $values = array(trim($name));
         if (null !== $disambiguation) {
@@ -951,8 +950,7 @@ class Model_Import_Importer extends Jkl_Model_Api
 
     /**
      * Adds a row to a link table unless it has one with the same key (#57 gave each a unique
-     * key). Any other error still stops the document, which INSERT IGNORE would turn into a
-     * warning nobody reads.
+     * key). Any other error still stops the document.
      */
     private function link($group, $table, array $values)
     {

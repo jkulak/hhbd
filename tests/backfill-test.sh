@@ -9,10 +9,7 @@
 # It leaves the backfilled rows in place, as production has them, for the smoke test that reads
 # them; make reset-db takes them away.
 #
-# DB_ENGINE=postgresql checks them on PostgreSQL's database, which the stack's app then uses
-# (compose.postgresql.yaml, #234).
-#
-# Usage: [DB_ENGINE=postgresql] tests/backfill-test.sh
+# Usage: tests/backfill-test.sh
 #
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"

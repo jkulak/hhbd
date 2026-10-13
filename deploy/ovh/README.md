@@ -10,13 +10,13 @@ day, and with it every script that deployed there.
 
 | In this repo | On the host | What |
 |---|---|---|
-| `deploy/ovh/compose.yaml` | `/srv/hhbd/compose.yaml` | the stack: nginx, app, postgres (PostgreSQL, the database since #236), db (MariaDB, kept until #237), and the importer job; nothing published |
+| `deploy/ovh/compose.yaml` | `/srv/hhbd/compose.yaml` | the stack: nginx, app, postgres (PostgreSQL 17, the database since #236), and the importer job; nothing published |
 | `deploy/ovh/hhbd.enc.env` | `/srv/hhbd/hhbd.enc.env` | the secrets, SOPS-encrypted to the host and personal age keys |
 | `deploy/ovh/hhbd.pl.caddyfile` | `/srv/edge/sites/hhbd.pl.caddyfile` | how the shared edge reaches nginx: through the live upstream below |
 | | `/srv/edge/live/hhbd.caddyfile` | the live colour's nginx (`hhbd-blue-web:80` or `hhbd-green-web:80`), which `ci-deploy` rewrites at each switch |
 | `deploy/ovh/service.env` | | what the shared scripts and the deploy workflow read: the service, its images, and the containers whose log format is still to come |
 | | `/srv/hhbd/.env` | `IMAGE_TAG=<running tag>`, written by the host's `ci-deploy` |
-| | volumes `hhbd_db_data`, `hhbd_pg_data`, `hhbd_content` | MariaDB's database until the move, PostgreSQL's, and `content/` |
+| | volumes `hhbd_pg_data`, `hhbd_content` | the database, and `content/` |
 
 Configuration goes in with `make ovh-install`. Images go out with a release, and every merge to
 `main` is one (#193): `.github/workflows/release.yml` refuses a merge whose pull request did not
@@ -72,21 +72,12 @@ superuser over the container's socket, where no password is asked:
 ssh -t ubuntu@$OVH_HOST 'sudo docker exec -it hhbd-postgres-1 psql -U hhbd hhbd'
 ```
 
-MariaDB, with the data as it was at the move, until #237:
-
-```bash
-ssh -t ubuntu@$OVH_HOST 'sudo docker exec -it hhbd-db-1 sh -c "MYSQL_PWD=\"\${MYSQL_ROOT_PASSWORD:?}\" mariadb -uroot hhbd"'
-```
-
-`make ovh-migrate` and the other targets that read production's database (`ovh-migrate-status`,
-`ovh-check-images`, `ovh-import-runs`) go to PostgreSQL; `DB_ENGINE=mariadb` sends them to
-MariaDB.
-
 ### Secrets
 
-`deploy/ovh/hhbd.enc.env` holds `DB_PASSWORD`, `DB_ROOT_PASSWORD`, `GHCR_USER` and
-`GHCR_READ_TOKEN`, every value `ENC[...]`. `make ovh-secrets-check` (and the `Deploy checks`
-workflow) refuses a plaintext value or a file the two keys in `.sops.yaml` do not both open.
+`deploy/ovh/hhbd.enc.env` holds `DB_PASSWORD`, `GHCR_USER` and `GHCR_READ_TOKEN`, every value
+`ENC[...]`; `DB_ROOT_PASSWORD`, MariaDB's root password until #237, is read by nothing.
+`make ovh-secrets-check` (and the `Deploy checks` workflow) refuses a plaintext value or a file
+the two keys in `.sops.yaml` do not both open.
 
 ```bash
 make ovh-secrets-init                    # once: database passwords generated straight into the file
@@ -103,7 +94,7 @@ pinned on the host to `ci-deploy`); the environment admits `v*` tags alone.
 Schema changes travel as migrations, `database/migrations/NNNN-slug.up.sql` with its
 `.down.sql`, applied in order and recorded in the database by `scripts/migrate.sh`
 ([database/README.md](../../database/README.md)). Production's database gets them from the
-Mac, as the admin account, over ssh into `hhbd-db-1`; the deploy key can run nothing but
+Mac, as the admin account, over ssh into `hhbd-postgres-1`; the deploy key can run nothing but
 `ci-deploy`, so a release does not migrate on its own.
 
 ```bash
@@ -117,11 +108,6 @@ release that is running must work with the migrated schema, and the new one with
 `ci-deploy` takes a release that does not become healthy back to the one before, which then
 runs against whatever the migration did (CONTRACT.md §6). Add a column in one release, use it
 in the next, drop the old one in a third.
-
-Once, before the first `make ovh-migrate`: production already has the baseline schema, so
-`make ovh-migrate-baseline` records `0001-baseline` as applied without running it, after
-checking that every column the baseline creates is there. Until then `make ovh-migrate` refuses
-a database that has tables but no record.
 
 ### Imports
 
@@ -157,48 +143,43 @@ make ovh-indexnow DRY_RUN=1   # count every address in the sitemaps, send nothin
 make ovh-indexnow             # send them all: the first time, and after a gap
 ```
 
-### Moving to PostgreSQL
+### How production moved to PostgreSQL
 
-Production moves from MariaDB to its own PostgreSQL 17 (#229), as every service on the host
-runs one engine. Rehearsed on 2026-10-13 on a dump of production (#235), in a throwaway stack:
+From MariaDB to its own PostgreSQL 17 (#229), as every service on the host runs one engine.
+Rehearsed on 2026-10-13 on a dump of production (#235), in a throwaway stack:
 
-- `make ovh-dump`, then the dump loaded into MariaDB (2 s), PostgreSQL's schema made by its
-  migration 0039 (1 s), and `mariadb-to-postgres.php copy`: 56 tables, every one the same on
-  both sides, in 2.8 s. It found the one value production held that the schema refused, two
-  old comments with MariaDB's empty enum value, which 0039 now admits.
+- The dump loaded into MariaDB (2 s), PostgreSQL's schema made by its migration 0039 (1 s),
+  and the copy tool of #233: 56 tables, every one the same on both sides, in 2.8 s. It found the
+  one value production held that the schema refused, two old comments with MariaDB's empty
+  enum value, which 0039 admits.
 - The whole smoke test on production's data passed alike on both engines (177, and the 3
   checks only production's environment passes).
 - Pages: the sum of 21 pages' medians was 788-882 ms on PostgreSQL against 620-852 ms on
   MariaDB over several runs on a laptop, once PostgreSQL's statements went in one round trip
   each (`Jkl_Db::connectionOptions()`; 996 ms before). Search and Top 10 are faster on
   PostgreSQL; a page is some 5 ms slower for opening its connection, and an album's page some
-  20 ms, as it runs hundreds of small queries. Persistent connections brought the sum to
-  708 ms, but a worker then keeps a connection PostgreSQL has dropped, and its request after a
-  database restart fails: not worth 5 ms behind Cloudflare.
+  20 ms, as it runs hundreds of small queries (#255). Persistent connections brought the sum
+  to 708 ms, but a worker then keeps a connection PostgreSQL has dropped, and its request after
+  a database restart fails: not worth 5 ms behind Cloudflare.
 
-The move, on 2026-10-13, in this order. Writes made on MariaDB between step 4 and the deploy
-in step 5 are lost: page views and logins of a few minutes, with no import or edit running.
+The move, on 2026-10-13:
 
-1. Ahead of it: `deploy/ovh/compose.yaml` gains the `postgres` service beside `db`, with the
-   backup's labels and the whole database in memory (128 MB of shared buffers, `pg_prewarm`),
-   the app still on MariaDB; `make ovh-install`, then `make ovh-pg-up`, as a deploy starts the
-   request path's colours alone, and its pull request merged (#253).
-2. `DB_ENGINE=postgresql make ovh-migrate` builds the schema in the empty database. A copy made
-   before, to try it, is emptied first: `DB_ENGINE=postgresql MIGRATE_ASSUME_YES=1 make
-   ovh-migrate-down N=all`.
-3. `make ovh-install` with the compose file whose app and importer say `DB_ADAPTER: pdo_pgsql`,
-   `DB_HOST: postgres`, `DB_PORT: "5432"`. The running containers keep MariaDB until the next
-   deploy.
-4. `make ovh-pg-copy`: the copy, verified table by table, then analysed.
-5. That compose file's pull request merged: its release starts the idle colour on PostgreSQL,
-   and the edge moves to it once it is healthy.
-6. `SMOKE_TARGET=production ./tests/smoke-test.sh https://hhbd.pl`, `make ovh-logs LEVEL=error`,
-   and the next night's backup holds a PostgreSQL dump.
+1. `postgres` beside `db` in the compose file, with the backup's labels and the whole database
+   in memory (128 MB of shared buffers, `pg_prewarm`), the app still on MariaDB: installed,
+   started, and released as v2026.10.40 (#253).
+2. The schema made by `make ovh-migrate` in the empty database.
+3. The compose file with the app and the importer on PostgreSQL installed, the running
+   containers still on MariaDB.
+4. The copy at 06:52 UTC: 56 tables in 7 s, each proved the same on both sides, then analysed.
+5. The release of that compose file, v2026.10.41 (#254), at 06:53: the idle colour started on
+   PostgreSQL and the edge moved to it. The writes MariaDB took in between, a minute of page
+   views on a quiet site, were not carried over.
+6. The whole smoke test on https://hhbd.pl passed (180), no error in the logs, and every
+   identity past its table's highest id.
 
-The way back, for 7 days: `make ovh-install` with the compose file before step 3, and the
-running tag deployed again (`gh workflow run deploy.yml --repo jkulak/hhbd --ref <tag>`);
-MariaDB still holds everything up to step 4, and whatever was written on PostgreSQL since is
-lost. After 7 days MariaDB goes (#237), and `make ovh-dump` with it, which dumps MariaDB.
+MariaDB went the same day, sooner than the week planned as a way back (#237): its service,
+`php8.4-mysql`, the copy tool and MariaDB's own migrations left the repository, and its
+container and volume the host.
 
 ### How production moved
 

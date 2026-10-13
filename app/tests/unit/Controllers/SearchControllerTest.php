@@ -50,9 +50,4 @@ class SearchControllerTest extends TestCase
     {
         $this->assertSame("\u{0301}", SearchController::termsOf("\u{0301}"));
     }
-
-    public function testEverySearchComparesWithoutCaseOrPolishLetters(): void
-    {
-        $this->assertSame('utf8mb4_uca1400_ai_ci', Jkl_Db::SEARCH_COLLATION);
-    }
 }
