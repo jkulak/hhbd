@@ -82,7 +82,7 @@ For production-like data instead, load a dump and record the baseline with `make
 
 - `make reset-db` drops the local `hhbd` database and builds it again from the migrations and the fixtures, or loads the kept result of that build while those files have not changed (`RESET_DB_FULL=1` always builds). Run it before and after a piece of work. It acts only on the running db container of this checkout's compose project on the local Docker engine, and refuses anything else.
 - Every schema or data change is a migration in `database/migrations/`, `NNNN-slug.up.sql` with its `.down.sql`: `make migrate-new NAME=...`, `make migrate`, `make migrate-down`, `make migrate-status`. Keep each one small and compatible with the release that is running. Production gets them with `make ovh-migrate` before the release that needs them ([deploy/ovh/README.md](deploy/ovh/README.md)). Details in [database/README.md](database/README.md).
-- PostgreSQL runs beside MariaDB until production moves to it (#229): `compose.postgresql.yaml` over `compose.yaml` puts the app on it, `DB_ENGINE=postgresql make reset-db` builds it from `database/migrations-postgresql/` and a verified copy of MariaDB's rows (`app/tools/mariadb-to-postgres.php`). No new migration until the move: database/README.md says why.
+- Production runs on PostgreSQL 17 since 2026-10-13 (#236); MariaDB stays beside it, locally the default, until #237 removes it. `compose.postgresql.yaml` over `compose.yaml` puts the app on PostgreSQL, `DB_ENGINE=postgresql make reset-db` builds it from `database/migrations-postgresql/` and a verified copy of MariaDB's rows (`app/tools/mariadb-to-postgres.php`). The `ovh-*` database targets go to PostgreSQL unless `DB_ENGINE=mariadb`. No new migration until #237: database/README.md says why.
 
 ## Common Commands
 
@@ -266,7 +266,7 @@ After a deploy the host runs `deploy/ovh/smoke.sh`, `SMOKE_TARGET=release`: each
 
 - **Legacy codebase**: Uses Zend Framework 1 (EOL but maintained by shardj/zf1-future)
 - **PHP 8.4**: Debian 13's own packages in every image (`Dockerfile-php`): nothing is compiled, a rebuild takes Debian's security updates, and both Debian 13 and PHP 8.4 are supported to 2028. shardj/zf1-future runs on it. Classes that fill properties they do not declare (the model containers, the controllers' `$params`) carry `#[\AllowDynamicProperties]` (#37)
-- **Database**: MariaDB 10.11, credentials in environment variables
+- **Database**: PostgreSQL 17 in production since 2026-10-13 (#236), MariaDB 10.11 locally and beside it until #237, credentials in environment variables
 - **Content directory**: User uploads stored in `content/` - excluded from git, shared across services via Docker volumes
 - **Polish language**: Many UI strings, comments, and routes are in Polish
 

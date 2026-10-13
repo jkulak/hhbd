@@ -12,7 +12,7 @@
 # nginx and the app, the request's path, run in two colours (CONTRACT.md §2): a deploy starts
 # the idle one on the new tag beside the live one and moves the edge to it once it is healthy,
 # so no request waits on a release. Each colour has a network of its own on which only its app
-# answers to `app`, so nginx's `fastcgi_pass app:9000` finds its own colour's. The database and
+# answers to `app`, so nginx's `fastcgi_pass app:9000` finds its own colour's. The databases and
 # the importer run once.
 #
 name: hhbd
@@ -41,11 +41,14 @@ x-nginx: &nginx
 x-app: &app
   restart: unless-stopped
   depends_on:
-    db:
+    postgres:
       condition: service_healthy
   environment:
     APPLICATION_ENV: production
-    DB_HOST: db
+    # PostgreSQL since 2026-10-13 (#236); MariaDB, db below, keeps the data as it was then
+    DB_ADAPTER: pdo_pgsql
+    DB_HOST: postgres
+    DB_PORT: "5432"
     DB_NAME: hhbd
     DB_USER: hhbd
     DB_PASSWORD: ${DB_PASSWORD:?}
@@ -140,7 +143,9 @@ services:
     profiles: [jobs]
     environment:
       APPLICATION_ENV: production
-      DB_HOST: db
+      DB_ADAPTER: pdo_pgsql
+      DB_HOST: postgres
+      DB_PORT: "5432"
       DB_NAME: hhbd
       DB_USER: hhbd
       DB_PASSWORD: ${DB_PASSWORD:?}
@@ -153,6 +158,9 @@ services:
         limits:
           memory: 640M
 
+  # MariaDB, production's database until 2026-10-13: nothing reads it since the move to
+  # PostgreSQL, and it keeps the data as it was then, for 7 days of a way back (deploy/ovh/
+  # README.md). It goes in #237.
   db:
     image: mariadb:10.11.8
     restart: unless-stopped
@@ -192,13 +200,11 @@ services:
         limits:
           memory: 320M
 
-  # PostgreSQL 17, hhbd's database once production moves to it (#229, #236): the one engine
-  # the host's services run, bankdata's version. Beside MariaDB until the move; the app reads
-  # it once its environment says DB_ADAPTER=pdo_pgsql. The schema comes from
-  # database/migrations-postgresql (DB_ENGINE=postgresql make ovh-migrate), the data from
-  # make ovh-pg-copy; the cluster sorts in Polish, ICU's pl, set when it is made. The role is the
-  # image's superuser, hhbd, with the password the app uses, which the host's nightly backup
-  # dumps as (its CONTRACT.md §8).
+  # PostgreSQL 17, hhbd's database since 2026-10-13 (#229, #236): the one engine the host's
+  # services run, bankdata's version. The schema comes from database/migrations-postgresql
+  # (make ovh-migrate), the data was copied from MariaDB by make ovh-pg-copy; the cluster sorts
+  # in Polish, ICU's pl, set when it is made. The role is the image's superuser, hhbd, with the
+  # password the app uses, which the host's nightly backup dumps as (its CONTRACT.md §8).
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
@@ -232,9 +238,9 @@ services:
           memory: 320M
 
 volumes:
-  # The database. Backed up as a dump, as db's labels say, not as a volume.
+  # MariaDB's, until #237. Backed up as a dump, as db's labels say, not as a volume.
   db_data:
-  # PostgreSQL's (#236). Backed up as a dump too, as postgres's labels say.
+  # The database, PostgreSQL's (#236). Backed up as a dump too, as postgres's labels say.
   pg_data:
   # Covers, photos and logos, hhbd_content on the host. nginx reads it, and the importer job is
   # the one thing that writes it since the backoffice was archived. Backed up as a volume.
