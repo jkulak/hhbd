@@ -176,7 +176,7 @@ check "the database runs with NO_ZERO_IN_DATE and NO_ZERO_DATE (#88)" "1 1" \
 # backup finds it by its labels, the schema comes from its migration, and the copy the move
 # makes runs as make ovh-pg-copy runs it, in a one-off app container of this stack.
 check "PostgreSQL's database sorts in Polish (ICU pl-PL)" "i pl-PL" \
-    "$(docker exec "$PROJECT-postgres-1" psql -U hhbd -d hhbd -Atc "SELECT datlocprovider || ' ' || datlocale FROM pg_database WHERE datname = 'hhbd'")"
+    "$(docker exec "$PROJECT-postgres-1" psql -U hhbd -d hhbd -Atc "SELECT datlocprovider::text || ' ' || datlocale FROM pg_database WHERE datname = 'hhbd'")"
 check "the host's backup dumps it as hhbd (CONTRACT.md §8)" "hhbd hhbd" \
     "$(docker inspect "$PROJECT-postgres-1" --format '{{index .Config.Labels "backup.postgres"}} {{index .Config.Labels "backup.user"}}')"
 DB_ENGINE=postgresql MIGRATE_TARGET=container MIGRATE_CONTAINER="$PROJECT-postgres-1" ./scripts/migrate.sh up >/dev/null
