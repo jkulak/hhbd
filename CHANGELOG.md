@@ -14,6 +14,10 @@ which the note leaves out. The sections before, by version, stay as they were.
 
 ## 2026-10-13
 
+- An import can ask whether an artist row hhbd has is the same artist as another, and an admin
+  answers on the artist's page under "Możliwy duplikat": "Połącz z: …" merges it into the other,
+  "To różni wykonawcy" keeps both (#192). Nothing about the row changes until then; each pair
+  is asked once, from either row, and merging either row closes the questions the pair has.
 - hhbd.pl runs on PostgreSQL 17 instead of MariaDB, the one engine of the services on its host,
   with the whole database held in memory (#236). The data was copied once and proved table by
   table; MariaDB stays beside it, untouched, for 7 days of a way back, and then goes (#237).
