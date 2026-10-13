@@ -14,6 +14,9 @@ which the note leaves out. The sections before, by version, stay as they were.
 
 ## 2026-10-13
 
+- MariaDB is gone from hhbd: PostgreSQL alone holds the catalogue, in production and in every
+  local and CI stack, a week sooner than planned (#237). Production's MariaDB container and
+  volume leave the host; `php8.4-mysql` leaves the images.
 - An import can ask whether an artist row hhbd has is the same artist as another, and an admin
   answers on the artist's page under "Możliwy duplikat": "Połącz z: …" merges it into the other,
   "To różni wykonawcy" keeps both (#192). Nothing about the row changes until then; each pair
@@ -43,6 +46,12 @@ which the note leaves out. The sections before, by version, stay as they were.
   logged-in account change the query; a percent sign searched for is no longer a wildcard.
 
 ### Internal
+- The tools and the tests are PostgreSQL's alone (#237): MariaDB's migrations 0001-0038 left the
+  tree, 0039 is the first; the fixtures are one PostgreSQL file, dumped from the database
+  MariaDB's fixtures and migrations made and proved the same table by table; `make reset-db`
+  builds from them in a second or two, with nothing kept between resets; CI runs each half of
+  the smoke tests once, on PostgreSQL; `DB_ENGINE`, `make ovh-pg-copy`, `ovh-pg-verify`,
+  `ovh-pg-up`, the baseline commands and `compose.postgresql.yaml` are gone, as is the copy tool.
 - Production runs PostgreSQL 17 beside MariaDB, empty until the move (#236): its own container,
   sorting in Polish, the whole database held in memory (128 MB of shared buffers, pg_prewarm
   across restarts), labelled for the host's nightly backup; the app stays on MariaDB. `make

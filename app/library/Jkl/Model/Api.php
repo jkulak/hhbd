@@ -11,16 +11,14 @@ abstract class Jkl_Model_Api
     {
         $dbRes = Zend_Registry::get('Config_Resources');
 
-        // On MariaDB utf8mb4, so names with characters outside the Basic Multilingual Plane
-        // survive the trip both ways (#71), and the SQL modes that keep the SQL portable (#231);
-        // on PostgreSQL its UTF8, and values as strings (#232): Jkl_Db::connectionOptions().
+        // UTF8, values as strings, and statements in one round trip: Jkl_Db::connectionOptions().
         $params = array(
           'host'      => $dbRes['db']['params']['host'],
           'dbname'    => $dbRes['db']['params']['dbname'],
           'username'  => $dbRes['db']['params']['username'],
           'password'  => $dbRes['db']['params']['password'],
           'port'      => (isset($dbRes['db']['params']['port']) ? $dbRes['db']['params']['port'] : ''),
-        ) + Jkl_Db::connectionOptions($dbRes['db']['adapter']);
+        ) + Jkl_Db::connectionOptions();
         try {
             //Jkl_Db::factory zwraca inny obiekt, dlatego nie diala przeciazenie
             $this->_db = Jkl_Db::getInstance($dbRes['db']['adapter'], $params);

@@ -28,10 +28,10 @@ Production runs on the shared OVH host, behind its Caddy edge and Cloudflare, si
    docker compose up -d
    ```
 
-2. Import the database (first time only):
+2. Build the database, the schema from the migrations and the test fixtures:
 
    ```bash
-   docker compose exec -T db mysql -uhhbd -phhbd_password hhbd < database/_backup/2016-06-30-hhbd.sql
+   make reset-db
    ```
 
 3. Install PHP dependencies (required after first build):
@@ -57,7 +57,7 @@ Production runs on the shared OVH host, behind its Caddy edge and Cloudflare, si
 | nginx | 8080 | Frontend web server |
 | app | 9000 | PHP-FPM application server |
 | adminer | 8082 | Database management |
-| db | 3306 | MariaDB database |
+| postgres | 5432 | PostgreSQL database |
 
 ## Development
 
@@ -195,7 +195,7 @@ HHBD is a content management system for Polish hip-hop music featuring:
 | ---------- | ------------------------------------- |
 | Framework  | Zend Framework 1 (shardj/zf1-future)  |
 | Language   | PHP 8.4                               |
-| Database   | MariaDB 10.11                         |
+| Database   | PostgreSQL 17                         |
 | Web Server | Nginx + PHP-FPM                       |
 
 ### Architecture

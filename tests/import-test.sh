@@ -16,10 +16,6 @@
 #
 # Usage: tests/import-test.sh [base URL of the running site, default http://localhost:8080]
 #
-# DB_ENGINE=postgresql runs it against the stack on PostgreSQL (compose.postgresql.yaml, #234),
-# where the importer writes to PostgreSQL too: the same checks, the resets through
-# DB_ENGINE=postgresql make reset-db.
-#
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 # shellcheck source=tests/lib-test-db.sh
@@ -215,8 +211,7 @@ duplicate() { # duplicate <name> <artist> <suggestions as JSON>: a batch of the 
 }
 # The duplicate items on the three rows, as row:suggestions:state, | between them
 items() {
-    local suggestions="JSON_EXTRACT(detail, '\$.suggestions')"
-    is_pg && suggestions="CAST(detail->'suggestions' AS text)"
+    local suggestions="CAST(detail->'suggestions' AS text)"
     sql "SELECT COALESCE($(agg "CONCAT(entity_id, ':', $suggestions, ':', CASE WHEN resolved IS NULL THEN 'open' ELSE 'settled' END)" id '|'), '-') FROM review_items WHERE reason = 'duplicate' AND entity_id IN (43, 44, 45)"
 }
 slon() { sql "SELECT CONCAT_WS(' ', name, COALESCE(disambiguation, ''), COALESCE($(txt updated), '-'), (SELECT COUNT(*) FROM external_ids WHERE entity_type = 'artist' AND entity_id = 44), (SELECT COUNT(*) FROM import_provenance WHERE entity_type = 'artist' AND entity_id = 44)) FROM artists WHERE id = 44"; }

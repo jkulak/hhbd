@@ -12,7 +12,7 @@
 # nginx and the app, the request's path, run in two colours (CONTRACT.md §2): a deploy starts
 # the idle one on the new tag beside the live one and moves the edge to it once it is healthy,
 # so no request waits on a release. Each colour has a network of its own on which only its app
-# answers to `app`, so nginx's `fastcgi_pass app:9000` finds its own colour's. The databases and
+# answers to `app`, so nginx's `fastcgi_pass app:9000` finds its own colour's. The database and
 # the importer run once.
 #
 name: hhbd
@@ -45,8 +45,7 @@ x-app: &app
       condition: service_healthy
   environment:
     APPLICATION_ENV: production
-    # PostgreSQL since 2026-10-13 (#236); MariaDB, db below, keeps the data as it was then
-    DB_ADAPTER: pdo_pgsql
+    # PostgreSQL since 2026-10-13 (#236)
     DB_HOST: postgres
     DB_PORT: "5432"
     DB_NAME: hhbd
@@ -143,7 +142,6 @@ services:
     profiles: [jobs]
     environment:
       APPLICATION_ENV: production
-      DB_ADAPTER: pdo_pgsql
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_NAME: hhbd
@@ -158,52 +156,10 @@ services:
         limits:
           memory: 640M
 
-  # MariaDB, production's database until 2026-10-13: nothing reads it since the move to
-  # PostgreSQL, and it keeps the data as it was then, for 7 days of a way back (deploy/ovh/
-  # README.md). It goes in #237.
-  db:
-    image: mariadb:10.11.8
-    restart: unless-stopped
-    # Read-optimized for a 33 MB all-InnoDB database (writes ~100/week), tuned in 887938f and #67:
-    # - the InnoDB buffer pool holds all data and indexes about three times over (152 disk reads
-    #   in 142 million requests on production);
-    # - the MyISAM key cache is down to 8 MB from its 128 MB default, since no table is MyISAM
-    #   since #45;
-    # - the Aria page cache, which holds on-disk temporary tables (86% of them, because the
-    #   queries carry TEXT columns), is down to 32 MB from 128 MB: ample for a small site.
-    # - sql_mode is MariaDB's default plus NO_ZERO_IN_DATE and NO_ZERO_DATE, so no zero date is
-    #   written again once 0018 and 0024-0027 cleared them (#88).
-    # Keep compose.yaml and compose.ci.yaml on the same flags, so tests see what production sees.
-    command: >
-      --innodb-buffer-pool-size=96M --innodb-buffer-pool-dump-at-shutdown=1 --innodb-buffer-pool-load-at-startup=1 --max-connections=20 --innodb-log-file-size=16M --innodb-flush-log-at-trx-commit=2 --innodb-read-io-threads=4 --innodb-write-io-threads=1 --table-open-cache=400 --innodb-stats-on-metadata=0 --transaction-isolation=READ-COMMITTED --skip-name-resolve --key-buffer-size=8M --aria-pagecache-buffer-size=32M --sql-mode=STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,NO_ZERO_IN_DATE,NO_ZERO_DATE
-    # The host's nightly backup dumps this database, as root with the password this container
-    # was started with, read inside it (its CONTRACT.md §8).
-    labels:
-      backup.mariadb: hhbd
-      backup.password-env: MYSQL_ROOT_PASSWORD
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?}
-      MYSQL_DATABASE: hhbd
-      MYSQL_USER: hhbd
-      MYSQL_PASSWORD: ${DB_PASSWORD:?}
-    volumes:
-      - db_data:/var/lib/mysql
-    healthcheck:
-      # Accepts connections and InnoDB has finished starting.
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 60s
-    deploy:
-      resources:
-        limits:
-          memory: 320M
-
   # PostgreSQL 17, hhbd's database since 2026-10-13 (#229, #236): the one engine the host's
-  # services run, bankdata's version. The schema comes from database/migrations-postgresql
-  # (make ovh-migrate), the data was copied from MariaDB by make ovh-pg-copy; the cluster sorts
-  # in Polish, ICU's pl, set when it is made. The role is the image's superuser, hhbd, with the
+  # services run, bankdata's version. The schema comes from database/migrations
+  # (make ovh-migrate), the data from MariaDB, copied once at the move and proved table by table;
+  # the cluster sorts in Polish, ICU's pl, set when it is made. The role is the image's superuser, hhbd, with the
   # password the app uses, which the host's nightly backup dumps as (its CONTRACT.md §8).
   postgres:
     image: postgres:17-alpine
@@ -211,8 +167,8 @@ services:
     # The whole database in memory: 53 MB with its indexes, so 128 MB of shared buffers hold it
     # twice over, and the planner is told reads come from memory (effective_cache_size,
     # random_page_cost). pg_prewarm's autoprewarm writes down what the buffers hold and loads it
-    # back at start, so a restart does not begin from disk. Keep compose.postgresql.yaml on the
-    # same flags, so tests see what production sees.
+    # back at start, so a restart does not begin from disk. Keep compose.yaml on the same flags,
+    # so tests see what production sees.
     command: >
       postgres -c shared_buffers=128MB -c effective_cache_size=192MB -c random_page_cost=1.1 -c shared_preload_libraries=pg_prewarm -c max_connections=40
     labels:
@@ -238,9 +194,8 @@ services:
           memory: 320M
 
 volumes:
-  # MariaDB's, until #237. Backed up as a dump, as db's labels say, not as a volume.
-  db_data:
-  # The database, PostgreSQL's (#236). Backed up as a dump too, as postgres's labels say.
+  # The database, PostgreSQL's (#236). Backed up as a dump, as postgres's labels say, not as a
+  # volume.
   pg_data:
   # Covers, photos and logos, hhbd_content on the host. nginx reads it, and the importer job is
   # the one thing that writes it since the backoffice was archived. Backed up as a volume.

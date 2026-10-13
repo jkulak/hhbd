@@ -62,7 +62,7 @@ class Model_Artist_Api extends Jkl_Model_Api
 
     public function getFirstLetters()
     {
-        // Each letter once whatever its case, as MariaDB's collation had it on its own (#232)
+        // Each letter once whatever its case (#232)
         $query = 'SELECT DISTINCT UPPER(SUBSTR(name, 1, 1)) as name from artists order by name ASC';
         return  $this->_db->fetchAll($query);
     }

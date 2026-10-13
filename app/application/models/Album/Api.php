@@ -250,8 +250,8 @@ class Model_Album_Api extends Jkl_Model_Api
         $query = "SELECT *, t1.id as alb_id, t1.labelid AS lab_id, t1.epfor as epforid, t1.added as alb_added, t1.addedby as alb_addedby, t1.viewed as alb_viewed, t3.id as art_id " .
         "FROM albums t1, album_artist_lookup t2, artists t3 " .
         "WHERE (t3.id=t2.artistid AND t2.albumid=t1.id AND t1.id=" . $id . ") " .
-        // The album's artist is its credit with the lowest artist id, as MariaDB read them by
-        // the (albumid, artistid) key; its name is in the album's address, so it must not move.
+        // The album's artist is its credit with the lowest artist id, as the pages have always
+        // picked it; its name is in the album's address, so it must not move.
         "ORDER BY t3.id";
         $result = $this->_db->fetchAll($query);
         $params = $result[0];
@@ -466,7 +466,7 @@ class Model_Album_Api extends Jkl_Model_Api
 
     public function getFirstLetters()
     {
-        // Each letter once whatever its case, as MariaDB's collation had it on its own (#232)
+        // Each letter once whatever its case (#232)
         $query = 'SELECT DISTINCT UPPER(SUBSTR(title, 1, 1)) as name from albums WHERE status = ' . self::PUBLISHED . ' order by name ASC';
         return  $this->_db->fetchAll($query);
     }
