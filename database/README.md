@@ -139,16 +139,18 @@ typed confirmation. [deploy/ovh/README.md](../deploy/ovh/README.md) has the orde
 ## PostgreSQL
 
 hhbd moves from MariaDB 10.11 to PostgreSQL 17 (#229), as every service on the shared OVH host
-runs one engine, with a database of its own. Until production moves (#236) both run here:
-MariaDB stays what production and the default stack use, and PostgreSQL runs beside it.
+runs one engine, with a database of its own. Production runs on PostgreSQL since 2026-10-13
+(#236), with MariaDB beside it, untouched, for 7 days of a way back. Until MariaDB goes (#237)
+both run here: MariaDB stays what the default stack and the fixtures use, and PostgreSQL runs
+beside it.
 
 - **The schema** is `database/migrations-postgresql/0039-postgresql.up.sql`: MariaDB's after
   0038 as one baseline, written from its `information_schema` and read through by hand (#232).
   Its header says what changed on the way: types, `json` for the JSON columns, Polish ICU
   order, `lower()` for the unique keys MariaDB enforced without case, `unaccent` for the search.
   The PostgreSQL track goes on from 0039; MariaDB's 0001-0038 leave the tree with MariaDB.
-- **No new migration** lands between this baseline and the move: one would have to be written
-  for both engines.
+- **No new migration** lands between this baseline and #237: one would have to be written for
+  both engines, and production's MariaDB would have to stay the way back.
 - **The stack**: `compose.postgresql.yaml` over `compose.yaml` (and `compose.ci.yaml`) adds the
   `postgres` service and points the app and the importer at it (`DB_ADAPTER=pdo_pgsql`).
 - **The tools** read `DB_ENGINE`: `DB_ENGINE=postgresql make reset-db` resets MariaDB as always,
@@ -158,8 +160,8 @@ MariaDB stays what production and the default stack use, and PostgreSQL runs bes
 - **The copy**, `app/tools/mariadb-to-postgres.php copy` (#233), runs in the app's container:
   every table in one transaction, then each read back from both sides and compared by its row
   count and a checksum that the engines' different order cannot change; a difference rolls it
-  all back. `verify` compares without writing. Every reset runs it, so the copy production will
-  get is tested with the fixtures each time.
+  all back. `verify` compares without writing. Every reset runs it, with the fixtures, as it ran
+  once on production at the move.
 
 ## Character set and collation
 

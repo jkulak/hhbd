@@ -35,17 +35,21 @@ ovh-ps: ## Show hhbd's containers on the OVH host and their health
 ovh-smoke: ## Smoke-test https://hhbd.pl on production's data, as a release is checked before it is kept
 	./deploy/ovh/smoke.sh
 
+# Production's engine since the move (#236). DB_ENGINE=mariadb reaches MariaDB, which keeps the
+# data as it was then until #237.
+OVH_DB_ENGINE = DB_ENGINE=$${DB_ENGINE:-postgresql}
+
 .PHONY: ovh-migrate-status
 ovh-migrate-status: ## Show which migrations production's database on the OVH host has applied
-	MIGRATE_TARGET=ovh ./scripts/migrate.sh status
+	$(OVH_DB_ENGINE) MIGRATE_TARGET=ovh ./scripts/migrate.sh status
 
 .PHONY: ovh-migrate
 ovh-migrate: ## Apply the pending migrations to production's database, before the release that needs them
-	MIGRATE_TARGET=ovh ./scripts/migrate.sh up
+	$(OVH_DB_ENGINE) MIGRATE_TARGET=ovh ./scripts/migrate.sh up
 
 .PHONY: ovh-migrate-down
 ovh-migrate-down: ## Revert the last applied migration on production's database, after typing a confirmation; N=2 for two
-	MIGRATE_TARGET=ovh ./scripts/migrate.sh down $(or $(N),1)
+	$(OVH_DB_ENGINE) MIGRATE_TARGET=ovh ./scripts/migrate.sh down $(or $(N),1)
 
 .PHONY: ovh-migrate-baseline
 ovh-migrate-baseline: ## Once: record the baseline on production's database, which already has its schema
@@ -69,7 +73,7 @@ ovh-photos-backfill: ## Record the size, type and hash of production's artist ph
 
 .PHONY: ovh-check-images
 ovh-check-images: ## List the covers, photos and logos production's catalogue names but its content volume lacks
-	DB_TARGET=ovh ./scripts/check-images.sh
+	$(OVH_DB_ENGINE) DB_TARGET=ovh ./scripts/check-images.sh
 
 .PHONY: ovh-indexnow
 ovh-indexnow: ## Tell IndexNow every address in production's sitemaps, at the start and after a gap (#220); DRY_RUN=1 to only count them
@@ -98,12 +102,12 @@ ovh-pg-verify: ## Compare production's MariaDB and PostgreSQL table by table, wr
 	$(call OVH_PG_COPY,verify)
 
 .PHONY: ovh-dump
-ovh-dump: ## Dump production's database to ~/Developer/hhbd-dumps/hhbd-prod-<date>.sql.gz, outside every repository (read-only on production)
+ovh-dump: ## Dump production's database to ~/Developer/hhbd-dumps/hhbd-prod-<date>.pg.sql.gz, outside every repository (read-only on production; DB_ENGINE=mariadb for MariaDB's, until #237)
 	@./scripts/ovh-dump.sh
 
 .PHONY: ovh-import-runs
 ovh-import-runs: ## List the last import runs on production's database, newest first; N=50 for more
-	DB_TARGET=ovh ./scripts/import-runs.sh $(or $(N),20)
+	$(OVH_DB_ENGINE) DB_TARGET=ovh ./scripts/import-runs.sh $(or $(N),20)
 
 # --- Secrets ------------------------------------------------------------------------------
 # ovh-secrets-set, -show, -edit and -check come with deploy/ovh/ovh.mk.
