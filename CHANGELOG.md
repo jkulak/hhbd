@@ -14,6 +14,12 @@ which the note leaves out. The sections before, by version, stay as they were.
 
 ## 2026-10-13
 
+- Pages send far fewer queries to the database (#255): on production's data an album's page
+  sends 16 where it sent 162, a search 14 where it sent 224, the artist list 8 where it sent up
+  to 192, the home page 23 where it sent 131 and a song's page 13 where it sent 126. A page reads
+  its rows' artists, albums, covers, photos and credits a kind at a time instead of row by row,
+  and an artist or a label once a request, so a page with more rows sends no more queries; the
+  pages look exactly as they did.
 - Imported albums come out a few a day instead of a whole year at once (#258): an import puts
   what it would publish in a release queue, and every day at a time of its own between 09:00
   and 21:00 the next five to ten albums are published and lead the home page's "Nowe w bazie".
@@ -54,6 +60,14 @@ which the note leaves out. The sections before, by version, stay as they were.
   logged-in account change the query; a percent sign searched for is no longer a wildcard.
 
 ### Internal
+- Each page's queries are counted on every pull request (`tests/query-count-test.sh`, #255),
+  in the smoke tests' site half and by `make test-query-count`: an album's, an artist's, a
+  song's and a label's page, the home page, the album and artist lists and the top 10 send at
+  most 25 each on the fixtures, and as many with many more rows as with one. The count comes in
+  the `X-Query-Count` header, from Zend_Db's profilers, which compose.yaml's
+  `QUERY_COUNT_HEADER` turns on and production's compose file leaves off; the smoke test and the
+  production stack's test check that hhbd.pl sends no such header. The ratings' model, which
+  nothing called, is gone.
 - Production's secrets no longer hold `DB_ROOT_PASSWORD` (#261), MariaDB's root password, which
   nothing has read since MariaDB left with #237.
 - The release queue is tested end to end on every pull request (`tests/release-test.sh`, #258),
