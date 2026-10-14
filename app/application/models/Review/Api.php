@@ -10,7 +10,7 @@ class Model_Review_Api extends Jkl_Model_Api
     /** Each reason, as the panel names it, with the actions that settle it */
     public const REASONS = array(
         'namesake'          => array('label' => 'Ta sama nazwa co inny wykonawca', 'actions' => array('merge', 'keep', 'qualifier')),
-        'duplicate'         => array('label' => 'Możliwy duplikat', 'actions' => array('merge', 'keep')),
+        'duplicate'         => array('label' => 'Możliwy duplikat', 'actions' => array('merge', 'absorb', 'keep')),
         'cover_placeholder' => array('label' => 'Okładka zastępcza', 'actions' => array('accept')),
         'date_disputed'     => array('label' => 'Źródła nie zgadzają się co do daty', 'actions' => array('pick')),
         'type_disputed'     => array('label' => 'Źródła nie zgadzają się co do typu wydania', 'actions' => array('pick')),
@@ -18,9 +18,13 @@ class Model_Review_Api extends Jkl_Model_Api
         'incomplete'        => array('label' => 'Niekompletny, nieopublikowany', 'actions' => array('complete', 'publish')),
     );
 
-    /** What each action writes as the item's resolution */
+    /**
+     * What each action writes as the item's resolution. A duplicate merges either way (#260):
+     * merge takes the row the item is on into the artist it suggests, absorb that artist into
+     * the row; both are a merge.
+     */
     public const RESOLUTIONS = array(
-        'merge' => 'merged', 'keep' => 'kept', 'qualifier' => 'qualified', 'accept' => 'accepted', 'pick' => 'picked',
+        'merge' => 'merged', 'absorb' => 'merged', 'keep' => 'kept', 'qualifier' => 'qualified', 'accept' => 'accepted', 'pick' => 'picked',
         'publish' => 'published', 'complete' => 'completed',
     );
 
@@ -174,7 +178,8 @@ class Model_Review_Api extends Jkl_Model_Api
      * Settles an open item with one of the actions its reason allows. Whatever it changes and
      * the item's resolution go in one transaction, and the admin is recorded as updatedby.
      *
-     * @param string $value the artist to merge into, the qualifier, or the picked date or type
+     * @param string $value the artist to merge into or to take in, the qualifier, or the picked
+     *                      date or type
      */
     public function settle($id, $action, $value, $note, $userId)
     {
@@ -189,12 +194,16 @@ class Model_Review_Api extends Jkl_Model_Api
         $this->_db->beginTransaction();
         try {
             $undo = null;
-            if ('merge' === $action) {
+            if ('merge' === $action || 'absorb' === $action) {
+                // Only an artist the item asks about: the panel offers no other.
+                if (!in_array((int) $value, $item->getSuggestions(), true)) {
+                    throw new RuntimeException(sprintf('Item %d does not ask about artist %d.', $item->id, (int) $value));
+                }
                 // The same merge as the command line's, journalled the same way (#115); the item
-                // keeps naming the artist it was about.
+                // keeps naming the artist it was about, whichever way it merges.
                 $operation = Model_Edit_Api::getInstance()->run(
                     'merge-artists',
-                    array($item->entityId, (int) $value),
+                    'merge' === $action ? array($item->entityId, (int) $value) : array((int) $value, $item->entityId),
                     $userId,
                     null === $note ? sprintf('review item %d: %s', $item->id, $item->getLabel()) : $note,
                     'panel',

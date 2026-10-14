@@ -27,10 +27,21 @@ class Model_Review_ApiTest extends TestCase
         $this->assertArrayHasKey('cover_placeholder', Model_Review_Api::REASONS);
     }
 
-    public function testAPossibleDuplicateIsMergedOrKeptApartAndNothingElse(): void
+    public function testAPossibleDuplicateIsMergedEitherWayOrKeptApartAndNothingElse(): void
     {
-        $this->assertSame(array('merge', 'keep'), Model_Review_Api::REASONS['duplicate']['actions']);
+        $this->assertSame(array('merge', 'absorb', 'keep'), Model_Review_Api::REASONS['duplicate']['actions']);
         $this->assertSame('Możliwy duplikat', Model_Review_Api::REASONS['duplicate']['label']);
+    }
+
+    public function testEitherWayADuplicateIsSettledAsMerged(): void
+    {
+        $this->assertSame('merged', Model_Review_Api::RESOLUTIONS['merge']);
+        $this->assertSame('merged', Model_Review_Api::RESOLUTIONS['absorb']);
+    }
+
+    public function testANamesakeMergesOnlyTheImportedRowIntoTheOneHhbdHad(): void
+    {
+        $this->assertSame(array('merge', 'keep', 'qualifier'), Model_Review_Api::REASONS['namesake']['actions']);
     }
 
     private function duplicateItem(int $id, int $artistId, array $suggestions, ?string $resolved = null): Model_Review_Container

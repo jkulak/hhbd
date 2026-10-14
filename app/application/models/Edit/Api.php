@@ -297,12 +297,16 @@ class Model_Edit_Api extends Jkl_Model_Api
     private function mergeArtists($fromId, $intoId, array $options)
     {
         $from = $this->one('artists', $fromId);
-        $this->one('artists', $intoId);
+        $into = $this->one('artists', $intoId);
         if ($fromId === $intoId) {
             throw new RuntimeException('An artist cannot be merged into itself.');
         }
         foreach (self::ARTIST_COLUMNS as $table => $columns) {
             foreach ($columns as $column) {
+                if ('altnames_lookup' === $table) {
+                    $this->moveNames($from, $into);
+                    continue;
+                }
                 $this->moveAll($table, $column, $fromId, $intoId);
             }
         }
@@ -321,6 +325,37 @@ class Model_Edit_Api extends Jkl_Model_Api
             'merged' => $this->now(),
         ));
         $this->touch('artists', $intoId);
+    }
+
+    /**
+     * The merged artist's alternative names go to the kept one, and so does its name (#260):
+     * whoever searches for it still finds the artist. A name the kept artist has already, as
+     * its name or as an alternative one, is not added twice, and an alternative name that is
+     * the kept artist's own name is none.
+     */
+    private function moveNames(array $from, array $into)
+    {
+        $rows = $this->_db->fetchAll(
+            'SELECT *, CASE WHEN lower(altname) = lower(?) THEN 1 ELSE 0 END AS is_name FROM altnames_lookup WHERE artistid = ?',
+            array($into['name'], $from['id'])
+        );
+        foreach ($rows as $row) {
+            $isName = 1 === (int) $row['is_name'];
+            unset($row['is_name']);
+            if ($isName) {
+                $this->deleteRow('altnames_lookup', $row);
+            } else {
+                $this->moveRow('altnames_lookup', $row, array('artistid' => $into['id']));
+            }
+        }
+        $known = $this->_db->fetchAll(
+            'SELECT 1 FROM artists WHERE id = ? AND lower(name) = lower(?)
+             UNION ALL SELECT 1 FROM altnames_lookup WHERE artistid = ? AND lower(altname) = lower(?)',
+            array($into['id'], $from['name'], $into['id'], $from['name'])
+        );
+        if (empty($known)) {
+            $this->insertRow('altnames_lookup', array('artistid' => (int) $into['id'], 'altname' => $from['name'], 'status' => 999));
+        }
     }
 
     /**
