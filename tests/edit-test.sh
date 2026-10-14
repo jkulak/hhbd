@@ -9,6 +9,8 @@
 #   - set with a JSON object changes all its columns in one operation that one undo takes back,
 #     and refuses all of them for one it may not set (#145)
 #   - a merged album's page answers 301 with the album kept, which keeps showing its own cover
+#   - a merged artist's name and alternative names become the kept artist's alternative names
+#     (#260)
 #   - undoing each of them gives back the data exactly: a dump taken before the operation and
 #     one taken after the undo are the same
 #   - an operation is undone once, and an undo is not undone
@@ -146,6 +148,8 @@ echo "> merging two artists"
 apply merge-artists "merge-artists 35 2"
 check "merge-artists: Mes is gone, nothing names him, his page redirects to Eldo's" "0 0 1" \
     "$(sql "SELECT COUNT(*) FROM artists WHERE id = 35") $(naming artist 35) $(sql "SELECT COUNT(*) FROM artist_merges WHERE id = 35 AND into_id = 2")"
+check "merge-artists: Mes's name and his alternative one are Eldo's alternative names now" "JŹW Mes" \
+    "$(sql "SELECT $(agg altname altname ' ') FROM altnames_lookup WHERE artistid = 2")"
 undo merge-artists
 
 echo "> deleting an album, an artist, a label"
