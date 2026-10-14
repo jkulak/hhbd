@@ -8,6 +8,9 @@
 #     what it moved so it can be undone; no column anywhere still names the duplicate
 #   - a possible duplicate merged from its page closes every item the pair has, on either row,
 #     in the merge's journal; "they are different artists" closes it and changes nothing (#192)
+#   - a possible duplicate merges either way, this row into the other or the other into this
+#     one, and the merged artist's name becomes one of the kept one's alternative names, unless
+#     it has that name already; a namesake merges only its own way (#260)
 #   - "keep apart", "change the qualifier", "accept the cover", "pick this date", "pick this
 #     type" and "publish it as it is" each do what they say and close the item with the admin
 #     and the time; completing an unpublished album's day and label goes through the edit
@@ -98,9 +101,12 @@ sql "INSERT INTO import_provenance (entity_type, entity_id, field, source, sourc
 sql "INSERT INTO hhb_comments (com_object_id, com_object_type, com_author_id, com_content, com_added) VALUES (65, 'p', 1, 'Który to Solar?', NOW())"
 before64=$(references 64)
 check "the duplicate has references in every kind of table" "8" "$(references 65)"
+check "a namesake cannot take the other row in: it merges only its own way" "302 open - 0 - 8" "$(settle 1 absorb 64 '') $(item 1) $(references 65)"
 check "the merge goes through" "302" "$(settle 1 merge 64 'ten sam, inna wytwórnia')"
 check "no column anywhere still names the duplicate" "0" "$(references 65)"
 check "the kept artist has them, but the membership it had already" "$((before64 + 7))" "$(references 64)"
+altnames() { sql "SELECT $(agg altname altname ' ') FROM altnames_lookup WHERE artistid = $1"; }
+check "the duplicate's alternative name goes with it, and its name, the kept one's own, is not added" "Solar z Poznania" "$(altnames 64)"
 check "the duplicate is gone, and its URL redirects to the kept one" "0 301 /solar-sbm-label-p64.html" \
     "$(sql "SELECT COUNT(*) FROM artists WHERE id = 65") $(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$URL/solar-raper-z-poznania-p65.html" | sed "s|$URL||")"
 check "the item closed by the admin, with the note" "merged 10 1 ten sam, inna wytwórnia" "$(item 1)"
@@ -116,8 +122,10 @@ check "the admin's account has a users row of its own, under its name" "Admin" "
 check "the kept artist is recorded as changed by the admin's users row, not the account's id" "$admin_row" "$(sql "SELECT updatedby FROM artists WHERE id = 64")"
 
 echo "> a possible duplicate (#192): Ten Typ Mes merged into Mes, from its page"
-check "the admin sees the question, the artist it may be, and both answers" "3" \
-    "$(curl -s --max-time 10 -b "$T/jar" "$URL/ten-typ-mes-p47.html" | grep -cE 'Możliwy duplikat|Połącz z: Mes \(id 35\)|To różni wykonawcy')"
+check "the admin sees the question, the artist it may be, and the answers: either way, or apart" "4" \
+    "$(curl -s --max-time 10 -b "$T/jar" "$URL/ten-typ-mes-p47.html" | grep -cE 'Możliwy duplikat|Połącz z: Mes \(id 35\)|Przyłącz tutaj: Mes \(id 35\)|To różni wykonawcy')"
+check "a merge with an artist the item does not ask about is refused, either way" "302 302 open - 0 - 47" \
+    "$(settle 10 merge 2 '') $(settle 10 absorb 2 '') $(item 10) $(sql "SELECT id FROM artists WHERE id = 47")"
 # The same pair asked from Mes's row too, as it was before an import asked each pair once
 sql "INSERT INTO review_items (id, entity_type, entity_id, reason, detail) VALUES (11, 'artist', 35, 'duplicate', '{\"suggestions\": [47]}'), (12, 'artist', 35, 'duplicate', '{\"suggestions\": [48]}')"
 check "the merge goes through, and closes the item with the admin's note" "302 merged 10 1 jeden Discogs" "$(settle 10 merge 35 'jeden Discogs') $(item 10)"
@@ -125,11 +133,24 @@ check "and the pair's item on Mes's row, as merged, by the admin, in the merge's
     "$(item 11)"
 check "but not Mes's question about another artist" "open - 0 -" "$(item 12)"
 check "Ten Typ Mes's page redirects to Mes's" "301 /mes-p35.html" "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$URL/ten-typ-mes-p47.html" | sed "s|$URL||")"
+check "Ten Typ Mes is one of Mes's names now" "JŹW Ten Typ Mes" "$(altnames 35)"
+check "and the search finds Mes by it" "1" "$(curl -s --max-time 10 "$URL/szukaj.html?q=Ten+Typ+Mes" | grep -c 'href="[^"]*/mes-p35.html"')"
+
 sql "INSERT INTO review_items (id, entity_type, entity_id, reason, detail) VALUES (13, 'artist', 44, 'duplicate', '{\"suggestions\": [43]}')"
 slon() { sql "SELECT CONCAT_WS(' ', name, COALESCE(disambiguation, ''), COALESCE($(txt updatedby), '-')) FROM artists WHERE id IN (43, 44) ORDER BY id"; }
 slon_before=$(slon)
 check "they are different artists: the item closed, nothing else changed" "302 kept 10 1 - $slon_before" "$(settle 13 keep '' '') $(item 13) $(slon)"
 check "Mes's other question is settled too, to leave the list empty" "302 kept 10 1 -" "$(settle 12 keep '' '') $(item 12)"
+
+echo "> a possible duplicate merged the other way (#260): Tede takes Mefistotedes in, from Tede's page"
+sql "INSERT INTO review_items (id, entity_type, entity_id, reason, detail) VALUES (14, 'artist', 9, 'duplicate', '{\"suggestions\": [4]}'), (15, 'artist', 4, 'duplicate', '{\"suggestions\": [9]}')"
+check "the merge goes through, and closes the item with the admin's note" "302 merged 10 1 Tede zostaje" "$(settle 14 absorb 4 'Tede zostaje') $(item 14)"
+check "Tede is kept, and Mefistotedes is gone" "Tede" "$(sql "SELECT $(agg name id ' ') FROM artists WHERE id IN (4, 9)")"
+check "Mefistotedes's page redirects to Tede's" "301 /tede-p9.html" "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "$URL/mefistotedes-p4.html" | sed "s|$URL||")"
+check "the pair's item on the merged row is closed as merged" "merged 10 1" "$(item 15 | cut -d' ' -f1-3)"
+check "it is journalled as a merge of Mefistotedes into Tede" "merge-artists 4 9" \
+    "$(sql "SELECT CONCAT_WS(' ', o.operation, $(json_get o.args from), $(json_get o.args into)) FROM edit_operations o JOIN review_items r ON o.id = CAST($(json_get r.undo_data operation) AS INTEGER) WHERE r.id = 14")"
+check "names Tede has already are not added twice, and Tede is no alternative name of Tede" "Mefistotedes MercTedes" "$(altnames 9)"
 
 echo "> keeping apart, and a new qualifier"
 sql "INSERT INTO review_items (id, entity_type, entity_id, reason, detail) VALUES (6, 'artist', 66, 'namesake', '{\"suggestions\": [64]}'), (7, 'artist', 66, 'namesake', '{\"suggestions\": [64]}')"

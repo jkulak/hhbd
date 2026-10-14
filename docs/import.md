@@ -132,12 +132,17 @@ opens no second item.
 | From | Reason | The admin |
 |---|---|---|
 | an artist's `review` | `namesake` | merges it into a suggested artist, keeps it apart, or changes its qualifier |
-| an artist's `review` with `"kind": "duplicate"` | `duplicate` | merges it into a suggested artist ("Połącz z: …"), or says they are different artists ("To różni wykonawcy") |
+| an artist's `review` with `"kind": "duplicate"` | `duplicate` | merges it into a suggested artist ("Połącz z: …"), takes the suggested artist in ("Przyłącz tutaj: …", #260), or says they are different artists ("To różni wykonawcy") |
 | a cover with `needs_upgrade` | `cover_placeholder` | keeps it; a larger cover in a later batch replaces it and closes the item |
 | a release's `review`, `{"reason": "date_disputed", "values": ["2013", "2013-05-17"]}` | `date_disputed` | picks one of the values, or types another |
 | a release's `review`, `{"reason": "type_disputed", "values": ["single", "ep"]}` | `type_disputed` | picks one, or another type |
 | a release's `review`, `{"reason": "single_source", "note": "..."}` | `single_source` | marks it checked |
 | an album the import made that lacks a part (below) | `incomplete` | publishes it as it is ("Opublikuj mimo braków"); a later batch that brings the rest queues it and closes the item |
+
+A merge of two artists, from the panel or `make ovh-edit`, keeps the merged artist's name and its
+alternative names as alternative names of the artist it went into (#260), so a search for the
+name it had still finds the artist; a name the kept artist has already is not added twice. The
+merged artist's page redirects to the kept one's.
 
 ## What is published
 
