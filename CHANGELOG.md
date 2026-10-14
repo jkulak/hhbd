@@ -12,6 +12,15 @@ merge names the release. Each change is a bullet whose first sentence stands alo
 the release's note; changes to the build, the tests, CI or the deploy go under `### Internal`,
 which the note leaves out. The sections before, by version, stay as they were.
 
+## 2026-10-14
+
+- A possible duplicate artist merges either way (#260): besides merging the row it is asked on
+  into the suggested artist ("Połącz z: …"), the admin can take the suggested artist into this
+  row ("Przyłącz tutaj: …"), and each says which page stays and which one redirects. Either way
+  the pair's other open items close with it. A merge of two artists, from the panel or
+  `make ovh-edit`, now keeps the merged artist's name as one of the kept artist's alternative
+  names, unless it has that name already, so a search for it still finds the artist.
+
 ## 2026-10-13
 
 - Pages send far fewer queries to the database (#255): on production's data an album's page
