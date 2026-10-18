@@ -12,6 +12,15 @@ merge names the release. Each change is a bullet whose first sentence stands alo
 the release's note; changes to the build, the tests, CI or the deploy go under `### Internal`,
 which the note leaves out. The sections before, by version, stay as they were.
 
+## 2026-10-18
+
+### Internal
+- `database/migrations/` holds migrations alone again (#265): the script for old links and its
+  four notes that #25 put there, merged by mistake and released as v2026.10.48, are gone.
+  `scripts/migrate.sh` refuses a directory with anything else in it, so `make reset-db`,
+  `make migrate` and `make ovh-migrate` stopped on them. The script was out of date anyway:
+  MySQL's SQL, for links that #24 and #26 had settled with redirects.
+
 ## 2026-10-14
 
 - A possible duplicate artist merges either way (#260): besides merging the row it is asked on
