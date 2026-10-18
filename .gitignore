@@ -46,5 +46,6 @@ coverage.xml
 app/.php-cs-fixer.cache
 .php-cs-fixer.cache
 
-# Working notes, one file per task
-/tasks/
+# Working notes, one file per task. In a worktree tasks is a link to the main checkout's, which
+# /tasks/ would not ignore.
+/tasks
