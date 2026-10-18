@@ -10,6 +10,37 @@ help: ## List every target
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) \
 	  | awk 'BEGIN{FS=":.*?## "}{printf "  \033[1m%-22s\033[0m %s\n", $$1, $$2}'
 
+# Where coming back to hhbd starts. tests/make-how-test.sh holds every target it names to one
+# make help lists.
+.PHONY: how
+how: ## How a change goes from the local stack to hhbd.pl, and how the catalogue is run there
+	@printf '\n%s\n\n' 'A change, from the local stack to hhbd.pl'
+	@printf '  %-2s %-22s %s\n' \
+	  1. 'make up'               'Start the local stack, building what changed. In development mode' \
+	  '' ''                      '(compose.override.example.yaml copied to compose.override.yaml' \
+	  '' ''                      'once) it installs app/vendor too. make hooks, once a checkout.' \
+	  2. 'make reset-db'         'A fresh database from the migrations and the fixtures, before the' \
+	  '' ''                      'work and again after it.' \
+	  3. 'make migrate-new'      'NAME=<slug> for any change to the schema or the data, then' \
+	  '' ''                      'make migrate; make migrate-down takes it back.' \
+	  4. 'make test-unit'        'Then make cs, and make smoke, make test-query-count and' \
+	  '' ''                      'make test-schema, each with URL= set to the local stack.' \
+	  5. 'make ovh-migrate'      'Before the merge, for a change that brings a migration;' \
+	  '' ''                      'make ovh-install for one to the compose file, the secrets or the' \
+	  '' ''                      'edge snippet.' \
+	  6. 'make ovh-smoke'        'Once the merge (gh pr merge --squash, CI green) has released and' \
+	  '' ''                      'deployed itself; then hhbd.pl for what the change does.' \
+	  '' ''                      'make ovh-ps and make ovh-logs when something is off.'
+	@printf '\n%s\n\n' 'The catalogue on hhbd.pl'
+	@printf '  %-2s %-22s %s\n' \
+	  1. 'make ovh-import'       'BATCH=<dir>, a dry run; MODE=apply reads it in. Its albums wait in' \
+	  '' ''                      'the release queue, a few published every day.' \
+	  2. 'make ovh-release-queue' 'What waits, and about when the last of it comes out.' \
+	  3. 'make ovh-edit'         'DO="merge-albums 850 841" BY=<admin> WHY="...", a dry run;' \
+	  '' ''                      'MODE=apply makes it, DO="undo <operation>" takes one back.' \
+	  4. 'make ovh-dump'         'The production database to ~/Developer/hhbd-dumps, read-only.'
+	@echo
+
 # --- The OVH host -------------------------------------------------------------------------
 
 # The shared host's own targets, word for word the same in every service on it: ovh-install,
@@ -107,6 +138,15 @@ ovh-secrets-init: ## Create deploy/ovh/hhbd.enc.env once, with the database pass
 	done
 	@printf 'jkulak' | ./scripts/secrets.sh set $(OVH_SECRETS) GHCR_USER
 	@echo "Next: make ovh-secrets-set KEY=GHCR_READ_TOKEN (a classic PAT with read:packages only)"
+
+# --- The local stack ----------------------------------------------------------------------
+
+# Only the builder stage, development mode's, has composer: it fills app/vendor in the
+# checkout's app/, which the stack mounts.
+.PHONY: up
+up: ## Start the local stack, building what changed; in development mode app/vendor gets the dev dependencies too
+	docker compose up -d --build --wait
+	@[ ! -f compose.override.yaml ] || docker compose exec -T app composer install --no-interaction
 
 # --- The local database -------------------------------------------------------------------
 

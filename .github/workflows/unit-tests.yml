@@ -41,3 +41,7 @@ jobs:
       - name: Run PHPUnit
         working-directory: app
         run: ./vendor/bin/phpunit -c tests/phpunit.xml
+
+      # make how names targets by name: one renamed or removed must not leave a step behind it.
+      - name: Check make how names real targets
+        run: ./tests/make-how-test.sh

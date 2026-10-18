@@ -15,6 +15,14 @@ which the note leaves out. The sections before, by version, stay as they were.
 ## 2026-10-18
 
 ### Internal
+- `make how`, right after `make help`, says how a change goes from the local stack to hhbd.pl
+  and how the catalogue is run there, each step by the target that does it (#267).
+  `tests/make-how-test.sh`, in the unit tests' workflow, fails on a target it names that
+  `make help` does not list. `make up` starts the local stack and, in development mode, fills
+  `app/vendor`.
+- `.gitignore` ignores `/tasks` without the slash, so a worktree's link to the main checkout's
+  `tasks/` stays out of git too (#267).
+- CLAUDE.md lost its opening line and the section on fetching external pages (#267).
 - `database/migrations/` holds migrations alone again (#265): the script for old links and its
   four notes that #25 put there, merged by mistake and released as v2026.10.48, are gone.
   `scripts/migrate.sh` refuses a directory with anything else in it, so `make reset-db`,
