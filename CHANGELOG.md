@@ -2,15 +2,26 @@
 
 Releases use CalVer, `vYYYY.MM.N`: the year, the month, and a counter that starts at 0 each
 month (`v2026.10.0`, `v2026.10.1`, `v2026.11.0`). Every merge to `main` releases itself (#193):
-`.github/workflows/release.yml` publishes the next tag on the merge commit, with a note made of
-the first sentence of each entry this file gained since the release before, and dispatches the
-deploy (`.github/workflows/deploy.yml`). A release by hand, `gh release create vYYYY.MM.N`, is
-only for what that workflow refuses.
+`.github/workflows/release.yml` publishes the next tag on the commit the merge leaves on `main`,
+with a note made of the first sentence of each entry this file gained since the release before,
+and dispatches the deploy (`.github/workflows/deploy.yml`). A release by hand,
+`gh release create vYYYY.MM.N`, is only for what that workflow refuses.
 
 From 2026-10-11 the sections go by date, newest first, with no version in the heading: the
 merge names the release. Each change is a bullet whose first sentence stands alone, as it is
 the release's note; changes to the build, the tests, CI or the deploy go under `### Internal`,
 which the note leaves out. The sections before, by version, stay as they were.
+
+## 2026-10-21
+
+### Internal
+- A pull request is merged with `make ship PR=<n>` (#271), the same `scripts/ship.sh` as in
+  every repository on the shared host, copied from gcloud-ovh-migrate's template word for word.
+  It rebases the branch onto `main`, signs its commits again where they need it, waits for the
+  pull request's checks and pushes it to `main` as a fast-forward, so `main` is one line of
+  signed commits and no merge commit of GitHub's lands on it again; then it follows the
+  release, the deploy and production's logs. `make how` and CLAUDE.md name it as the merge in
+  place of `gh pr merge --squash`.
 
 ## 2026-10-18
 

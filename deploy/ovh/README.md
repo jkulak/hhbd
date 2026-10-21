@@ -23,8 +23,9 @@ Configuration goes in with `make ovh-install`. Images go out with a release, and
 `main` is one (#193): `.github/workflows/release.yml` refuses a merge whose pull request did not
 pass its checks, names it `vYYYY.MM.N`, publishes it with a note made of the first sentence of
 each entry `CHANGELOG.md` gained, and dispatches `.github/workflows/deploy.yml` against the tag.
-Migrations and configuration go in before the merge (the order is in `CLAUDE.md`, "Finished
-means running on hhbd.pl"). A release by hand, `gh release create vYYYY.MM.N`, is only for what
+Migrations and configuration go in before the merge, `make ship PR=<n>`, which waits for the
+release and the deploy it starts (the order is in `CLAUDE.md`, "Finished means running on
+hhbd.pl"). A release by hand, `gh release create vYYYY.MM.N`, is only for what
 the workflow refuses.
 
 The deploy workflow builds the app, nginx and importer

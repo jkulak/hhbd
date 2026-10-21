@@ -9,8 +9,8 @@ Every task is a GitHub issue in jkulak/hhbd: what waits for later carries the `b
 A change is finished when it runs on hhbd.pl, not when its pull request is merged (#175). Whoever does it takes it all the way, in this order:
 
 1. `make ovh-migrate` when it brings a migration, `make ovh-install` when it changes the production compose file, the secrets or the edge snippet: both before the merge, as the merge releases it. The running release has to work with them (deploy/ovh/README.md).
-2. Merge the pull request once CI is green. The merge releases itself (#193): `release.yml` refuses a merge whose pull request did not pass, names the release `vYYYY.MM.N`, writes its note from what `CHANGELOG.md` gained, and dispatches `deploy.yml` against the tag.
-3. Watch the release run and the deploy run it dispatches to green; a deploy whose smoke test fails has been taken back, and is fixed and merged again.
+2. Merge the pull request with `make ship PR=<n>` (#271), `INSTALLED=1` after a `make ovh-install`, never with `gh pr merge` or GitHub's merge button, whose commits carry GitHub's signature or none. It rebases the branch onto `main` and signs its commits again where they need it, waits for the pull request's checks on that head, and pushes it to `main` as a fast-forward: `main` stays one line of commits signed by Kuba. The merge releases itself (#193): `release.yml` refuses a merge whose pull request did not pass, names the release `vYYYY.MM.N`, writes its note from what `CHANGELOG.md` gained, and dispatches `deploy.yml` against the tag.
+3. `make ship` follows the release run, the deploy run it dispatches and production's logs after; a deploy whose smoke test fails has been taken back, and is fixed and merged again.
 4. Check hhbd.pl itself for what the change does, beyond the release's smoke test.
 
 `gh release create vYYYY.MM.N` by hand is only for what `release.yml` refuses, such as a commit that reached `main` without a pull request. A change that touches nothing deployed (docs, tests, CI) is released all the same, with a note that says so.

@@ -27,10 +27,13 @@ how: ## How a change goes from the local stack to hhbd.pl, and how the catalogue
 	  '' ''                      'make test-schema, each with URL= set to the local stack.' \
 	  5. 'make ovh-migrate'      'Before the merge, for a change that brings a migration;' \
 	  '' ''                      'make ovh-install for one to the compose file, the secrets or the' \
-	  '' ''                      'edge snippet.' \
-	  6. 'make ovh-smoke'        'Once the merge (gh pr merge --squash, CI green) has released and' \
-	  '' ''                      'deployed itself; then hhbd.pl for what the change does.' \
-	  '' ''                      'make ovh-ps and make ovh-logs when something is off.'
+	  '' ''                      'edge snippet, and then INSTALLED=1 for make ship.' \
+	  6. 'make ship'             'PR=<n>, the merge, never gh pr merge: rebased onto main and' \
+	  '' ''                      'signed, gated by its checks, pushed to main as a fast-forward;' \
+	  '' ''                      'it follows the release, the deploy and production'"'"'s logs.' \
+	  7. 'make ovh-smoke'        'The release'"'"'s smoke test again, by hand, then hhbd.pl itself for' \
+	  '' ''                      'what the change does. make ovh-ps and make ovh-logs when' \
+	  '' ''                      'something is off.'
 	@printf '\n%s\n\n' 'The catalogue on hhbd.pl'
 	@printf '  %-2s %-22s %s\n' \
 	  1. 'make ovh-import'       'BATCH=<dir>, a dry run; MODE=apply reads it in. Its albums wait in' \
@@ -40,6 +43,14 @@ how: ## How a change goes from the local stack to hhbd.pl, and how the catalogue
 	  '' ''                      'MODE=apply makes it, DO="undo <operation>" takes one back.' \
 	  4. 'make ovh-dump'         'The production database to ~/Developer/hhbd-dumps, read-only.'
 	@echo
+
+# --- Merging ------------------------------------------------------------------------------
+
+# Word for word gcloud-ovh-migrate's, as in every repo of mine (#271): its make service-drift
+# DIR=<this checkout> ONLY=scripts/ship.sh says when the copy has moved.
+.PHONY: ship
+ship: ## Merge PR=<number>: rebased onto main and signed, gated, fast-forwarded onto main, then what the merge starts followed
+	./scripts/ship.sh $(PR)
 
 # --- The OVH host -------------------------------------------------------------------------
 

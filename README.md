@@ -268,4 +268,4 @@ Tests run on GitHub Actions for every pull request, and not again on the push a 
 - **Smoke Tests**: `.github/workflows/smoke-tests.yml` - Integration tests with Docker
 - **Deploy checks**: `.github/workflows/deploy-checks.yml` - the secrets gate, and the production stack behind a stand-in edge
 
-A merge to `main` runs `.github/workflows/release.yml`, which publishes the release `vYYYY.MM.N` and dispatches `.github/workflows/deploy.yml`: it builds the app, nginx and importer images, rolls the app and nginx out on the OVH host, and leaves the importer's for `make ovh-import`.
+A pull request goes into `main` with `make ship PR=<n>`: rebased onto `main`, its commits signed, its checks passed, pushed as a fast-forward (#271). That push runs `.github/workflows/release.yml`, which publishes the release `vYYYY.MM.N` and dispatches `.github/workflows/deploy.yml`: it builds the app, nginx and importer images, rolls the app and nginx out on the OVH host, and leaves the importer's for `make ovh-import`.
