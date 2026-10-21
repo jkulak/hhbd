@@ -46,8 +46,9 @@ jobs:
           fetch-depth: 0
 
       # Only a merge whose pull request passed every check is released: a red one stops here,
-      # before anything is tagged, whatever let it merge. Checks still running are waited for,
-      # ten minutes at most.
+      # before anything is tagged, whatever let it merge, and so does one that ran no check at
+      # all, since that one passed nothing. Checks still running are waited for, ten minutes at
+      # most.
       - name: Refuse a merge whose pull request did not pass
         id: pr
         run: |
@@ -61,7 +62,7 @@ jobs:
           done
           if [ -z "$pr" ]; then
             echo "::error::$SHA reached main without a pull request, so nothing tested it as merged"
-            echo "releasing it is a person's call: gh release create"
+            echo "releasing it is a person's call: gh release create <the next vYYYY.MM.PATCH> --target $SHA"
             exit 1
           fi
           echo "number=$pr" >> "$GITHUB_OUTPUT"
@@ -81,6 +82,16 @@ jobs:
             states=$(gh api "repos/$REPO/commits/$head/status" --jq '
               .statuses[] | [.context, (if .state == "success" then "ok" else .state end)] | @tsv')
             checks=$(printf '%s\n%s\n' "$runs" "$states" | grep . || true)
+            # None at all is not none failed. The pull request is merged by now, so a push to
+            # it changes nothing: its last commit is tested by hand, or by the next merge.
+            if [ -z "$checks" ]; then
+              echo "::error::pull request #$pr ran no checks on its last commit, so nothing tested this merge" \
+                   "and it is not released"
+              echo "to have it tested: run its workflows by hand on ${head:0:7} and re-run this one once they pass,"
+              echo "  or merge a pull request after it whose checks pass, which releases both"
+              echo "releasing it untested is a person's call: gh release create <the next vYYYY.MM.PATCH> --target $SHA"
+              exit 1
+            fi
             failed=$(awk -F'\t' 'NF && $2 != "ok" && $2 != "pending" { printf "  %s: %s\n", $1, $2 }' <<<"$checks")
             pending=$(awk -F'\t' '$2 == "pending" { printf "  %s\n", $1 }' <<<"$checks")
             if [ -n "$failed" ]; then

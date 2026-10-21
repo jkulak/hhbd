@@ -22,6 +22,10 @@ which the note leaves out. The sections before, by version, stay as they were.
   signed commits and no merge commit of GitHub's lands on it again; then it follows the
   release, the deploy and production's logs. `make how` and CLAUDE.md name it as the merge in
   place of `gh pr merge --squash`.
+- `release.yml` refuses a merge whose pull request ran no checks at all, as it already refused
+  one whose checks failed (#270): with none, it counted none failed and released it. The run
+  says how to have it tested, and the `gh release create ... --target` line for a release by
+  hand. It is the shared host's template again, word for word.
 
 ## 2026-10-18
 
