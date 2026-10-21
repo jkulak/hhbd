@@ -26,6 +26,8 @@ which the note leaves out. The sections before, by version, stay as they were.
   one whose checks failed (#270): with none, it counted none failed and released it. The run
   says how to have it tested, and the `gh release create ... --target` line for a release by
   hand. It is the shared host's template again, word for word.
+- `deploy/ovh/HOST.md`, the shared host's account of what a service on it owes the host, is
+  here as in every other service (#270); `deploy/ovh/README.md` stays hhbd's own.
 
 ## 2026-10-18
 
