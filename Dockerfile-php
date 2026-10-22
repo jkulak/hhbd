@@ -1,8 +1,10 @@
 # =============================================================================
 # The PHP images, all from Debian's own PHP packages on Debian 13 (trixie): nothing is compiled.
-# Debian builds, patches and ships them, and a rebuild takes its security updates, while trixie
-# is supported (2028, LTS to 2030). PHP 8.4 is trixie's, supported upstream to the end of 2028.
-# CLAUDE.md says why 8.4 (#37).
+# Debian builds, patches and ships them while trixie is supported (2028, LTS to 2030). PHP 8.4
+# is trixie's, supported upstream to the end of 2028. CLAUDE.md says why 8.4 (#37). A rebuild
+# takes Debian's security updates only where it builds the package layer again, and the
+# registry's layer cache keeps that layer otherwise: PHP_MIN_VERSION below is how a PHP fix is
+# taken (#273).
 #
 #   base        PHP-FPM with the extensions the application uses, configured as hhbd runs it
 #   builder     base with composer: CI's app, and where production's vendor/ is installed
@@ -15,6 +17,12 @@ FROM debian:trixie-slim AS base
 # the XML that ZF reads its config with, opcache; cgi-fcgi from
 # libfcgi-bin for the healthcheck; Debian's CA certificates, without which PHP trusts no
 # certificate and no HTTPS request succeeds, as IndexNow's did not (#220, #227).
+#
+# PHP_MIN_VERSION is the oldest PHP the images may carry, and the build fails on anything
+# older. A PHP security release raises it, and the new value builds this layer again, where the
+# registry's cache would hand back the one with the old packages. 8.4.27 fixes PHP2Shell,
+# CVE-2026-109618 and CVE-2026-109619 (#273).
+ARG PHP_MIN_VERSION=8.4.27
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     php8.4-cli \
@@ -25,7 +33,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     php8.4-xml \
     libfcgi-bin \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /run/php
+    && mkdir -p /run/php \
+    && for p in php8.4-cli php8.4-fpm; do \
+         v=$(dpkg-query -W -f='${Version}' "$p"); \
+         dpkg --compare-versions "$v" ge "$PHP_MIN_VERSION" \
+           || { echo "$p is $v, older than PHP_MIN_VERSION $PHP_MIN_VERSION" >&2; exit 1; }; \
+       done
 
 # The pool as the containers need it (port 9000, the environment kept, stderr for logs), then
 # where its logs go, both read after Debian's own www.conf, which goes.

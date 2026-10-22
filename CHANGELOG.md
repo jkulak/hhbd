@@ -14,6 +14,13 @@ which the note leaves out. The sections before, by version, stay as they were.
 
 ## 2026-10-22
 
+### Security
+- PHP is 8.4.27, Debian's fix for PHP2Shell, CVE-2026-109618 and CVE-2026-109619: two ways to
+  run code on the server with an unauthenticated request, published on 2026-10-21 (#273).
+  hhbd.pl ran 8.4.26. `Dockerfile-php` names the oldest PHP the images may carry,
+  `PHP_MIN_VERSION`, and fails the build on anything older; raising it builds the package
+  layer again, where the registry's layer cache could hand back the one with 8.4.26.
+
 ### Internal
 - `make ovh-php` shows the PHP production's app containers serve with, and the settings
   `production.ini` turns off for safety.

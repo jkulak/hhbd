@@ -269,7 +269,7 @@ After a deploy the host runs `deploy/ovh/smoke.sh`, `SMOKE_TARGET=release`: each
 ## Important Notes
 
 - **Legacy codebase**: Uses Zend Framework 1 (EOL but maintained by shardj/zf1-future)
-- **PHP 8.4**: Debian 13's own packages in every image (`Dockerfile-php`): nothing is compiled, a rebuild takes Debian's security updates, and both Debian 13 and PHP 8.4 are supported to 2028. shardj/zf1-future runs on it. Classes that fill properties they do not declare (the model containers, the controllers' `$params`) carry `#[\AllowDynamicProperties]` (#37)
+- **PHP 8.4**: Debian 13's own packages in every image (`Dockerfile-php`): nothing is compiled, and both Debian 13 and PHP 8.4 are supported to 2028. A release builds from the registry's layer cache, which keeps the packages an earlier build installed: a PHP security fix is taken by raising `PHP_MIN_VERSION` there, which builds that layer again and fails on anything older, and `make ovh-php` shows what production runs (#273). shardj/zf1-future runs on it. Classes that fill properties they do not declare (the model containers, the controllers' `$params`) carry `#[\AllowDynamicProperties]` (#37)
 - **Database**: PostgreSQL 17, sorting in Polish (ICU's pl), credentials in environment variables
 - **Content directory**: User uploads stored in `content/` - excluded from git, shared across services via Docker volumes
 - **Polish language**: Many UI strings, comments, and routes are in Polish
