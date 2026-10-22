@@ -49,6 +49,9 @@ COPY conf/php/production.ini /etc/php/8.4/fpm/conf.d/99-production.ini
 COPY conf/php/production.ini /etc/php/8.4/cli/conf.d/99-production.ini
 # Healthy when PHP-FPM answers its status page; the compose files run it by this name.
 COPY --chmod=755 conf/php/php-fpm-healthcheck /usr/local/bin/php-fpm-healthcheck
+# What production.ini turns off for safety, as PHP-FPM reads it: a typo there would leave it on
+# without a word (#273).
+RUN php-fpm8.4 -i | grep -qx 'session.upload_progress.enabled => Off => Off'
 
 WORKDIR /var/www/html
 EXPOSE 9000

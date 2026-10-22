@@ -20,6 +20,9 @@ which the note leaves out. The sections before, by version, stay as they were.
   hhbd.pl ran 8.4.26. `Dockerfile-php` names the oldest PHP the images may carry,
   `PHP_MIN_VERSION`, and fails the build on anything older; raising it builds the package
   layer again, where the registry's layer cache could hand back the one with 8.4.26.
+- Session upload progress is off (`session.upload_progress.enabled`). PHP reads it on every
+  request before any script runs, it was PHP2Shell's way into PHP-FPM, and nothing here shows
+  an upload's progress. The image's build fails if PHP-FPM does not read it off.
 
 ### Internal
 - `make ovh-php` shows the PHP production's app containers serve with, and the settings
