@@ -68,6 +68,15 @@ ovh-ps: ## Show hhbd's containers on the OVH host and their health
 	ssh -o BatchMode=yes "$${OVH_SSH_USER:-ubuntu}@$${OVH_HOST:?OVH_HOST is not set}" \
 	  'sudo docker ps -a --filter label=com.docker.compose.project=hhbd --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"'
 
+# Debian's PHP reaches production only in an image built after it, so a PHP security release is
+# done when this says so (#273).
+.PHONY: ovh-php
+ovh-php: ## Show the PHP production's running app containers serve with: PHP-FPM's version and what production.ini turns off for safety
+	ssh -o BatchMode=yes "$${OVH_SSH_USER:-ubuntu}@$${OVH_HOST:?OVH_HOST is not set}" \
+	  'for c in $$(sudo docker ps --filter label=com.docker.compose.project=hhbd --format "{{.Names}}" | grep -- -app-); do \
+	     echo "$$c:"; sudo docker exec "$$c" sh -c "php-fpm8.4 -v | head -1; php-fpm8.4 -i | grep -E \"^(expose_php|session.upload_progress.enabled) \""; \
+	   done'
+
 .PHONY: ovh-smoke
 ovh-smoke: ## Smoke-test https://hhbd.pl on production's data, as a release is checked before it is kept
 	./deploy/ovh/smoke.sh
