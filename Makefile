@@ -156,8 +156,6 @@ ovh-secrets-init: ## Create deploy/ovh/hhbd.enc.env once, with the database pass
 	@for key in DB_PASSWORD; do \
 	  LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32 | ./scripts/secrets.sh set $(OVH_SECRETS) $$key || exit 1; \
 	done
-	@printf 'jkulak' | ./scripts/secrets.sh set $(OVH_SECRETS) GHCR_USER
-	@echo "Next: make ovh-secrets-set KEY=GHCR_READ_TOKEN (a classic PAT with read:packages only)"
 
 # --- The local stack ----------------------------------------------------------------------
 

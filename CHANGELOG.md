@@ -27,6 +27,10 @@ which the note leaves out. The sections before, by version, stay as they were.
   `/srv/host/registry.enc.env`, as the deploy does (#278): the token goes to `docker login` on
   stdin, into a configuration made for that pull and removed with it, and never into the
   stack's environment.
+- `deploy/ovh/hhbd.enc.env` holds no registry login any more, neither `GHCR_USER` nor
+  `GHCR_READ_TOKEN` (#278). The deploy pulls with the host's own login, which a service's copy
+  overrode, so a token replaced on the host alone was not the one hhbd used; `make
+  ovh-secrets-init` and `deploy/ovh/README.md` name neither now.
 
 ## 2026-10-22
 

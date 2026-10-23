@@ -76,8 +76,10 @@ ssh -t ubuntu@$OVH_HOST 'sudo docker exec -it hhbd-postgres-1 psql -U hhbd hhbd'
 
 ### Secrets
 
-`deploy/ovh/hhbd.enc.env` holds `DB_PASSWORD`, `LEGACY_PASSWORD_SALT`, `GHCR_USER` and
-`GHCR_READ_TOKEN`, every value `ENC[...]`.
+`deploy/ovh/hhbd.enc.env` holds `DB_PASSWORD` and `LEGACY_PASSWORD_SALT`, every value
+`ENC[...]`. No registry login: the deploy and `make ovh-import` pull the private images with the
+host's own, from `/srv/host/registry.enc.env` (#278; gcloud-ovh-migrate's `host/README.md` says
+how its token is replaced).
 `HEALTHCHECKS_ENABLED=true` and `HEALTHCHECKS_PROJECT_PING_KEY`, the host's Healthchecks project
 key, let the release timer's job ping its check (CONTRACT.md §7); without them it runs all the
 same, unwatched.
@@ -85,9 +87,9 @@ same, unwatched.
 the two keys in `.sops.yaml` do not both open.
 
 ```bash
-make ovh-secrets-init                    # once: database passwords generated straight into the file
-make ovh-secrets-set KEY=GHCR_READ_TOKEN # a classic PAT with read:packages only, from a hidden prompt
-make ovh-secrets-show                    # key names, never values
+make ovh-secrets-init                         # once: database passwords generated straight into the file
+make ovh-secrets-set KEY=LEGACY_PASSWORD_SALT # one value, from a hidden prompt
+make ovh-secrets-show                         # key names, never values
 ```
 
 The deploy workflow needs the `production` environment's secrets `OVH_HOST`, `OVH_HOST_KEY`
