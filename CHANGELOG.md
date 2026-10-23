@@ -14,6 +14,13 @@ which the note leaves out. The sections before, by version, stay as they were.
 
 ## 2026-10-23
 
+### Added
+- Every page carries Umami's tag, so hhbd.pl's visits are counted in the Umami at
+  analytics.itsnotezra.com as well as in GA4 (#281). Umami sets no cookie and keeps no IP
+  address, so it counts a visit without asking for consent, and what it records stays on our own
+  server; the privacy page says what that is. The tag counts on hhbd.pl alone, so nothing local
+  or in CI reaches it, and hhbd.pl sends no Content-Security-Policy that would keep it out.
+
 ### Fixed
 - An artist credited only on songs of albums that are not published asks search engines not to
   index its page and is out of the artist sitemap, as the page lists none of those songs
@@ -23,6 +30,8 @@ which the note leaves out. The sections before, by version, stay as they were.
   its albums published.
 
 ### Internal
+- The smoke test checks Umami's tag is once in the home page, an album's page, the login page
+  and a 404, inside the head, and the release's smoke test checks the home page's (#281).
 - `make ovh-import` pulls the importer image with the host's own registry login, from
   `/srv/host/registry.enc.env`, as the deploy does (#278): the token goes to `docker login` on
   stdin, into a configuration made for that pull and removed with it, and never into the

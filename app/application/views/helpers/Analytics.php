@@ -1,16 +1,20 @@
 <?php
 
 /**
- * Google's tags, in the code and in this order (#161, #162):
+ * The analytics' and the ads' tags, in the code and in this order (#161, #162, #281):
  *
  * - Consent Mode v2, everything denied until the visitor chooses in AdSense's certified consent
  *   message, which updates it; until then Google gets cookieless pings only.
  * - Google Analytics 4 through the Google tag (gtag.js), with what the page is: its content
  *   group, the album, artist, song, label or news item it shows, the search and its results, a
  *   logged-in user, an admin's visit as internal traffic. The measurement id comes from the
- *   environment (GA_MEASUREMENT_ID); without one, as locally and in CI, no analytics loads.
+ *   environment (GA_MEASUREMENT_ID); without one, as locally and in CI, GA4 does not load.
  * - AdSense's script when ads are on (SHOW_ADS), which also brings the consent message, and the
  *   side column's ad unit: ad().
+ * - Umami's tag (#281), on every page whatever Google's are: hhbd.pl's website in Umami at
+ *   analytics.itsnotezra.com, which counts visits without cookies, and so without consent. The
+ *   tracker counts only where the page's host is hhbd.pl, so nothing local or in CI is counted
+ *   and the id needs no environment to keep it off there.
  *
  * A controller says what its page is: $this->view->Analytics()->page('album', $id, $name), and
  * adds what it knows: ->set('search_term', $query). A login or a registration ends in a
@@ -30,6 +34,13 @@ class Zend_View_Helper_Analytics extends Zend_View_Helper_Abstract
 
     /** hhbd_rectangle, the 300×250 unit in the side column since 2010 */
     public const RECTANGLE_SLOT = '1220656090';
+
+    /** Umami's tracker, and hhbd.pl's website in it: public, as every page carries it */
+    public const UMAMI_SCRIPT = 'https://analytics.itsnotezra.com/script.js';
+    public const UMAMI_WEBSITE_ID = '43f34e26-f1a9-4c84-9417-4f9a21adfb34';
+
+    /** The one host Umami counts on; www.hhbd.pl redirects to it */
+    public const UMAMI_DOMAINS = 'hhbd.pl';
 
     private $group;
     private $params = array();
@@ -81,8 +92,14 @@ class Zend_View_Helper_Analytics extends Zend_View_Helper_Abstract
         ));
     }
 
-    /** Everything Google's tags need, for <head>; nothing where no tag is on */
+    /** Everything the analytics need, for <head>: Google's tags where they are on, and Umami's */
     public function head()
+    {
+        return $this->google() . self::umami(self::UMAMI_WEBSITE_ID, self::UMAMI_DOMAINS);
+    }
+
+    /** Everything Google's tags need; nothing where no tag is on */
+    private function google()
     {
         $config = Zend_Registry::get('Config_App');
         $measurementId = self::measurementIdOf(isset($config['gaMeasurementId']) ? $config['gaMeasurementId'] : '');
@@ -166,6 +183,14 @@ class Zend_View_Helper_Analytics extends Zend_View_Helper_Abstract
             $lines[] = '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' . rawurlencode($adsenseClient) . '" crossorigin="anonymous"></script>';
         }
         return implode("\n", $lines) . "\n";
+    }
+
+    /** Umami's tag as its dashboard gives it, deferred, so nothing waits for it */
+    public static function umami($websiteId, $domains)
+    {
+        return '<script defer src="' . self::UMAMI_SCRIPT . '"'
+            . ' data-website-id="' . htmlspecialchars($websiteId, ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-domains="' . htmlspecialchars($domains, ENT_QUOTES, 'UTF-8') . '"></script>' . "\n";
     }
 
     /** A GA4 measurement id as the environment gave it, or null for none or a malformed one */

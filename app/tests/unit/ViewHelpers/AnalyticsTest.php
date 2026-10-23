@@ -4,7 +4,8 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Google's tags as the head carries them (#161, #162): consent first, everything denied; GA4
- * with what the page is; AdSense's script; nothing of GA4 without a measurement id.
+ * with what the page is; AdSense's script; nothing of GA4 without a measurement id. Umami's tag
+ * after them, whatever they are (#281).
  */
 class Zend_View_Helper_AnalyticsTest extends TestCase
 {
@@ -77,6 +78,27 @@ class Zend_View_Helper_AnalyticsTest extends TestCase
 
             Zend_Registry::set('Config_App', array('showAds' => 1));
             $this->assertStringContainsString('data-ad-slot="1220656090"', (new Zend_View_Helper_Analytics())->ad());
+        } finally {
+            Zend_Registry::_unsetInstance();
+        }
+    }
+
+    public function testUmamisTagIsTheOneItsDashboardGivesForHhbdPlAlone(): void
+    {
+        $this->assertSame(
+            '<script defer src="https://analytics.itsnotezra.com/script.js" data-website-id="43f34e26-f1a9-4c84-9417-4f9a21adfb34" data-domains="hhbd.pl"></script>' . "\n",
+            Zend_View_Helper_Analytics::umami(Zend_View_Helper_Analytics::UMAMI_WEBSITE_ID, Zend_View_Helper_Analytics::UMAMI_DOMAINS)
+        );
+    }
+
+    public function testTheHeadCarriesUmamisTagEvenWithGoogleAnalyticsAndAdsOff(): void
+    {
+        try {
+            Zend_Registry::set('Config_App', array('showAds' => 0, 'gaMeasurementId' => ''));
+            $head = (new Zend_View_Helper_Analytics())->head();
+
+            $this->assertSame(Zend_View_Helper_Analytics::umami(Zend_View_Helper_Analytics::UMAMI_WEBSITE_ID, Zend_View_Helper_Analytics::UMAMI_DOMAINS), $head);
+            $this->assertStringNotContainsString('gtag', $head);
         } finally {
             Zend_Registry::_unsetInstance();
         }

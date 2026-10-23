@@ -24,6 +24,9 @@
 
 BASE_URL="${1:-http://localhost:8080}"
 SMOKE_TARGET="${SMOKE_TARGET:-fixtures}"
+
+# Umami's tag, as its dashboard gives it for hhbd.pl (#281)
+UMAMI_TAG='<script defer src="https://analytics.itsnotezra.com/script.js" data-website-id="43f34e26-f1a9-4c84-9417-4f9a21adfb34" data-domains="hhbd.pl"></script>'
 FAILED=0
 PASSED=0
 ERRORS=()  # Array to collect error messages
@@ -578,6 +581,22 @@ test_not_found() {
     echo -e "${GREEN}✓${NC} $name"
     ((PASSED++))
     return 0
+}
+
+# test_once <name> <path> <text>: the page, whatever its status, carries the text exactly once
+test_once() {
+    local name="$1" path="$2" text="$3" count
+    count=$(curl -s --max-time 10 $CURL_OPTS "${BASE_URL}${path}" 2>/dev/null | grep -oF -- "$text" | wc -l | tr -d ' ')
+    if [[ "$count" == 1 ]]; then
+        echo -e "${GREEN}✓${NC} $name"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - $path carries '$text' $count times (expected once)"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
 }
 
 # test_page_status <name> <path> <status> <text>: the path answers that status, without
@@ -1174,6 +1193,13 @@ run_tests() {
     test_page_absent "and so is Tag Manager" "/" "GTM-MGJ9HQ"
     test_page "The footer opens the privacy settings" "/" 'id="privacy-settings">Ustawienia prywatności</a>'
     test_page "The privacy page says what is measured" "/prywatnosc.html" "Google Analytics 4"
+    # Umami counts visits on hhbd.pl alone, whatever Google's tags are (#281)
+    test_once "Umami's tag is in the home page once, for hhbd.pl alone (#281)" "/" "$UMAMI_TAG"
+    test_once "and in an album's page" "/wdowa-superextra-a535.html" "$UMAMI_TAG"
+    test_once "and in the login page" "/uzytkownik/logowanie.html" "$UMAMI_TAG"
+    test_once "and in a page that is not there" "/nie-ma-takiego-albumu-a999999999.html" "$UMAMI_TAG"
+    test_order "and in the head" "/" "$UMAMI_TAG" "</head>"
+    test_page "The privacy page says what Umami counts" "/prywatnosc.html" "Umami"
     test_page "ads.txt names hhbd's AdSense account (#169)" "/ads.txt" "google.com, pub-6149271850793027, DIRECT, f08c47fec0942fa0"
     test_page "and every page says it belongs to that account" "/" '<meta name="google-adsense-account" content="ca-pub-6149271850793027">'
     test_page "The side column's ad is AdSense's asynchronous unit, in its old slot (#172)" "/" 'data-ad-client="ca-pub-6149271850793027" data-ad-slot="1220656090"></ins>'
@@ -1273,7 +1299,7 @@ run_production_tests() {
 
 # What a release is checked for on the host before it is kept (#206): the pages a visitor
 # reaches first, each kind once, and what only production holds: its https addresses, its GA4
-# id, its AdSense account, its assets at the addresses the pages link. Everything else, every
+# id, its AdSense account, Umami's tag, its assets at the addresses the pages link. Everything else, every
 # sitemap in full and the fixtures' cases, the pull request has run already: on the fixtures,
 # and on the production stack behind a stand-in edge.
 run_release_tests() {
@@ -1296,6 +1322,7 @@ run_release_tests() {
     test_page "The home page's canonical address is the https one" "/" "rel=\"canonical\" href=\"${BASE_URL}/\""
     test_page "An album's preview picture is at an https address" "/wdowa-superextra-a535.html" "<meta property=\"og:image\" content=\"${BASE_URL}/content/a/"
     test_page "ads.txt names hhbd's AdSense account" "/ads.txt" "google.com, pub-6149271850793027, DIRECT, f08c47fec0942fa0"
+    test_once "Umami's tag is in the home page once (#281)" "/" "$UMAMI_TAG"
     test_asset "The stylesheet, at the address the pages link, is the one they name" "/css/s.css"
     test_asset "and the script" "/js/s.js"
     echo ""

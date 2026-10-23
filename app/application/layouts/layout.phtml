@@ -4,7 +4,7 @@
 <head>
 <?php echo $this->headMeta(); ?>
 <?php echo $this->headTitle(); ?>
-<?php // Consent defaults, GA4 and AdSense, before anything else of Google's (#161, #162) ?>
+<?php // Consent defaults, GA4 and AdSense, before anything else of Google's (#161, #162), then Umami's tag (#281) ?>
 <?php echo $this->Analytics()->head(); ?>
 <?php // Before the stylesheet: the phone's menu folds away only where a script can open it (#149) ?>
 <script>document.documentElement.className += ' js';</script>
