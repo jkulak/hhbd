@@ -12,6 +12,13 @@ merge names the release. Each change is a bullet whose first sentence stands alo
 the release's note; changes to the build, the tests, CI or the deploy go under `### Internal`,
 which the note leaves out. The sections before, by version, stay as they were.
 
+## 2026-10-24
+
+### Internal
+- `make ovh-secrets-show` answers on a secrets file with no secret in it. `scripts/secrets.sh`
+  is the shared one again (jkulak/gcloud-ovh-migrate#171): on a file of sops metadata alone it
+  says so on stderr and exits 0, where it printed nothing and failed.
+
 ## 2026-10-23
 
 ### Added
