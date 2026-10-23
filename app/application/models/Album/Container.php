@@ -145,6 +145,8 @@ class Model_Album_Container
         if (!empty($params['updated'])) {
             $this->updated = $params['updated'];
         }
+        // When it was published, its sitemap entry's lastmod (#221); null where nobody kept it
+        $this->published = empty($params['published']) ? null : $params['published'];
 
         // From album_covers once an album has rows there (#60): the page's cover the largest
         // the page needs, the lists' thumbnail the smallest. Without rows, the paths albums.cover

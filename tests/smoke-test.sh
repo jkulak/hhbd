@@ -485,6 +485,7 @@ run_fixture_tests() {
     test_page_absent "and its artist's page does not list it" "/mes-p35.html" "Taśma Robocza"
     test_page_absent "nor does the search" "/szukaj.html?q=Ta%C5%9Bma+Robocza" "-a779.html"
     test_page_absent "nor the album sitemap" "/sitemap-albums.xml" "-a779.html<"
+    test_lastmod "An album whose publication nothing kept has no lastmod in the album sitemap (#221)" "/sitemap-albums.xml" "/pezet-jestem-hip-hopem-a1.html" ""
     test_not_found "A song on an unpublished album alone is a 404 too" "/szkic-numer-jeden-s9101.html" "Szkic Numer Jeden"
     test_page_absent "and the search does not find it" "/szukaj.html?q=Szkic+Numer" "-s9101.html"
     test_page_absent "nor the song sitemap" "/sitemap-songs.xml" "-s9101.html<"
@@ -519,6 +520,7 @@ run_fixture_tests() {
     CURL_OPTS="$visitor_opts"
     rm -f "$jar"
     test_page_multi "An admin's day and label publish an album an import held back (#199)" "/mes-tasma-robocza-a779.html" "<h1>" "Alkopoligamia" "20 maja 2016"
+    test_lastmod "and the album sitemap says it was published today, on the application's clock (#221)" "/sitemap-albums.xml" "/mes-tasma-robocza-a779.html" "$(TZ=Europe/Warsaw date +%F)"
     test_page "and the artist credited on its song alone is indexed with it (#276)" "/x-p2259.html" 'name="robots" content="index,follow"'
     test_page "and in the artist sitemap" "/sitemap-artists.xml" "/x-p2259.html<"
     echo ""
@@ -733,12 +735,13 @@ test_json_ld() {
 
 # test_sitemap <name> <path> <urlset|sitemapindex>: XML a search engine reads (#147): served as
 # application/xml, nothing after the root element closes, every entry closed and with one <loc>,
-# and every <loc> an absolute address on this site: https:// ones on production
+# every <loc> an absolute address on this site: https:// ones on production, and every <lastmod>
+# a day, YYYY-MM-DD (#221)
 test_sitemap() {
     local name="$1" path="$2" root="$3"
     local url="${BASE_URL}${path}" entry=url
     [[ "$root" == sitemapindex ]] && entry=sitemap
-    local type body opens closes locs ours last problem=""
+    local type body opens closes locs ours last lastmods days problem=""
     type=$(curl -s -D - -o /dev/null --max-time 30 $CURL_OPTS "$url" 2>/dev/null | tr -d '\r' | grep -i '^content-type:' | head -1)
     body=$(curl -s --max-time 30 $CURL_OPTS "$url" 2>/dev/null)
     opens=$(echo "$body" | grep -o "<$entry>" | wc -l | tr -d ' ')
@@ -746,6 +749,8 @@ test_sitemap() {
     locs=$(echo "$body" | grep -o '<loc>' | wc -l | tr -d ' ')
     ours=$(echo "$body" | grep -o "<loc>${BASE_URL}/[^<]*</loc>" | wc -l | tr -d ' ')
     last=$(echo "$body" | grep -v '^[[:space:]]*$' | tail -1 | tr -d '[:space:]')
+    lastmods=$(echo "$body" | grep -o '<lastmod>' | wc -l | tr -d ' ')
+    days=$(echo "$body" | grep -oE '<lastmod>[0-9]{4}-[0-9]{2}-[0-9]{2}</lastmod>' | wc -l | tr -d ' ')
     if [[ "$type" != *application/xml* ]]; then
         problem="served as '${type#*: }'"
     elif [[ "$(echo "$body" | head -1)" != "<?xml"* ]]; then
@@ -756,6 +761,8 @@ test_sitemap() {
         problem="$opens <$entry>, $closes </$entry>, $locs <loc>"
     elif [[ "$ours" != "$locs" ]]; then
         problem="$((locs - ours)) of $locs <loc> not under ${BASE_URL}/"
+    elif [[ "$days" != "$lastmods" ]]; then
+        problem="$((lastmods - days)) of $lastmods <lastmod> not a day"
     fi
     if [[ -z "$problem" ]]; then
         echo -e "${GREEN}✓${NC} $name ($locs addresses)"
@@ -763,6 +770,24 @@ test_sitemap() {
         return 0
     fi
     local error="$name - $problem"
+    echo -e "${RED}✗${NC} $error"
+    ERRORS+=("$error")
+    ((FAILED++))
+    return 1
+}
+
+# test_lastmod <name> <sitemap> <page> <day>: the sitemap's entry for the page says it appeared
+# on that day (#221); an empty day for an entry with no <lastmod>
+test_lastmod() {
+    local name="$1" sitemap="$2" page="$3" day="$4" got
+    got=$(curl -s --max-time 30 $CURL_OPTS "${BASE_URL}${sitemap}" 2>/dev/null \
+        | awk -v loc="<loc>${BASE_URL}${page}</loc>" 'index($0, loc) { found = 1; next } found { if (match($0, /<lastmod>[^<]*<\/lastmod>/)) print substr($0, RSTART + 9, RLENGTH - 19); exit }')
+    if [[ "$got" == "$day" ]]; then
+        echo -e "${GREEN}✓${NC} $name"
+        ((PASSED++))
+        return 0
+    fi
+    local error="$name - lastmod '$got', not '$day'"
     echo -e "${RED}✗${NC} $error"
     ERRORS+=("$error")
     ((FAILED++))
@@ -991,12 +1016,15 @@ run_tests() {
     test_page_multi "Album Detail (Wdowa - Superextra)" "/wdowa-superextra-a535.html" "Wdowa" "Pogoda" "Alkopoligamia"
     test_page_absent "A visitor sees no sources paragraph on the about page (#158)" "/o-nas.html" "not affiliated with, sponsored or endorsed by Discogs"
     test_page "The album sitemap gives each album's canonical URL" "/sitemap-albums.xml" "/wdowa-superextra-a535.html</loc>"
+    test_lastmod "and the day each was published, as its lastmod (#221)" "/sitemap-albums.xml" "/wdowa-superextra-a535.html" "2010-01-30"
     test_page "The song sitemap gives canonical URLs" "/sitemap-songs.xml" "/pogoda-s7329.html</loc>"
+    test_lastmod "and the day the newest of a song's albums was published" "/sitemap-songs.xml" "/pogoda-s7329.html" "2010-01-30"
     test_page "An album's page links its songs at their canonical address (#202)" "/wdowa-superextra-a535.html" 'href="/pogoda-s7329.html"'
     test_page_absent "never through the artist's slug, which redirects" "/wdowa-superextra-a535.html" 'href="/wdowa-pogoda-s7329.html"'
     test_redirect_301 "though that old form still leads to the song" "/wdowa-pogoda-s7329.html" "/pogoda-s7329.html"
     test_page "The label sitemap gives canonical URLs" "/sitemap-labels.xml" "/alkopoligamia-l58.html</loc>"
     test_page "The artist sitemap renders" "/sitemap-artists.xml" "/mes-p35.html</loc>"
+    test_page_absent "with no lastmod, as nothing keeps when an artist's page changed" "/sitemap-artists.xml" "<lastmod>"
     test_page "The news sitemap renders" "/sitemap-news.xml" "wideo-n1877.html</loc>"
     test_page_multi "Song Detail (Wdowa - Pogoda)" "/pogoda-s7329.html" "Dj Technik" "Beatmo"
     test_page "News Detail" "/onar-jak-na-pierwszej-plycie-wideo-n1877.html" "Onar wraca z nowym singlem"

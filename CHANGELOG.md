@@ -15,6 +15,14 @@ which the note leaves out. The sections before, by version, stay as they were.
 ## 2026-10-23
 
 ### Added
+- The album and song sitemaps say when each page appeared, as its `lastmod`: the day the album
+  was published, and for a song the day the newest of its albums was (#221). Google fetches
+  sooner what a true lastmod says is new, so the albums the daily release brings out get
+  crawled sooner. Albums keep the moment in `published`, which whoever publishes one sets: the
+  day's release, an admin's panel, `make ovh-edit` and an import released at once; migration
+  0041 filled it for the albums published so far from when each came in, the edit journal and
+  the review items. The other sitemaps stay without one, as nothing keeps when those pages
+  change.
 - Every page carries Umami's tag, so hhbd.pl's visits are counted in the Umami at
   analytics.itsnotezra.com as well as in GA4 (#281). Umami sets no cookie and keeps no IP
   address, so it counts a visit without asking for consent, and what it records stays on our own

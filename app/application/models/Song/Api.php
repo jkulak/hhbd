@@ -20,12 +20,6 @@ class Model_Song_Api extends Jkl_Model_Api
     public const MINIMUM_LYRICS_LENGTH = 20;
 
     /**
-     * A song a visitor is shown is on a published album with an artist: one on no such album
-     * has nothing to show it with (#37), and one on unpublished albums only waits with them
-     * for an admin (#168). Follows a song id column, as "t1.id " . SHOWN. An artist's credits
-     * count for its page on these songs alone (Model_Artist_Api::HAS_CONTENT, #276).
-     */
-    /**
      * A song whose page has something of its own (#243): lyrics, or someone credited with its
      * music, a guest verse or the scratches. A page with none of them, a title and perhaps a
      * video, asks search engines not to index it and stays out of the sitemap; the condition
@@ -36,9 +30,18 @@ class Model_Song_Api extends Jkl_Model_Api
         OR EXISTS (SELECT 1 FROM feature_lookup f WHERE f.songid = t1.id)
         OR EXISTS (SELECT 1 FROM scratch_lookup x WHERE x.songid = t1.id))";
 
-    public const SHOWN = 'IN (SELECT l.songid FROM album_lookup l JOIN albums al ON al.id = l.albumid
+    /**
+     * A song a visitor is shown is on a published album with an artist: one on no such album
+     * has nothing to show it with (#37), and one on unpublished albums only waits with them
+     * for an admin (#168). Follows a song id column, as "t1.id " . SHOWN. An artist's credits
+     * count for its page on these songs alone (Model_Artist_Api::HAS_CONTENT, #276).
+     */
+    public const SHOWN = 'IN (SELECT l.songid ' . self::SHOWN_ON . ')';
+
+    /** The album_lookup rows l that show a song, with their album al */
+    private const SHOWN_ON = 'FROM album_lookup l JOIN albums al ON al.id = l.albumid
                                WHERE al.status = ' . Model_Album_Api::PUBLISHED . '
-                                 AND EXISTS (SELECT 1 FROM album_artist_lookup c JOIN artists a ON a.id = c.artistid WHERE c.albumid = l.albumid))';
+                                 AND EXISTS (SELECT 1 FROM album_artist_lookup c JOIN artists a ON a.id = c.artistid WHERE c.albumid = l.albumid)';
 
     // private $_artistTypes = array(
     //   'add' => Model_Song_Container::LYRICS_ACTION_ADD,
@@ -380,13 +383,18 @@ class Model_Song_Api extends Jkl_Model_Api
     **/
     /**
      * The songs that have a page, newest first, for the sitemap (#147). A song not shown (SHOWN)
-     * answers 404, so it is no address to hand a search engine.
+     * answers 404, so it is no address to hand a search engine. Each comes with the moment its
+     * page last gained an album, the newest of its albums' published, for its lastmod (#221):
+     * a join on the albums that show it, as SHOWN and a subquery a song cost the planner nearly
+     * twice as much, and past 500,000 PostgreSQL optimises a query with JIT first, for half a
+     * second (#276).
      */
     public function getSitemap($limit)
     {
-        $query = 'SELECT *, t1.id AS song_id, t1.title AS sng_title
+        $query = 'SELECT t1.*, t1.id AS song_id, t1.title AS sng_title, s.published
               FROM songs t1
-              WHERE t1.id ' . self::SHOWN . ' AND ' . self::HAS_CONTENT . '
+              JOIN (SELECT l.songid, max(al.published) AS published ' . self::SHOWN_ON . ' GROUP BY l.songid) s ON s.songid = t1.id
+              WHERE ' . self::HAS_CONTENT . '
               ORDER BY t1.added DESC
               LIMIT ' . intval($limit);
         return $this->_getList($query);

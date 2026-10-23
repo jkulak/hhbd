@@ -1,8 +1,11 @@
 <?php echo "<?xml version='1.0' encoding='UTF-8'?>\n" ?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-<?php foreach ($this->urls as $url): ?>
+<?php foreach ($this->entries as list($url, $lastmod)): ?>
    <url>
       <loc><?php echo $this->escape($url) ?></loc>
+<?php if (null !== $lastmod): ?>
+      <lastmod><?php echo $lastmod ?></lastmod>
+<?php endif ?>
    </url>
 <?php endforeach ?>
 </urlset>

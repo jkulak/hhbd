@@ -27,6 +27,8 @@ class Model_Song_Container
             $this->duration = null;
         }
         $this->bpm = $params['bpm'];
+        // When its page last gained an album, its sitemap entry's lastmod (#221); read for the sitemap alone
+        $this->published = empty($params['published']) ? null : $params['published'];
 
         if (!empty($params['featuring'])) {
             $this->featuring = $params['featuring'];

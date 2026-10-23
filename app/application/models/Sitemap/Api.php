@@ -15,6 +15,13 @@ class Model_Sitemap_Api extends Jkl_Model_Api
     /** The protocol's most for one file; hhbd has about 19,000 songs, the longest list */
     public const LIMIT = 50000;
 
+    /**
+     * The kinds whose entries say when their page appeared (#221): an album's when it was
+     * published, a song's when the newest of its albums was. Every other kind's rows keep no
+     * moment their page changed, so their entries have no lastmod.
+     */
+    public const DATED = array('albums', 'songs');
+
     private static $_instance;
 
     public static function getInstance()
@@ -28,9 +35,21 @@ class Model_Sitemap_Api extends Jkl_Model_Api
     /** @return string[]|null the paths of one kind's pages, null for a kind with no sitemap */
     public function paths($kind)
     {
+        $entries = $this->entries($kind);
+        return null === $entries ? null : array_column($entries, 0);
+    }
+
+    /**
+     * @return array[]|null one kind's pages, each as array(path, lastmod), lastmod a day,
+     *   YYYY-MM-DD, or null; null for a kind with no sitemap
+     */
+    public function entries($kind)
+    {
         switch ($kind) {
             case 'pages':
-                return $this->pages();
+                return array_map(function ($path) {
+                    return array($path, null);
+                }, $this->pages());
             case 'albums':
                 // One entry per album, however many artists it credits (#58).
                 $list = Model_Album_Api::getInstance()->getAlbumsSitemap(self::LIMIT);
@@ -50,11 +69,12 @@ class Model_Sitemap_Api extends Jkl_Model_Api
             default:
                 return null;
         }
-        $paths = array();
+        $dated = in_array($kind, self::DATED, true);
+        $entries = array();
         foreach ($list->items as $item) {
-            $paths[] = $item->getUrl();
+            $entries[] = array($item->getUrl(), $dated && null !== $item->published ? substr($item->published, 0, 10) : null);
         }
-        return $paths;
+        return $entries;
     }
 
     /** The lists, the rankings and the about page */
