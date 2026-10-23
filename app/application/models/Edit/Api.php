@@ -432,10 +432,11 @@ class Model_Edit_Api extends Jkl_Model_Api
 
     /**
      * Publishes an album from the release queue (#258), as the daily job does with the next few:
-     * shown from now and added now, so it leads the lists of what the catalogue gained like an
-     * album an admin added today. So do the songs nothing published showed before, and the
-     * artists that waited for it: those it credits, those its songs credit, and the members of
-     * the bands it credits. Undone, all of it waits again, the album in its old place.
+     * shown from now, published now (#221) and added now, so it leads the lists of what the
+     * catalogue gained like an album an admin added today. So do the songs nothing published
+     * showed before, and the artists that waited for it: those it credits, those its songs
+     * credit, and the members of the bands it credits. Undone, all of it waits again, the album
+     * in its old place.
      */
     private function release($id)
     {
@@ -464,7 +465,7 @@ class Model_Edit_Api extends Jkl_Model_Api
             array_fill(0, count($named), $id)
         );
 
-        $this->changeRow('albums', $album, array('status' => Model_Album_Api::PUBLISHED, 'queued' => null, 'added' => $now));
+        $this->changeRow('albums', $album, array('status' => Model_Album_Api::PUBLISHED, 'queued' => null, 'added' => $now, 'published' => $now));
         foreach ($songs as $song) {
             $this->changeRow('songs', $song, array('added' => $now));
         }
@@ -498,6 +499,15 @@ class Model_Edit_Api extends Jkl_Model_Api
         foreach (array('updatedby' => $this->auditUserId, 'updated' => $this->now()) as $audit => $now) {
             if (array_key_exists($audit, $row) && !array_key_exists($audit, $set)) {
                 $set[$audit] = $now;
+            }
+        }
+        // An album published here is published now, and one taken back is not (#221), unless
+        // the change names its own moment.
+        if ('albums' === $table && array_key_exists('status', $set) && !array_key_exists('published', $set)) {
+            if (Model_Album_Api::PUBLISHED !== (int) $set['status']) {
+                $set['published'] = null;
+            } elseif (Model_Album_Api::PUBLISHED !== (int) $row['status']) {
+                $set['published'] = $this->now();
             }
         }
         $this->changeRow($table, $row, $set);

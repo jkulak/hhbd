@@ -212,7 +212,8 @@ make ovh-edit DO="set albums 535" VALUE='{"title": "Superextra", "catalog_cd": "
   - The merged row goes, and `artist_merges` or `album_merges` answers its old URL with a 301.
 - A delete removes those rows instead, but an album's EPs and a label's albums stay, without a
   parent or a label.
-- `set` records the admin in `updatedby`.
+- `set` records the admin in `updatedby`. An album's `status` set to 999 sets `published` to
+  now, and set to anything else clears it, unless the call names `published` too (#221).
 
 **The journal:**
 - `edit_operations` has one row per call: what, its arguments, the admin, the time, why, the
@@ -243,6 +244,7 @@ renaming them across 45 tables would risk more than it would clear up.
 | `updated` | when the row was last **edited**, by a person or by the import | whoever edits; nothing automatic |
 | `updatedby` | who edited it, an `ID` in `users`; `1100` the import | whoever edits; the review panel and `make edit` through the admin's linked row (below) |
 | `status` | `999` published, counted by the site; `0` not published (the only two values production holds). An unpublished album is nowhere for a visitor, its page a 404, and its songs with it where they are on no other; an admin opens its page (#168). On artists nothing reads it: 456 rows of 2004 hold `0` | the editor |
+| `published` | albums: when the album was published, on the application's clock (Europe/Warsaw), its page's and its songs' `lastmod` in the sitemaps (#221); NULL while it is not, or where nothing kept the moment | whoever publishes: the day's release, the review panel, `make edit`'s `set` and an import released at once set it, and clear it as they take an album back; no trigger, as `added` has none. Migration 0041 filled it with the latest of `added`, the journal's publishing edits and the review item that published or completed it |
 | `queued` | albums and artists: when an import put the row in the release queue (#258), NULL when it does not wait; docs/import.md has the rules | the importer sets it, the day's release clears it |
 | `viewed` | page views since the site began | the application, as it shows the page, once per visit and day, bots and admins aside (#68); `page_views` keeps the same by day |
 

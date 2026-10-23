@@ -124,6 +124,7 @@ check "Eldo's core is not credited to the batch" "facts" \
     "$(sql "SELECT $(agg field field) FROM import_provenance WHERE entity_type = 'artist' AND entity_id = 2")"
 single_id=$(jq -r '.documents[] | select(.ref == "release:testowy-singiel") | .hhbd_id' "$T/apply.json")
 check "an album with a label, a date to the day and a tracklist is published (#168)" "999" "$(sql "SELECT status FROM albums WHERE id = $album")"
+check "today, on the application's clock, as its sitemap entry says (#221)" "$(TZ=Europe/Warsaw date +%F)" "$(sql "SELECT CAST(published AS date) FROM albums WHERE id = $album")"
 check "the single, with no label and a month alone, waits unpublished, its item naming what it lacks" "0 brak: wytwórnia, data dzienna" \
     "$(sql "SELECT CONCAT(a.status, ' ', $(json_get r.detail text)) FROM albums a JOIN review_items r ON r.entity_type = 'album' AND r.entity_id = a.id AND r.reason = 'incomplete' AND r.resolved IS NULL WHERE a.id = $single_id")"
 check "and a visitor gets a 404 for it" "404" "$(curl -s -o /dev/null -w '%{http_code}' "$URL$(jq -r '.documents[] | select(.ref == "release:testowy-singiel") | .url' "$T/apply.json")")"
@@ -141,10 +142,11 @@ check "not a file" "" "$(content | comm -3 "$T/content-applied" -)"
 check "nor a second review item" "3" "$(sql "SELECT COUNT(*) FROM review_items WHERE run_id IS NOT NULL AND run_id > 1")"
 
 echo "> the single as run 14 left such albums: published, with nothing to review (#168)"
-sql "UPDATE albums SET status = 999 WHERE id = $single_id; DELETE FROM review_items WHERE entity_type = 'album' AND entity_id = $single_id AND reason = 'incomplete'" >/dev/null
+sql "UPDATE albums SET status = 999, published = '2026-10-01 12:00:00' WHERE id = $single_id; DELETE FROM review_items WHERE entity_type = 'album' AND entity_id = $single_id AND reason = 'incomplete'" >/dev/null
 check "the batch again reads every document" "0" "$(import "$BATCH" apply rerun)"
 check "and holds the single back, as the import made it and it lacks a label and a day" "0 brak: wytwórnia, data dzienna" \
     "$(sql "SELECT CONCAT(a.status, ' ', $(json_get r.detail text)) FROM albums a JOIN review_items r ON r.entity_type = 'album' AND r.entity_id = a.id AND r.reason = 'incomplete' AND r.resolved IS NULL WHERE a.id = $single_id")"
+check "no longer published, so with no moment of it (#221)" "NULL" "$(sql "SELECT published FROM albums WHERE id = $single_id")"
 check "saying it changed the single, and only it" "1 updated" "$(jq -r '[.documents[] | select(.action == "updated")] | "\(length) \(.[0].action)"' "$T/rerun.json")"
 
 echo "> a batch that brings what the single lacked: it is self-released, out on 13 March"
@@ -156,6 +158,7 @@ check "the day refines the month hhbd had, and the single is a self-release" "20
     "$(sql "SELECT CONCAT_WS(' ', year, release_date_precision, self_released) FROM albums WHERE id = $single_id")"
 check "so it is published, and its item closed by the import" "999 completed 1100" \
     "$(sql "SELECT CONCAT_WS(' ', a.status, r.resolution, r.resolved_by) FROM albums a JOIN review_items r ON r.entity_type = 'album' AND r.entity_id = a.id AND r.reason = 'incomplete' WHERE a.id = $single_id ORDER BY r.id DESC LIMIT 1")"
+check "today (#221)" "$(TZ=Europe/Warsaw date +%F)" "$(sql "SELECT CAST(published AS date) FROM albums WHERE id = $single_id")"
 check "its page shows it as a self-release" "1" "$(curl -s "$URL$(jq -r '.documents[] | select(.ref == "release:testowy-singiel") | .url' "$T/complete.json")" | grep -c 'wydanie własne' || true)"
 
 echo "> an album an admin published as it was (#168)"

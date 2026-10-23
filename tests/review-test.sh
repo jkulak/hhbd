@@ -188,12 +188,14 @@ check "the day, in another year than it had, completes it: published, the item c
 check "every change went through the edit journal, from the panel, with its reason" "3 panel review item 9: uzupełnione na stronie albumu" \
     "$(sql "SELECT CONCAT_WS(' ', COUNT(*), MIN(path), MIN(why)) FROM edit_operations WHERE $(json_get args id) = '782'")"
 check "and a visitor opens it" "200" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL/mes-bez-daty-a782.html")"
+check "published today, on the application's clock, as its sitemap entry says (#221)" "$(TZ=Europe/Warsaw date +%F)" "$(sql "SELECT CAST(published AS date) FROM albums WHERE id = 782")"
 
 echo "> an album an import left unpublished, published as it is (#168)"
 check "a visitor gets a 404 for it first" "404" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL/mes-tasma-robocza-a779.html")"
 check "publishing it closes the item and shows the album, recorded as the admin's" "302 published 10 1 - 999 $admin_row" \
     "$(settle 8 publish '' '') $(item 8) $(sql "SELECT CONCAT_WS(' ', status, updatedby) FROM albums WHERE id = 779")"
 check "now a visitor opens it" "200" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL/mes-tasma-robocza-a779.html")"
+check "published today (#221)" "$(TZ=Europe/Warsaw date +%F)" "$(sql "SELECT CAST(published AS date) FROM albums WHERE id = 779")"
 
 echo "> the list"
 check "nothing open is left" "0" "$(curl -s --max-time 10 -b "$T/jar" "$URL/admin/do-przejrzenia.html" | grep -o 'Wszystkie</a>: [0-9]*' | grep -o '[0-9]*$')"

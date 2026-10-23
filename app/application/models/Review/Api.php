@@ -219,8 +219,9 @@ class Model_Review_Api extends Jkl_Model_Api
             } elseif ('pick' === $action && 'type_disputed' === $item->reason) {
                 $this->setType($item->entityId, $value, $userId);
             } elseif ('publish' === $action) {
-                // As it is, whatever it lacks; no later import takes it back (#168).
-                $this->_db->query('UPDATE albums SET status = ? WHERE id = ?', array(Model_Album_Api::PUBLISHED, $item->entityId));
+                // As it is, whatever it lacks; no later import takes it back (#168). Published
+                // now, for the sitemap's lastmod (#221).
+                $this->_db->query('UPDATE albums SET status = ?, published = ? WHERE id = ?', array(Model_Album_Api::PUBLISHED, date('Y-m-d H:i:s'), $item->entityId));
                 $this->touch('albums', $item->entityId, $userId);
             } elseif ('complete' === $action) {
                 // What the admin filled in, journalled; the item stays open while the album

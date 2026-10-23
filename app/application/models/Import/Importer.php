@@ -771,15 +771,17 @@ class Model_Import_Importer extends Jkl_Model_Api
 
     /**
      * Publishes or holds back an album, saying the import did it (#63, #168), unless the import
-     * has just made it: a new row has not been edited.
+     * has just made it: a new row has not been edited. One published is published now, one
+     * held back no longer is (#221).
      */
     private function setStatus($id, $status, $created)
     {
+        $published = Model_Album_Api::PUBLISHED === (int) $status ? date('Y-m-d H:i:s') : null;
         if ($created) {
-            $this->_db->query('UPDATE albums SET status = ? WHERE id = ?', array($status, $id));
+            $this->_db->query('UPDATE albums SET status = ?, published = ? WHERE id = ?', array($status, $published, $id));
             return;
         }
-        $this->_db->query('UPDATE albums SET status = ?, updatedby = ?, updated = NOW() WHERE id = ?', array($status, $this->userId, $id));
+        $this->_db->query('UPDATE albums SET status = ?, published = ?, updatedby = ?, updated = NOW() WHERE id = ?', array($status, $published, $this->userId, $id));
         // Not a group of the source's fields, so no provenance; the report says updated.
         $this->touched['status'] = true;
     }

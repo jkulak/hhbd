@@ -119,6 +119,8 @@ check "and changes nothing" "0 0 0" "$(sql "SELECT CONCAT_WS(' ', (SELECT COUNT(
 echo "> the first day: one album"
 check "the release goes through" "0" "$(release day1 N=1)"
 check "and publishes the album, out of the queue" "999 0" "$(sql "SELECT CONCAT_WS(' ', status, CASE WHEN queued IS NULL THEN 0 ELSE 1 END) FROM albums WHERE id = $album_id")"
+check "published as it is added, the moment its sitemap entry gives (#221)" "$(sql "SELECT added FROM albums WHERE id = $album_id")" \
+    "$(sql "SELECT published FROM albums WHERE id = $album_id")"
 check "a visitor opens it" "200" "$(code "$album_url")"
 check "and it leads the home page's newest" "-a$album_id.html" "$(newest)"
 check "its new songs were added with it" "$(sql "SELECT added FROM albums WHERE id = $album_id")" \

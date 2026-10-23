@@ -211,6 +211,19 @@ check "set with JSON refuses a call without VALUE" "2" "$(edit set-no-value "set
 dump >"$T/set-many.refused"
 check "set with JSON: the refusals left the data as it was" "same" "$(diff -q "$T/set-many.before" "$T/set-many.refused" >/dev/null && echo same)"
 
+echo "> taking an album back with set, and publishing it again (#221)"
+dump >"$T/unpublish.before"
+check "set status 0 takes it back, and the moment it was published with it" "0 0 NULL" \
+    "$(edit unpublish "set albums 535 status" apply 0) $(sql "SELECT CONCAT_WS(' ', status, COALESCE(CAST(published AS text), 'NULL')) FROM albums WHERE id = 535")"
+unpublished=$(last_operation)
+dump >"$T/publish.before"
+check "set status 999 publishes it now, on the application's clock" "0 999 $(TZ=Europe/Warsaw date +%F)" \
+    "$(edit publish "set albums 535 status" apply 999) $(sql "SELECT CONCAT_WS(' ', status, CAST(published AS date)) FROM albums WHERE id = 535")"
+operation=$(last_operation)
+undo publish
+operation=$unpublished
+undo unpublish
+
 echo "> the journal says who, when, why and the path"
 check "every operation has its admin, a time, its reason and the command line" "0" \
     "$(sql "SELECT COUNT(*) FROM edit_operations WHERE user_id <> 10 OR created IS NULL OR why NOT LIKE 'edit-test: %' OR path <> 'cli'")"
