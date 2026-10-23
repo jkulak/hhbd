@@ -77,6 +77,30 @@ ovh-php: ## Show the PHP production's running app containers serve with: PHP-FPM
 	     echo "$$c:"; sudo docker exec "$$c" sh -c "php-fpm8.4 -v | head -1; php-fpm8.4 -i | grep -E \"^(expose_php|session.upload_progress.enabled) \""; \
 	   done'
 
+# The image deploy/ovh/compose.yaml pins, by tag and digest (#275), and the server running from it.
+.PHONY: ovh-postgres
+ovh-postgres: ## Show the PostgreSQL production runs: the image its container was made from, with that image's digest, and the server's version
+	ssh -o BatchMode=yes "$${OVH_SSH_USER:-ubuntu}@$${OVH_HOST:?OVH_HOST is not set}" \
+	  'sudo docker inspect -f "{{.Config.Image}} {{.Image}}" hhbd-postgres-1; \
+	   sudo docker image inspect -f "{{join .RepoDigests \" \"}}" "$$(sudo docker inspect -f "{{.Image}}" hhbd-postgres-1)"; \
+	   sudo docker exec hhbd-postgres-1 psql -U hhbd -d hhbd -Atc "SELECT version()"'
+
+# A new PostgreSQL release, its minor alone (#275): both compose files name the image by its tag
+# and the digest Docker Hub gives that tag now, so the release carrying the change is the one
+# that recreates the database. A new major is a move of its own, not this.
+.PHONY: postgres-pin
+postgres-pin: ## Pin both compose files to a PostgreSQL release by tag and digest: make postgres-pin TAG=17.12-alpine (deploy/ovh/README.md)
+	@tag="$${TAG:?TAG is not set, e.g. TAG=17.12-alpine}"; \
+	if ! [[ $$tag =~ ^([0-9]+)\.[0-9]+-alpine[0-9.]*$$ ]]; then echo "x TAG is an exact version on Alpine, e.g. 17.12-alpine" >&2; exit 1; fi; \
+	major=$${BASH_REMATCH[1]}; \
+	pinned=$$(sed -nE 's/^    image: postgres:([0-9]+)\..*/\1/p' deploy/ovh/compose.yaml); \
+	if [ "$$major" != "$$pinned" ]; then echo "x production runs PostgreSQL $$pinned; a new major needs its data moved, not a new pin" >&2; exit 1; fi; \
+	digest=$$(docker buildx imagetools inspect "postgres:$$tag" --format '{{.Manifest.Digest}}') || exit 1; \
+	for f in compose.yaml deploy/ovh/compose.yaml; do \
+	  perl -pi -e "s{^(    image: )postgres:\S+\$$}{\$${1}postgres:$$tag\@$$digest}" "$$f"; \
+	done; \
+	grep -n 'image: postgres:' compose.yaml deploy/ovh/compose.yaml
+
 .PHONY: ovh-smoke
 ovh-smoke: ## Smoke-test https://hhbd.pl on production's data, as a release is checked before it is kept
 	./deploy/ovh/smoke.sh

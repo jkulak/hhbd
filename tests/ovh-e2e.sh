@@ -7,7 +7,8 @@
 # What it proves:
 #   - every container becomes healthy (`up --wait`, which is how ci-deploy judges a deploy)
 #   - PostgreSQL sorts in Polish, carries the backup's labels, and holds the whole database in
-#     memory with the flags compose.yaml shares (#236)
+#     memory with the flags compose.yaml shares (#236), from the image compose.yaml shares too,
+#     named by its version and digest so that only a change to that line recreates it (#275)
 #   - nothing is published on the host
 #   - the importer's image writes the fixtures' images into the content volume, and the smoke
 #     test passes through the edge
@@ -175,6 +176,13 @@ check "PostgreSQL holds the whole database in memory, and loads it back at start
 db_flags() { sed -n "/^  $2:/,/^  [a-z]/p" "$1" | sed -n '/command: >/{n;p;}' | sed 's/^ *//'; }
 check "compose.yaml runs PostgreSQL with production's flags" \
     "$(db_flags deploy/ovh/compose.yaml postgres)" "$(db_flags compose.yaml postgres)"
+db_image() { sed -n "/^  postgres:/,/^  [a-z]/p" "$1" | sed -n 's/^    image: //p'; }
+if [[ $(db_image deploy/ovh/compose.yaml) =~ ^postgres:[0-9]+\.[0-9]+-alpine[0-9.]*@sha256:[0-9a-f]{64}$ ]]; then
+    ok "production names PostgreSQL's image by its version and digest (#275)"
+else
+    bad "production names PostgreSQL's image by its version and digest (#275), not '$(db_image deploy/ovh/compose.yaml)'"
+fi
+check "compose.yaml runs production's PostgreSQL image" "$(db_image deploy/ovh/compose.yaml)" "$(db_image compose.yaml)"
 
 for _ in $(seq 1 30); do
     via_edge -o /dev/null http://hhbd.pl/ && break

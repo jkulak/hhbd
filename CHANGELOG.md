@@ -40,6 +40,14 @@ which the note leaves out. The sections before, by version, stay as they were.
   `GHCR_READ_TOKEN` (#278). The deploy pulls with the host's own login, which a service's copy
   overrode, so a token replaced on the host alone was not the one hhbd used; `make
   ovh-secrets-init` and `deploy/ovh/README.md` name neither now.
+- PostgreSQL's image is named by its version and digest, `postgres:17.11-alpine@sha256:…`, the
+  one production runs, so a release recreates the database only when its pull request changes
+  that line (#275). Under `17-alpine`, the release that found a newer image behind the tag
+  restarted it, as v2026.10.52's did, for six seconds and a 500. `compose.yaml` names the same
+  image, and the stack test fails when they differ.
+- `make postgres-pin TAG=17.12-alpine` puts a new minor release into both compose files with
+  Docker Hub's digest for it, and `make ovh-postgres` shows the image and version production
+  runs; `deploy/ovh/README.md` says how such a release goes.
 
 ## 2026-10-22
 

@@ -96,6 +96,25 @@ The deploy workflow needs the `production` environment's secrets `OVH_HOST`, `OV
 (the host's `known_hosts` line) and `OVH_DEPLOY_SSH_KEY` (a key made for this pipeline alone,
 pinned on the host to `ci-deploy`); the environment admits `v*` tags alone.
 
+### PostgreSQL's image
+
+`postgres` runs one exact release, named by its tag and its digest,
+`postgres:17.11-alpine@sha256:…` (#275). Under the moving tag `17-alpine`, whichever release
+found a newer image behind the tag recreated the database, as v2026.10.52's did: six seconds
+without it, and a 500 in between. Now a deploy pulls nothing new for it and its log says
+`Container hhbd-postgres-1 Running`, unless the pull request changed that line. `compose.yaml`
+names the same image, and the stack test fails when the two differ or the digest is missing.
+
+A new minor release, or a rebuild of the image with Alpine's fixes in it:
+
+1. `make postgres-pin TAG=17.12-alpine` writes the tag and Docker Hub's digest for it into both
+   compose files. It refuses another major: PostgreSQL 18 needs the data moved, not a new pin.
+2. The pull request goes the usual way, its tests running on the new image (`make reset-db`
+   makes the local database again on it).
+3. Its release recreates `hhbd-postgres-1`, and requests fail for those few seconds, so it is
+   merged at a quiet hour. The deploy log says `Recreated` for it.
+4. `make ovh-postgres` shows the image production runs, its digest and the server's version.
+
 ### Database migrations
 
 Schema changes travel as migrations, `database/migrations/NNNN-slug.up.sql` with its

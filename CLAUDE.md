@@ -78,7 +78,7 @@ For production-like data instead, load a dump from `make ovh-dump`; see [databas
 
 ### The database
 
-- The database is PostgreSQL 17 (#229), here and in production, since MariaDB left on 2026-10-13 (#237).
+- The database is PostgreSQL 17 (#229), here and in production, since MariaDB left on 2026-10-13 (#237). Both compose files name its image by version and digest, the same one, and `make postgres-pin TAG=...` changes it: a release recreates the database only when that line changes (#275).
 - `make reset-db` drops the local `hhbd` database and builds it again from the migrations and the fixtures (`database/tests/fixtures.sql`), in a second or two. Run it before and after a piece of work. It acts only on the running postgres container of this checkout's compose project on the local Docker engine, and refuses anything else.
 - Every schema or data change is a migration in `database/migrations/`, `NNNN-slug.up.sql` with its `.down.sql`: `make migrate-new NAME=...`, `make migrate`, `make migrate-down`, `make migrate-status`. Each file runs in one transaction with its record. A migration that changes a table the fixtures fill changes `fixtures.sql` with it. Keep each one small and compatible with the release that is running. Production gets them with `make ovh-migrate` before the release that needs them ([deploy/ovh/README.md](deploy/ovh/README.md)). Details in [database/README.md](database/README.md).
 

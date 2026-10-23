@@ -161,8 +161,11 @@ services:
   # (make ovh-migrate), the data from MariaDB, copied once at the move and proved table by table;
   # the cluster sorts in Polish, ICU's pl, set when it is made. The role is the image's superuser, hhbd, with the
   # password the app uses, which the host's nightly backup dumps as (its CONTRACT.md §8).
+  # The image is named by its version and digest (#275): under a moving tag, any release
+  # recreated the database whenever upstream had rebuilt the image. make postgres-pin changes it
+  # here and in compose.yaml together, and the README says how such a release goes.
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17.11-alpine@sha256:eee6c6e1b0894fa4fe0075eb054af9fd1cf39a35321c2d4110626cfe506411fb
     restart: unless-stopped
     # The whole database in memory: 53 MB with its indexes, so 128 MB of shared buffers hold it
     # twice over, and the planner is told reads come from memory (effective_cache_size,
