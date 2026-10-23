@@ -22,6 +22,12 @@ which the note leaves out. The sections before, by version, stay as they were.
   placeholder Discogs credits as a guest. Such an artist's page comes back with the first of
   its albums published.
 
+### Internal
+- `make ovh-import` pulls the importer image with the host's own registry login, from
+  `/srv/host/registry.enc.env`, as the deploy does (#278): the token goes to `docker login` on
+  stdin, into a configuration made for that pull and removed with it, and never into the
+  stack's environment.
+
 ## 2026-10-22
 
 ### Security

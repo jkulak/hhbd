@@ -9,7 +9,10 @@
 # waits in the release queue for the daily release (#258), unless RELEASE=now.
 #
 # ci-deploy pulls only the services `up` starts, so the importer image is pulled here first,
-# logged in to GHCR for exactly as long as the pull takes, as ci-deploy does.
+# with the host's own registry login, as ci-deploy pulls (#278, gcloud-ovh-migrate's CONTRACT.md
+# §6): /srv/host/registry.enc.env, root's, opened with the host's age key for the login alone,
+# its token on stdin to docker login into a configuration made for this pull and removed with
+# it, so the login never reaches /root/.docker or the stack's environment.
 #
 # Usage: [RELEASE=now] ./deploy/ovh/import.sh <batch directory> [dry-run|apply]     (or make ovh-import)
 #
@@ -39,9 +42,25 @@ remote() { ${OVH_SSH:-ssh} -o BatchMode=yes "$USER_@$HOST" "$@"; }
 in_stack() { remote "cd /srv/hhbd && sudo SOPS_AGE_KEY_FILE=/etc/sops/age.key /usr/local/bin/sops exec-env hhbd.enc.env '$1'"; }
 
 echo "> the importer image of the running release on $HOST" >&2
-# shellcheck disable=SC2016 # expanded on the host, inside sops exec-env
-if ! in_stack 'printf %s "$GHCR_READ_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null && { docker compose pull -q importer; s=$?; docker logout ghcr.io >/dev/null 2>&1; exit $s; }'; then
-    echo "x no importer image for the running release; one released with #56 or later has it" >&2
+# sh on the host, inside sops exec-env, which hands it SOPS_AGE_KEY_FILE; in_stack quotes it in
+# single quotes, so it holds none. What docker says as it logs in, its warning about where the
+# login is kept among it, is shown only when the registry refuses.
+# shellcheck disable=SC2016 # expanded on the host
+pull='set -e
+plain=$(/usr/local/bin/sops -d /srv/host/registry.enc.env)
+user=$(printf "%s\n" "$plain" | sed -n "s/^GHCR_USER=//p")
+token=$(printf "%s\n" "$plain" | sed -n "s/^GHCR_READ_TOKEN=//p")
+plain=
+config=$(mktemp -d)
+trap "rm -rf $config" EXIT
+if ! said=$(printf %s "$token" | DOCKER_CONFIG=$config docker login ghcr.io -u "$user" --password-stdin 2>&1); then
+    printf "%s\n" "$said" | tail -n 1 >&2
+    exit 1
+fi
+DOCKER_CONFIG=$config docker compose pull -q importer'
+if ! in_stack "$pull"; then
+    echo "x the importer image of the running release did not pull with the host's registry login;" \
+         "the lines above say why, and a release from before #56 has none" >&2
     exit 2
 fi
 
