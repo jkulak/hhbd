@@ -12,6 +12,16 @@ merge names the release. Each change is a bullet whose first sentence stands alo
 the release's note; changes to the build, the tests, CI or the deploy go under `### Internal`,
 which the note leaves out. The sections before, by version, stay as they were.
 
+## 2026-10-23
+
+### Fixed
+- An artist credited only on songs of albums that are not published asks search engines not to
+  index its page and is out of the artist sitemap, as the page lists none of those songs
+  (#276). A credit counted for the page on any song before, so about 480 artists the imports
+  credit only on held-back albums had an empty page in the index, among them `_ _ _ _ _`, a
+  placeholder Discogs credits as a guest. Such an artist's page comes back with the first of
+  its albums published.
+
 ## 2026-10-22
 
 ### Security

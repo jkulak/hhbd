@@ -212,6 +212,7 @@ INSERT INTO artist_lookup (songid, artistid, status) VALUES (19, 22, 999);
 INSERT INTO artist_lookup (songid, artistid, status) VALUES (20, 23, 999);
 INSERT INTO artist_lookup (songid, artistid, status) VALUES (7329, 8, 999);
 INSERT INTO artist_lookup (songid, artistid, status) VALUES (9101, 35, 999);
+INSERT INTO artist_lookup (songid, artistid, status) VALUES (9101, 2259, 999);
 
 -- artist_merges
 
@@ -277,6 +278,7 @@ INSERT INTO artists (id, name, disambiguation, urlname, realname, concertinfo, s
 INSERT INTO artists (id, name, disambiguation, urlname, realname, concertinfo, since, since_precision, till, till_precision, type, special, trivia, website, addedby, added, updatedby, updated, viewed, status, profile, hits) VALUES (67, 'Игроки Улиц', '', 'igroki-ulic', NULL, NULL, NULL, 'day', NULL, 'day', 'b', 0, '', '', NULL, LOCALTIMESTAMP(0), NULL, NULL, 40, 999, NULL, 0);
 INSERT INTO artists (id, name, disambiguation, urlname, realname, concertinfo, since, since_precision, till, till_precision, type, special, trivia, website, addedby, added, updatedby, updated, viewed, status, profile, hits) VALUES (68, 'Wöyza', '', 'woyza', NULL, NULL, NULL, 'day', NULL, 'day', 'm', 0, '', '', NULL, LOCALTIMESTAMP(0), NULL, NULL, 30, 999, NULL, 0);
 INSERT INTO artists (id, name, disambiguation, urlname, realname, concertinfo, since, since_precision, till, till_precision, type, special, trivia, website, addedby, added, updatedby, updated, viewed, status, profile, hits) VALUES (2258, 'Enemis', '', '', NULL, NULL, NULL, 'day', NULL, 'day', 'm', 0, '', '', NULL, NULL, NULL, NULL, 5, 999, NULL, 0);
+INSERT INTO artists (id, name, disambiguation, urlname, realname, concertinfo, since, since_precision, till, till_precision, type, special, trivia, website, addedby, added, updatedby, updated, viewed, status, profile, hits) VALUES (2259, '_ _ _ _ _', '', 'x', NULL, NULL, NULL, 'day', NULL, 'day', 'm', 0, '', '', NULL, NULL, NULL, NULL, 5, 999, NULL, 0);
 
 -- artists_everyweek
 
@@ -749,7 +751,7 @@ SELECT pg_catalog.setval('albums_id_seq', 780, true);
 
 SELECT pg_catalog.setval('artists_everyweek_id_seq', 1, false);
 
-SELECT pg_catalog.setval('artists_id_seq', 2258, true);
+SELECT pg_catalog.setval('artists_id_seq', 2259, true);
 
 SELECT pg_catalog.setval('artists_photos_id_seq', 121, true);
 

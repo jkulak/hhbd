@@ -22,7 +22,8 @@ class Model_Song_Api extends Jkl_Model_Api
     /**
      * A song a visitor is shown is on a published album with an artist: one on no such album
      * has nothing to show it with (#37), and one on unpublished albums only waits with them
-     * for an admin (#168). Follows a song id column, as "t1.id " . SHOWN.
+     * for an admin (#168). Follows a song id column, as "t1.id " . SHOWN. An artist's credits
+     * count for its page on these songs alone (Model_Artist_Api::HAS_CONTENT, #276).
      */
     /**
      * A song whose page has something of its own (#243): lyrics, or someone credited with its
@@ -35,7 +36,7 @@ class Model_Song_Api extends Jkl_Model_Api
         OR EXISTS (SELECT 1 FROM feature_lookup f WHERE f.songid = t1.id)
         OR EXISTS (SELECT 1 FROM scratch_lookup x WHERE x.songid = t1.id))";
 
-    private const SHOWN = 'IN (SELECT l.songid FROM album_lookup l JOIN albums al ON al.id = l.albumid
+    public const SHOWN = 'IN (SELECT l.songid FROM album_lookup l JOIN albums al ON al.id = l.albumid
                                WHERE al.status = ' . Model_Album_Api::PUBLISHED . '
                                  AND EXISTS (SELECT 1 FROM album_artist_lookup c JOIN artists a ON a.id = c.artistid WHERE c.albumid = l.albumid))';
 

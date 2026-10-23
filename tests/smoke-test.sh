@@ -486,6 +486,8 @@ run_fixture_tests() {
     test_page_absent "and the search does not find it" "/szukaj.html?q=Szkic+Numer" "-s9101.html"
     test_page_absent "nor the song sitemap" "/sitemap-songs.xml" "-s9101.html<"
     test_page_absent "nor its artist's page" "/mes-p35.html" "Szkic Numer Jeden"
+    test_page "An artist credited on that song alone asks not to be indexed (#276)" "/x-p2259.html" 'name="robots" content="noindex,follow"'
+    test_page_absent "and the artist sitemap leaves it out" "/sitemap-artists.xml" "-p2259.html<"
     # What an import left to settle (#103): nothing for a visitor, a panel for the fixtures' admin.
     test_page_absent "A visitor sees no review panel" "/solar-raper-z-poznania-p65.html" "Do przejrzenia"
     test_page_absent "nor a page's views, which are an admin's (#214)" "/wdowa-superextra-a535.html" "Wyświetlenia:"
@@ -514,6 +516,8 @@ run_fixture_tests() {
     CURL_OPTS="$visitor_opts"
     rm -f "$jar"
     test_page_multi "An admin's day and label publish an album an import held back (#199)" "/mes-tasma-robocza-a779.html" "<h1>" "Alkopoligamia" "20 maja 2016"
+    test_page "and the artist credited on its song alone is indexed with it (#276)" "/x-p2259.html" 'name="robots" content="index,follow"'
+    test_page "and in the artist sitemap" "/sitemap-artists.xml" "/x-p2259.html<"
     echo ""
 
     # What nginx says of caching (#182). Here only: on production Cloudflare answers, and may

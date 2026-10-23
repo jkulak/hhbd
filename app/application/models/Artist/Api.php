@@ -13,18 +13,22 @@ class Model_Artist_Api extends Jkl_Model_Api
 {
     /**
      * An artist whose page has something of its own (#243): a published album, a credit on a
-     * song, a group it belongs to or members, or a profile. A page with none of them asks
-     * search engines not to index it and stays out of the sitemap and the lists of artists
-     * added; the condition is on the artists table aliased t1, for all three. An artist an
-     * import made, waiting in the release queue with its album (queued, #258), has nothing of
-     * its own until a published album credits it.
+     * song a visitor is shown, a group it belongs to or members, or a profile. A page with none
+     * of them asks search engines not to index it and stays out of the sitemap and the lists of
+     * artists added; the condition is on the artists table aliased t1, for all three. A credit
+     * on a song only unpublished albums hold is no content, as the page lists no such song
+     * (#276): an import credits names, placeholders among them, on albums the publication rule
+     * keeps back. An artist an import made, waiting in the release queue with its album (queued,
+     * #258), has nothing of its own until a published album credits it. The four kinds of credit
+     * are one EXISTS over their union: four, each with SHOWN, raised the planner's cost of the
+     * sitemap's whole-table scan past PostgreSQL's threshold for optimising JIT, which spent half
+     * a second compiling a query that runs in 35 ms.
      */
     public const HAS_CONTENT = "(EXISTS (SELECT 1 FROM album_artist_lookup c JOIN albums a ON a.id = c.albumid WHERE c.artistid = t1.id AND a.status = 999)
         OR (t1.queued IS NULL AND (t1.profile <> ''
-            OR EXISTS (SELECT 1 FROM artist_lookup r WHERE r.artistid = t1.id)
-            OR EXISTS (SELECT 1 FROM music_lookup m WHERE m.artistid = t1.id)
-            OR EXISTS (SELECT 1 FROM feature_lookup f WHERE f.artistid = t1.id)
-            OR EXISTS (SELECT 1 FROM scratch_lookup x WHERE x.artistid = t1.id)
+            OR EXISTS (SELECT 1 FROM (SELECT artistid, songid FROM artist_lookup UNION ALL SELECT artistid, songid FROM music_lookup
+                    UNION ALL SELECT artistid, songid FROM feature_lookup UNION ALL SELECT artistid, songid FROM scratch_lookup) k
+                WHERE k.artistid = t1.id AND k.songid " . Model_Song_Api::SHOWN . ")
             OR EXISTS (SELECT 1 FROM band_lookup b WHERE b.artistid = t1.id OR b.bandid = t1.id))))";
 
     private static $_instance;
