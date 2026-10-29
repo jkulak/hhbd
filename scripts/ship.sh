@@ -7,9 +7,14 @@
 #   ship.sh <pr>   check it may go in, rebase it onto main and sign it again where it needs
 #                  that, pass its gate, push it to main, then follow what the merge starts
 #
-# Word for word the same in every repo: the original is gcloud-ovh-migrate's, a shared file of
-# its service template, and its `make service-drift` says when a copy has moved. What differs
-# between repos is read from the repo itself:
+# Word for word the same in every repo: the original is the platform's, a shared file of
+# its service template, and its `make service-drift` says when a copy has moved. A copy kept up
+# by hand falls behind, so one that is not what the platform's main holds runs main's version
+# instead, fetched afresh into the platform checkout, which is always on this Mac: a fix to the
+# original reaches every repo the moment it is merged there. Only main's, never the checkout's
+# working tree or a branch it has out, since that checkout is someone's work in progress. Without
+# the checkout, or when its main cannot be fetched, the copy runs itself and says it may be
+# behind. What differs between repos is read from the repo itself:
 #
 #   the gate     the checks of the workflows that run on its pull requests; where none do,
 #                make ci on the new head, its line put into the pull request body
@@ -23,11 +28,17 @@
 #
 # Environment:
 #   INSTALLED=1   the host configuration the pull request changes was installed from its branch
-#   OVH_PLATFORM  gcloud-ovh-migrate, whose make logs reads production
-#                 (default ~/Developer/gcloud-ovh-migrate, as in deploy/ovh/ovh.mk)
+#   OVH_PLATFORM  the platform checkout, whose origin/main holds the ship.sh that runs and whose
+#                 make logs reads production (default ~/Developer/platform, as in deploy/ovh/ovh.mk)
 set -euo pipefail
+# Nothing it runs may wait on me. From a terminal git pages what it prints into less, and my
+# shell's LESS=-R, unlike the LESS=FRX git sets where there is none, keeps less open on a single
+# line until q is pressed. Git would also open an editor for a message, or ask for a user name
+# and password over HTTPS, and gh pages and asks questions of its own.
+export GIT_PAGER=cat GH_PAGER=cat GIT_EDITOR=true GIT_TERMINAL_PROMPT=0 GH_PROMPT_DISABLED=1
+SELF=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)/$(basename "${BASH_SOURCE[0]}")
 cd "$(git rev-parse --show-toplevel)"
-OVH_PLATFORM=${OVH_PLATFORM:-$HOME/Developer/gcloud-ovh-migrate}
+OVH_PLATFORM=${OVH_PLATFORM:-$HOME/Developer/platform}
 
 say() { printf '%s\n' "$*"; }
 die() { printf 'x %s\n' "$*" >&2; exit 1; }
@@ -47,9 +58,34 @@ cleanup() {
 }
 trap cleanup EXIT
 
+scratch() { # the directory this run writes into, made the first time it is asked for
+  [ -n "$SCRATCH" ] || SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/ship.XXXXXX")
+}
+
+handover() { # handover <arg>...: the platform's main version of this script runs instead, where this copy is not it
+  local main code=0
+  if ! git -C "$OVH_PLATFORM" rev-parse --git-dir >/dev/null 2>&1; then
+    say "> $OVH_PLATFORM is not here, so this repo's own scripts/ship.sh runs, and it may be behind the platform's"
+    return 0
+  fi
+  scratch
+  # The checkout's own origin/main may be days old, so it is fetched first; the ref it writes
+  # is the one git fetch would, and nothing the checkout has out is touched.
+  if ! git -C "$OVH_PLATFORM" fetch --quiet origin "+refs/heads/main:refs/remotes/origin/main" >/dev/null 2>&1 \
+     || ! main=$(git -C "$OVH_PLATFORM" rev-parse --verify --quiet "refs/remotes/origin/main^{commit}") \
+     || ! git -C "$OVH_PLATFORM" cat-file -p "$main:scripts/ship.sh" > "$SCRATCH/ship.sh" 2>/dev/null; then
+    say "> the platform's main cannot be fetched into $OVH_PLATFORM, so this repo's own scripts/ship.sh runs, and it may be behind it"
+    return 0
+  fi
+  cmp -s "$SELF" "$SCRATCH/ship.sh" && return 0
+  say "> this repo's scripts/ship.sh differs from the platform's main, ${main:0:7}, which runs in its place"
+  SHIP_FROM_PLATFORM=$main bash "$SCRATCH/ship.sh" "$@" || code=$?
+  exit "$code"
+}
+
 checkout() { # checkout <sha>: the throwaway worktree, at that commit
   if [ -z "$WORK" ]; then
-    SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/ship.XXXXXX")
+    scratch
     WORK=$SCRATCH/work
     git worktree add --quiet --detach "$WORK" "$1"
   else
@@ -58,7 +94,7 @@ checkout() { # checkout <sha>: the throwaway worktree, at that commit
 }
 
 unsigned() { # unsigned <range>: each commit in it without a good signature, as "<sha> <%G?> <subject>"
-  git log --format='%h %G? %s' "$1" 2>/dev/null | awk '$2 != "G"'
+  git --no-pager log --format='%h %G? %s' "$1" 2>/dev/null | awk '$2 != "G"'
 }
 
 has() { # has <sha> <path>: whether that commit holds the file
@@ -115,7 +151,7 @@ head_on_github() { gh pr view "$PR" -R "$REPO" --json headRefOid --jq .headRefOi
 state_on_github() { gh pr view "$PR" -R "$REPO" --json state --jq .state; }
 
 checks() { # the checks of the pull request's workflows, on the head it has now
-  local since
+  local since ended bad
   since=$(date +%s)
   say "> its workflows' checks on ${NEW:0:7}"
   # Straight after a push GitHub has not reported the checks yet, and gh pr checks says so
@@ -126,8 +162,19 @@ checks() { # the checks of the pull request's workflows, on the head it has now
   done
   [[ $(gh pr checks "$PR" -R "$REPO" 2>&1 || true) != *"no checks reported"* ]] \
     || die "#$PR: no checks reported a minute on, so nothing gates it: is CI running for it?"
-  gh pr checks "$PR" -R "$REPO" --watch --fail-fast >/dev/null 2>&1 \
-    || die "#$PR: a check failed, and main was left as it is: gh pr checks $PR"
+  # The watch only waits. gh exits 0 for a check that was cancelled, as a job is at its
+  # timeout-minutes, since it counts that as neither failed nor pending, so how each check
+  # ended is read once the watch is over, and nothing but a pass, a skip or a neutral end lets
+  # it in.
+  gh pr checks "$PR" -R "$REPO" --watch --fail-fast >/dev/null 2>&1 || true
+  ended=$(gh pr checks "$PR" -R "$REPO" --json name,state --jq '.[] | [.name, .state] | @tsv') \
+    || die "#$PR: how its checks ended cannot be read, and main was left as it is: gh pr checks $PR"
+  bad=$(awk -F'\t' '$2 != "SUCCESS" && $2 != "SKIPPED" && $2 != "NEUTRAL" {
+          s = tolower($2); gsub("_", " ", s); print $1 ": " s }' <<<"$ended")
+  if [ -n "$bad" ]; then
+    while IFS= read -r line; do say "    $line" >&2; done <<<"$bad"
+    die "#$PR: a check did not pass, and main was left as it is: gh pr checks $PR"
+  fi
   say "> passed, after $(took "$since")"
 }
 
@@ -259,7 +306,7 @@ ship() {
     while IFS= read -r line; do say "    $line" >&2; done <<<"$bad"
     die "these have no good signature by a key gpg.ssh.allowedSignersFile trusts, so main would show them unverified: nothing was pushed"
   fi
-  git log --reverse --format='    %h %s' "origin/main..$NEW"
+  git --no-pager log --reverse --format='    %h %s' "origin/main..$NEW"
   if [ "$NEW" != "$head" ]; then
     say "> force-pushing $BRANCH, a branch of mine alone, with a lease on ${head:0:7}: it is ${NEW:0:7} now"
     git push --quiet --force-with-lease="refs/heads/$BRANCH:$head" origin "$NEW:refs/heads/$BRANCH" \
@@ -307,4 +354,7 @@ ship() {
 }
 
 PR=${1:-}
+# The version handed over runs as it is, and nothing it runs is told it was: make ci here runs
+# this script's tests, which hand over themselves.
+if [ -n "${SHIP_FROM_PLATFORM:-}" ]; then unset SHIP_FROM_PLATFORM; else handover "$@"; fi
 ship

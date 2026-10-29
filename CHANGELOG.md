@@ -12,6 +12,20 @@ merge names the release. Each change is a bullet whose first sentence stands alo
 the release's note; changes to the build, the tests, CI or the deploy go under `### Internal`,
 which the note leaves out. The sections before, by version, stay as they were.
 
+## 2026-10-29
+
+### Internal
+- `make ship` runs the platform's own `ship.sh`, and stops on a check that was cancelled.
+  `scripts/ship.sh` is the platform's after jkulak/platform#243 and jkulak/platform#241. Where
+  it differs from the one on the platform's `main`, it fetches that one into the platform
+  checkout and runs it in its place, and says so, so a change merged there reaches this repo at
+  once; without that checkout it runs itself and says it may be behind. It also reads how each
+  check ended once gh has stopped watching them, since gh's watch lets a cancelled or timed out
+  check through, and anything but a pass, a skip or a neutral end stops the ship with `main` as
+  it was. Like the platform's since jkulak/platform#215, it runs git and gh with no pager,
+  editor or prompt, where `git log` paged into `less` and held the ship on one line until `q`
+  was pressed. It finds the platform checkout under its name since the rename.
+
 ## 2026-10-24
 
 ### Internal
