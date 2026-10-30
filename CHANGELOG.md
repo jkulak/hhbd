@@ -12,6 +12,20 @@ merge names the release. Each change is a bullet whose first sentence stands alo
 the release's note; changes to the build, the tests, CI or the deploy go under `### Internal`,
 which the note leaves out. The sections before, by version, stay as they were.
 
+## 2026-10-31
+
+### Added
+- A label's page describes the label in JSON-LD, as an album's, an artist's and a song's have
+  since #195 (#288): an `Organization` with its logo and its own site, the albums it released
+  as an `ItemList`, each with its artists and date, and the path to it. A group's page names
+  its members and an artist's the groups it is in, and a song's who made its music, who guests
+  on it and who scratches, each at the address of their page: what search engines need to
+  answer who made what.
+
+### Internal
+- The fixtures give the song "Intro" its music and scratches, so the smoke test checks the
+  JSON-LD that names them.
+
 ## 2026-10-30
 
 ### Added

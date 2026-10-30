@@ -481,6 +481,7 @@ INSERT INTO migration_archive (id, version, table_name, action, row_data, added)
 INSERT INTO migration_archive (id, version, table_name, action, row_data, added) VALUES (55, '0036', 'albums', 'changed', '{"id": 81, "status": 0}', LOCALTIMESTAMP(0));
 
 -- music_lookup
+INSERT INTO music_lookup (songid, artistid, status) VALUES (1, 37, 999);
 
 -- news
 INSERT INTO news (id, news, title, expires, glyph, graph, viewed, addedby, added) VALUES (1, 'Pezet zapowiada nowy album na wiosnę. Fani nie mogą się doczekać!', 'Premiera nowego albumu Pezeta', NULL, '', 'test-news-001.jpg', 3000, NULL, '2024-02-01 12:00:00');
@@ -668,6 +669,7 @@ INSERT INTO review_items (id, entity_type, entity_id, reason, detail, run_id, cr
 INSERT INTO review_items (id, entity_type, entity_id, reason, detail, run_id, created, resolved, resolved_by, resolution, note, undo_data) VALUES (10, 'artist', 47, 'duplicate', '{"text": "the same Discogs artist 32418 as hhbd artist 35", "suggestions": [35]}', 1, '2026-10-11 12:00:00', NULL, NULL, NULL, NULL, NULL);
 
 -- scratch_lookup
+INSERT INTO scratch_lookup (songid, artistid, status) VALUES (1, 38, 999);
 
 -- searches
 INSERT INTO searches (id, searchstring, userid, added) VALUES (1, 'pezet', NULL, LOCALTIMESTAMP(0));

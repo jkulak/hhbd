@@ -2,7 +2,7 @@
 
 > Hhbd.pl, Hip-Hopowa Baza Danych, is a database of Polish hip-hop, online since 2005: albums with their tracklists, release dates, labels and covers; artists and groups with their discographies, members and other names; songs with who rapped, produced, scratched and featured on them, and their lyrics; record labels with their catalogues; and news. The pages are in Polish.
 
-Each album, artist, song and label has one page at one address, named in its `rel="canonical"` and described in JSON-LD (schema.org `MusicAlbum`, `MusicGroup`, `MusicRecording`). The number before `.html` is the record's id, and the letter before it its kind:
+Each album, artist, song and label has one page at one address, named in its `rel="canonical"` and described in JSON-LD (schema.org `MusicAlbum`, `MusicGroup`, `MusicRecording`, and a label an `Organization` with its albums in an `ItemList`). The number before `.html` is the record's id, and the letter before it its kind:
 
 - An album: `https://hhbd.pl/<artist>-<title>-a<id>.html`, for example https://hhbd.pl/wdowa-superextra-a535.html
 - An artist or a group: `https://hhbd.pl/<name>-p<id>.html`, for example https://hhbd.pl/mes-p35.html

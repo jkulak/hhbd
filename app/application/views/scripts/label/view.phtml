@@ -1,3 +1,4 @@
+<?php echo $this->StructuredData()->label($this->label) ?>
 <div id="main">
     <h1><?php echo $this->label->name ?></h1>
   <?php if ($this->IsAdmin()): ?><?php echo $this->partial('review/_panel.phtml', array('items' => $this->reviewItems, 'messages' => $this->reviewMessages, 'back' => strtok($_SERVER['REQUEST_URI'], '?'))) ?><?php endif ?>

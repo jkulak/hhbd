@@ -385,6 +385,19 @@ run_fixture_tests() {
     test_page "A song's says who performs it, on which album of which label and year, and its guests (#287)" "/pogoda-s7329.html" '<p id="lead">Wdowa – „Pogoda”, utwór z albumu „Superextra” (Alkopoligamia, 2010); gościnnie: Beatmo (muzyka) i Dj Technik (scratch).</p>'
     test_page "and names each album a song is on" "/outro-s30.html" '<p id="lead">Stasiak – „Outro”, utwór z albumów „Światła Miasta” (Step Records, 2008) i „Koniec Świata” (QL Records, 2016).</p>'
     test_page "A label's says how many albums, from which years, and by whom, most albums first" "/asfalt-l1.html" '<p id="lead">Asfalt – wytwórnia; na Hhbd.pl 6 albumów z lat 2004–2020, wykonawcy: Eldo, Zeus, Pih, Quebonafide i Pezet.</p>'
+    # Who made what, in schema.org's terms (#288)
+    test_json_ld "A label's page describes the label, its logo and its own site (#288)" "/asfalt-l1.html" \
+        '[.["@graph"][] | select(.["@type"] == "Organization")][0] | .name == "Asfalt" and .["@id"] == "'"${BASE_URL}"'/asfalt-l1.html#organization" and .logo == "'"${BASE_URL}"'/content/l/test-label-001.jpg" and .sameAs == "http://asfalt.pl"'
+    test_json_ld "and lists its albums, each with its artists, date and label" "/asfalt-l1.html" \
+        '[.["@graph"][] | select(.["@type"] == "ItemList")][0] | .numberOfItems == 6 and (.itemListElement[0].item | .name == "Nocne Życie" and .byArtist[0].name == "Zeus" and .datePublished == "2020-11-11" and .recordLabel["@id"] == "'"${BASE_URL}"'/asfalt-l1.html#organization")'
+    test_json_ld "and the path to it" "/asfalt-l1.html" \
+        '[.["@graph"][] | select(.["@type"] == "BreadcrumbList")][0].itemListElement | map(.name) == ["Hhbd.pl", "Wytwórnie", "Asfalt"]'
+    test_json_ld "A group's page names its members, at their pages" "/grammatik-p22.html" \
+        '.["@graph"][0].member | map(.name) == ["Eldo", "Grubson", "Pezet"] and .[2].url == "'"${BASE_URL}"'/pezet-p1.html"'
+    test_json_ld "and an artist's the groups it is in" "/pezet-p1.html" \
+        '.["@graph"][0].memberOf | map(.name) == ["Duet Testowy", "Grammatik"]'
+    test_json_ld "A song's page names who made its music, and who guests or scratches on it as what" "/intro-s1.html" \
+        '.["@graph"][0] | (.producer | map(.name) == ["Noon"]) and (.contributor | map([.roleName, .contributor.name]) == [["scratch", "DJ 600V"], ["skrecze", "White House"]])'
     test_page "An album with no known date renders" "/eldo-polskie-karate-a778.html" "Polskie Karate"
     test_page_multi "A two-disc tracklist is numbered by disc" "/eldo-trzecia-czesc-tryptyku-a3.html" "1-01" "2-01"
     # Where the data came from is for an admin's eyes only, at the top of the page (#158)
@@ -1156,6 +1169,10 @@ run_tests() {
         '[.["@graph"][] | select(.["@type"] == "MusicGroup")][0] | .name == "Mes" and (.album | length) > 0'
     test_json_ld "A song's page describes the song and its album" "/pogoda-s7329.html" \
         '[.["@graph"][] | select(.["@type"] == "MusicRecording")][0] | .name == "Pogoda" and .inAlbum.name == "Superextra"'
+    test_json_ld "and names who guests or scratches on it, each by what they did, at their pages (#288)" "/pogoda-s7329.html" \
+        '[.["@graph"][] | select(.["@type"] == "MusicRecording")][0].contributor | length > 0 and all(.[]; .["@type"] == "Role" and (.roleName | length) > 0 and (.contributor.url | test("^https?://[^/]+/[^/]+-p[0-9]+\\.html$")))'
+    test_json_ld "A label's page describes the label and lists its albums" "/alkopoligamia-l58.html" \
+        '([.["@graph"][] | select(.["@type"] == "Organization")][0].name == "Alkopoligamia") and ([.["@graph"][] | select(.["@type"] == "ItemList")][0] | .numberOfItems > 0 and .numberOfItems == (.itemListElement | length) and (.itemListElement[0].item.url | test("^https?://[^/]+/[^/]+-a[0-9]+\\.html$")))'
     echo ""
 
     # What hhbd.pl is, to whatever reads it for a person (#218): read-only, so production too

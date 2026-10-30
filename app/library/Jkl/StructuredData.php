@@ -1,8 +1,8 @@
 <?php
 
 /**
- * What a page is, in schema.org's terms, for search engines (#195): an album, an artist or a
- * song, and the path to it. Built from plain arrays, so it is the same for any page that hands
+ * What a page is, in schema.org's terms, for search engines (#195): an album, an artist, a song
+ * or a label (#288), and the path to it. Built from plain arrays, so it is the same for any page that hands
  * it one; Zend_View_Helper_StructuredData hands it the containers' values.
  */
 class Jkl_StructuredData
@@ -98,7 +98,9 @@ class Jkl_StructuredData
     }
 
     /**
-     * @param array $artist name, url, alternateNames, image (or null), albums (array of name, url)
+     * @param array $artist name, url, alternateNames, image (or null), albums (array of name, url),
+     *                      members and memberOf (array of name, url each): a group's members and
+     *                      the groups an artist is in (#288)
      */
     public static function artist(array $artist)
     {
@@ -114,11 +116,19 @@ class Jkl_StructuredData
                 return array('@type' => 'MusicAlbum', 'name' => $album[0], 'url' => $album[1]);
             }, array_values($artist['albums']));
         }
+        if (!empty($artist['members'])) {
+            $data['member'] = array_map(array(self::class, 'group'), array_values($artist['members']));
+        }
+        if (!empty($artist['memberOf'])) {
+            $data['memberOf'] = array_map(array(self::class, 'group'), array_values($artist['memberOf']));
+        }
         return $data;
     }
 
     /**
-     * @param array $song name, url, length, artists (array of name, url), album (name, url, or null)
+     * @param array $song name, url, length, artists (array of name, url), album (name, url, or null),
+     *                    producers (array of name, url): who made its music, contributors (array of
+     *                    name, url, role): who guests or scratches on it, and as what (#288)
      */
     public static function song(array $song)
     {
@@ -129,7 +139,60 @@ class Jkl_StructuredData
         if (!empty($song['album'])) {
             $data['inAlbum'] = array('@type' => 'MusicAlbum', 'name' => $song['album']['name'], 'url' => $song['album']['url']);
         }
+        if (!empty($song['producers'])) {
+            $data['producer'] = array_map(array(self::class, 'group'), array_values($song['producers']));
+        }
+        if (!empty($song['contributors'])) {
+            // schema.org's Role: the artist inside it, under the property the Role stands for
+            $data['contributor'] = array_map(function ($contributor) {
+                return array('@type' => 'Role', 'roleName' => $contributor[2], 'contributor' => self::group($contributor));
+            }, array_values($song['contributors']));
+        }
         return $data;
+    }
+
+    /**
+     * A label (#288), under an @id the albums it released name it by: its page, its logo, and its
+     * own site as the same organisation elsewhere
+     *
+     * @param array $label name, url, logo (or null), website (or null)
+     */
+    public static function label(array $label)
+    {
+        $data = array('@type' => 'Organization', '@id' => $label['url'] . '#organization', 'name' => $label['name'], 'url' => $label['url']);
+        if (!empty($label['logo'])) {
+            $data['logo'] = $label['logo'];
+        }
+        if (!empty($label['website'])) {
+            $data['sameAs'] = $label['website'];
+        }
+        return $data;
+    }
+
+    /**
+     * The albums a page lists, in its order (#288)
+     *
+     * @param array $list name, label (the @id of the label that released them, or null), albums
+     *                    (array of name, url, artists (array of name, url), date, precision)
+     */
+    public static function albumList(array $list)
+    {
+        $items = array();
+        foreach (array_values($list['albums']) as $i => $album) {
+            $item = array('@type' => 'MusicAlbum', 'name' => $album['name'], 'url' => $album['url']);
+            if (!empty($album['artists'])) {
+                $item['byArtist'] = array_map(array(self::class, 'group'), array_values($album['artists']));
+            }
+            $date = self::date($album['date'], $album['precision']);
+            if (null !== $date) {
+                $item['datePublished'] = $date;
+            }
+            if (!empty($list['label'])) {
+                $item['recordLabel'] = array('@id' => $list['label']);
+            }
+            $items[] = array('@type' => 'ListItem', 'position' => $i + 1, 'item' => $item);
+        }
+        return array('@type' => 'ItemList', 'name' => $list['name'], 'numberOfItems' => count($items), 'itemListElement' => $items);
     }
 
     /**

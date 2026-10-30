@@ -4,7 +4,8 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * schema.org JSON-LD for search engines (#195): an album with its artists, date, label and
- * tracks; an artist; a song; the path to each; the site and who runs it (#218); and a script
+ * tracks; an artist with its members and groups, a song with who made it, a label with its
+ * albums (#288); the path to each; the site and who runs it (#218); and a script
  * no page text can break out of.
  */
 class Jkl_StructuredDataTest extends TestCase
@@ -110,6 +111,92 @@ class Jkl_StructuredDataTest extends TestCase
         $this->assertSame('PT4M5S', $song['duration']);
         $this->assertSame('Superextra', $song['inAlbum']['name']);
         $this->assertSame('Wdowa', $song['byArtist'][0]['name']);
+    }
+
+    public function testAGroupNamesItsMembersAndAnArtistTheGroupsItIsIn(): void
+    {
+        $group = Jkl_StructuredData::artist(array(
+            'name' => 'Grammatik', 'url' => 'https://hhbd.pl/grammatik-p22.html', 'alternateNames' => array(), 'image' => null, 'albums' => array(),
+            'members' => array(array('Eldo', 'https://hhbd.pl/eldo-p2.html'), array('Jotuze', 'https://hhbd.pl/jotuze-p3.html')),
+        ));
+        $member = Jkl_StructuredData::artist(array(
+            'name' => 'Eldo', 'url' => 'https://hhbd.pl/eldo-p2.html', 'alternateNames' => array(), 'image' => null, 'albums' => array(),
+            'memberOf' => array(array('Grammatik', 'https://hhbd.pl/grammatik-p22.html')),
+        ));
+
+        $this->assertSame(array('@type' => 'MusicGroup', 'name' => 'Jotuze', 'url' => 'https://hhbd.pl/jotuze-p3.html'), $group['member'][1]);
+        $this->assertArrayNotHasKey('memberOf', $group, 'a group in no other says none');
+        $this->assertSame(array(array('@type' => 'MusicGroup', 'name' => 'Grammatik', 'url' => 'https://hhbd.pl/grammatik-p22.html')), $member['memberOf']);
+        $this->assertArrayNotHasKey('member', $member, 'an artist with no members says none');
+    }
+
+    public function testASongNamesWhoMadeItsMusicAndWhoGuestsOrScratchesAsWhat(): void
+    {
+        $song = Jkl_StructuredData::song(array(
+            'name' => 'Pogoda', 'url' => 'https://hhbd.pl/pogoda-s7329.html', 'length' => null, 'artists' => array(), 'album' => null,
+            'producers' => array(array('Beatmo', 'https://hhbd.pl/beatmo-p5.html')),
+            'contributors' => array(array('Pih', 'https://hhbd.pl/pih-p6.html', 'gościnnie'), array('Dj Technik', 'https://hhbd.pl/dj-technik-p7.html', 'skrecze')),
+        ));
+
+        $this->assertSame(array(array('@type' => 'MusicGroup', 'name' => 'Beatmo', 'url' => 'https://hhbd.pl/beatmo-p5.html')), $song['producer']);
+        $this->assertSame(
+            array('@type' => 'Role', 'roleName' => 'skrecze', 'contributor' => array('@type' => 'MusicGroup', 'name' => 'Dj Technik', 'url' => 'https://hhbd.pl/dj-technik-p7.html')),
+            $song['contributor'][1]
+        );
+        $this->assertSame('gościnnie', $song['contributor'][0]['roleName']);
+    }
+
+    public function testASongWithNoCreditsNamesNoProducerOrContributor(): void
+    {
+        $song = Jkl_StructuredData::song(array('name' => 'Intro', 'url' => 'https://hhbd.pl/intro-s1.html', 'length' => null, 'artists' => array(), 'album' => null));
+
+        $this->assertArrayNotHasKey('producer', $song);
+        $this->assertArrayNotHasKey('contributor', $song);
+    }
+
+    public function testALabelIsAnOrganizationWithItsLogoAndItsOwnSite(): void
+    {
+        $label = Jkl_StructuredData::label(array(
+            'name' => 'Asfalt', 'url' => 'https://hhbd.pl/asfalt-l1.html', 'logo' => 'https://hhbd.pl/content/l/x.jpg', 'website' => 'http://asfalt.pl',
+        ));
+
+        $this->assertSame('Organization', $label['@type']);
+        $this->assertSame('https://hhbd.pl/asfalt-l1.html#organization', $label['@id']);
+        $this->assertSame('https://hhbd.pl/content/l/x.jpg', $label['logo']);
+        $this->assertSame('http://asfalt.pl', $label['sameAs']);
+    }
+
+    public function testALabelWithNoLogoOrSiteLeavesThemOut(): void
+    {
+        $label = Jkl_StructuredData::label(array('name' => 'Asfalt', 'url' => 'https://hhbd.pl/asfalt-l1.html', 'logo' => null, 'website' => null));
+
+        $this->assertArrayNotHasKey('logo', $label);
+        $this->assertArrayNotHasKey('sameAs', $label);
+    }
+
+    public function testALabelsAlbumsAreListedInOrderWithTheirArtistsDatesAndTheLabel(): void
+    {
+        $list = Jkl_StructuredData::albumList(array(
+            'name' => 'Lista wydawnictw Asfalt', 'label' => 'https://hhbd.pl/asfalt-l1.html#organization',
+            'albums' => array(
+                array('name' => 'Muzyka Poważna', 'url' => 'https://hhbd.pl/x-a2.html', 'artists' => array(array('Pezet', 'https://hhbd.pl/pezet-p1.html')), 'date' => '2006-05-20', 'precision' => 'day'),
+                array('name' => 'Składanka', 'url' => 'https://hhbd.pl/x-a9.html', 'artists' => array(), 'date' => null, 'precision' => null),
+            ),
+        ));
+
+        $this->assertSame('ItemList', $list['@type']);
+        $this->assertSame(2, $list['numberOfItems']);
+        $this->assertSame(array(
+            '@type' => 'ListItem', 'position' => 1,
+            'item'  => array(
+                '@type' => 'MusicAlbum', 'name' => 'Muzyka Poważna', 'url' => 'https://hhbd.pl/x-a2.html',
+                'byArtist' => array(array('@type' => 'MusicGroup', 'name' => 'Pezet', 'url' => 'https://hhbd.pl/pezet-p1.html')),
+                'datePublished' => '2006-05-20', 'recordLabel' => array('@id' => 'https://hhbd.pl/asfalt-l1.html#organization'),
+            ),
+        ), $list['itemListElement'][0]);
+        $this->assertSame(2, $list['itemListElement'][1]['position']);
+        $this->assertArrayNotHasKey('byArtist', $list['itemListElement'][1]['item'], 'an album with no main artist names none');
+        $this->assertArrayNotHasKey('datePublished', $list['itemListElement'][1]['item']);
     }
 
     public function testThePathListsEachStepInOrder(): void
