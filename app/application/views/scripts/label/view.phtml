@@ -35,7 +35,7 @@
   <?php if (!empty($this->label->releases->items)): ?>
   <div class="albumlist pane">
     <div class="header">
-      <h2>Lista wydawnictw <?php echo $this->label->name ?></h2> <span class="toggle hidden"><a href="?hideDetailes=1">Pokaż szczegóły</a></span>
+      <h2>Lista wydawnictw <?php echo $this->label->name ?></h2>
     </div>
     <div class="list">
       <?php echo $this->partial('album/_table.phtml', array('albums' => $this->label->releases, 'showCatalogNumber' => true)) ?>
@@ -45,7 +45,7 @@
 
   <div id="description" class="pane">
     <div class="header">
-      <h2>Profil wytwórni</h2><?php if (!empty($this->label->description)): ?><span class="toggle js-visible"><a rel="nofollow"  href="?showDefaultDescription=1">Pokaż opis standardowy</a></span><?php endif ?>
+      <h2>Profil wytwórni</h2><?php if (!empty($this->label->description)): ?><span class="toggle js-visible"><a href="#description">Pokaż opis standardowy</a></span><?php endif ?>
     </div>
   	 <?php if (!empty($this->label->description)): ?><p><?php echo $this->label->description ?></p><?php endif ?>
     <p class="<?php if (!empty($this->label->description)): ?>js-hidden <?php endif ?>auto"><?php echo $this->label->autoDescription ?></p>

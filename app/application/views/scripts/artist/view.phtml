@@ -75,7 +75,7 @@
         Lista wydanych składanek
       <?php else: ?>
         Dyskografia
-      <?php endif ?></h2> <span class="toggle hidden"><a href="?hideDetailes=1">Pokaż szczegóły</a></span>
+      <?php endif ?></h2>
     </div>
     <div class="list">
       <?php echo $this->partial('album/_table.phtml', array('albums' => $this->artist->albums)) ?>
@@ -86,7 +86,7 @@
   <?php if (!empty($this->artist->projectAlbums->items)): ?>
   <div class="albumlist pane">
     <div class="header">
-      <h2>Lista wydanych albumów w projektach</h2> <span class="toggle hidden"><a rel="nofollow" href="?hideDetailes=1">Pokaż szczegóły</a></span>
+      <h2>Lista wydanych albumów w projektach</h2>
     </div>
     <div class="list">
       <?php echo $this->partial('album/_table.phtml', array('albums' => $this->artist->projectAlbums)); ?>
@@ -96,7 +96,7 @@
 
   <div id="description" class="pane">
     <div class="header">
-      <h2>Biografia</h2><?php if (!empty($this->artist->description)): ?><span class="toggle js-visible"><a rel="nofollow"  href="?showDefaultDescription=1">Pokaż opis standardowy</a></span><?php endif ?>
+      <h2>Biografia</h2><?php if (!empty($this->artist->description)): ?><span class="toggle js-visible"><a href="#description">Pokaż opis standardowy</a></span><?php endif ?>
     </div>
   	 <?php if (!empty($this->artist->description)): ?><p><?php echo $this->artist->description ?></p><?php endif ?>
     <p class="<?php if (!empty($this->artist->description)): ?>js-hidden <?php endif ?>auto"><?php echo $this->artist->autoDescription ?></p>

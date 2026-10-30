@@ -5,9 +5,10 @@
 #
 # They also keep crawlers off what is no page of its own (#286), where a week of the edge's log
 # had most of ClaudeBot's and Meta's fetches: the account pages, which every page's header links
-# with its own address in ?url=; the old ?autoplay= and ?showCommentForm= links, the same page at
-# another address, which are fragments now; and search's tabs and pages. A search itself,
-# /szukaj.html?q=<words>, stays open, as llms.txt hands it to assistants.
+# with its own address in ?url=; the old ?autoplay=, ?showCommentForm=, ?hideDetailes= and
+# ?showDefaultDescription= links, the same page at another address, which are fragments now; and
+# search's tabs and pages. A search itself, /szukaj.html?q=<words>, stays open, as llms.txt hands
+# it to assistants.
 #
 # The crawlers of AI search, and the fetches a person asks an assistant for, are named, so each
 # finds itself here and reads the same rules as everyone (#217): OpenAI's OAI-SearchBot and
@@ -40,6 +41,8 @@ Disallow: /user/logout
 Disallow: /uzytkownik/
 Disallow: /*?autoplay=
 Disallow: /*?showCommentForm=
+Disallow: /*?hideDetailes=
+Disallow: /*?showDefaultDescription=
 Disallow: /szukaj.html?*page=
 Disallow: /szukaj.html?*tp=
 

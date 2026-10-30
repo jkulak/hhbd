@@ -1088,7 +1088,7 @@ run_tests() {
     # What is no page of its own (#286): the account pages, the old links that were the same
     # page at another address, and search's tabs and pages
     local rule
-    for rule in '/uzytkownik/' '/\*?autoplay=' '/\*?showCommentForm=' '/szukaj.html?\*page=' '/szukaj.html?\*tp='; do
+    for rule in '/uzytkownik/' '/\*?autoplay=' '/\*?showCommentForm=' '/\*?hideDetailes=' '/\*?showDefaultDescription=' '/szukaj.html?\*page=' '/szukaj.html?\*tp='; do
         test_page "robots.txt keeps crawlers off ${rule//\\/}" "/robots.txt" "^Disallow: ${rule}$"
     done
     test_page_absent "and leaves a search itself open, as llms.txt hands it out" "/robots.txt" '^Disallow: /szukaj\(\.html\)*\(?q=\)*$'
@@ -1098,6 +1098,10 @@ run_tests() {
     test_page "and the script starts it at #clip" "$(linked_address /js/s.js)" "window.location.hash === '#clip'"
     test_page_absent "\"Dodaj kolejny komentarz\" is no other address of the page" "/wdowa-superextra-a535.html" 'showCommentForm'
     test_page "but the form on the page" "/wdowa-superextra-a535.html" '<a href="#post-comment">Dodaj kolejny komentarz...</a>'
+    local page
+    for page in /wdowa-superextra-a535.html /mes-p35.html /pogoda-s7329.html /alkopoligamia-l58.html; do
+        test_page_absent "$page links no other address of itself to show or hide a part of it" "$page" 'href="?\(hideDetailes\|showDefaultDescription\)='
+    done
     test_page "The login link asks crawlers not to follow it" "/wdowa-superextra-a535.html" '?url=/wdowa-superextra-a535.html" rel="nofollow">Zaloguj się</a>'
     test_page "and so does the registration link" "/wdowa-superextra-a535.html" 'rel="nofollow">załóż!</a>'
     test_not_found "A .txt named like IndexNow's key that is not the key is a 404 (#220)" "/0123456789abcdef0123456789abcdef.txt" "^0123456789abcdef0123456789abcdef$"

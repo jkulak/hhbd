@@ -79,7 +79,7 @@
   <?php if (!empty($this->album->tracklist->items)): ?>
   <div id="tracklist" class="pane">
     <div class="header">
-      <h2>Lista utworów</h2> <span class="toggle js-visible"><a rel="nofollow" href="?hideDetailes=1">Ukryj szczegóły</a></span>
+      <h2>Lista utworów</h2> <span class="toggle js-visible"><a href="#tracklist">Ukryj szczegóły</a></span>
     </div>
     <table>
       <caption class="hidden">
@@ -143,7 +143,7 @@
 
   <div id="description" class="pane">
     <div class="header">
-      <h2>Opis albumu</h2><?php if (!empty($this->album->description)): ?><span class="toggle js-visible"><a rel="nofollow"  href="?showDefaultDescription=1">Pokaż opis standardowy</a></span><?php endif ?>
+      <h2>Opis albumu</h2><?php if (!empty($this->album->description)): ?><span class="toggle js-visible"><a href="#description">Pokaż opis standardowy</a></span><?php endif ?>
     </div>
   	 <?php if (!empty($this->album->description)): ?><p><?php echo $this->album->description ?></p><?php endif ?>
     <p class="<?php if (!empty($this->album->description)): ?>js-hidden <?php endif ?>auto"><?php echo $this->album->autoDescription ?></p>

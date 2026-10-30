@@ -116,7 +116,7 @@
     <div class="header">
       <h2>Opis <?php echo $this->song->title ?></h2>
       <?php if (!empty($this->song->description)): ?>
-        <span class="toggle js-visible"><a rel="nofollow" href="?showDefaultDescription=1">Pokaż opis standardowy</a></span>
+        <span class="toggle js-visible"><a href="#description">Pokaż opis standardowy</a></span>
       <?php endif ?>
     </div>
   	<?php if (!empty($this->song->description)): ?><p><?php echo $this->song->description ?></p><?php endif ?>
