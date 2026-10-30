@@ -1081,10 +1081,25 @@ run_tests() {
     test_page "robots.txt names the sitemap index" "/robots.txt" "^Sitemap: https://hhbd.pl/sitemap-index.xml$"
     test_page_absent "robots.txt keeps no search engine out of the whole site" "/robots.txt" "^Disallow: /$"
     local crawler
-    for crawler in OAI-SearchBot ChatGPT-User Claude-SearchBot Claude-User PerplexityBot Perplexity-User GPTBot ClaudeBot Google-Extended CCBot; do
-        test_page "robots.txt names $crawler (#217)" "/robots.txt" "^User-agent: $crawler$"
+    for crawler in OAI-SearchBot ChatGPT-User Claude-SearchBot Claude-User PerplexityBot Perplexity-User GPTBot ClaudeBot Google-Extended CCBot Applebot-Extended meta-externalagent Amazonbot; do
+        test_page "robots.txt names $crawler (#217, #286)" "/robots.txt" "^User-agent: $crawler$"
     done
     test_robots_one_group "and every crawler it names reads the same rules as *"
+    # What is no page of its own (#286): the account pages, the old links that were the same
+    # page at another address, and search's tabs and pages
+    local rule
+    for rule in '/uzytkownik/' '/\*?autoplay=' '/\*?showCommentForm=' '/szukaj.html?\*page=' '/szukaj.html?\*tp='; do
+        test_page "robots.txt keeps crawlers off ${rule//\\/}" "/robots.txt" "^Disallow: ${rule}$"
+    done
+    test_page_absent "and leaves a search itself open, as llms.txt hands it out" "/robots.txt" '^Disallow: /szukaj\(\.html\)*\(?q=\)*$'
+    test_page_absent "An album's play links are the song's page itself, with no query" "/wdowa-superextra-a535.html" '?autoplay='
+    test_page "and go to its video" "/wdowa-superextra-a535.html" 'href="/pogoda-s7329.html#clip" class="play"'
+    test_page "where the old link still starts the video" "/pogoda-s7329.html?autoplay=1" 'embed/M7lc1UVf-VE?enablejsapi=1&amp;autoplay=1"'
+    test_page "and the script starts it at #clip" "$(linked_address /js/s.js)" "window.location.hash === '#clip'"
+    test_page_absent "\"Dodaj kolejny komentarz\" is no other address of the page" "/wdowa-superextra-a535.html" 'showCommentForm'
+    test_page "but the form on the page" "/wdowa-superextra-a535.html" '<a href="#post-comment">Dodaj kolejny komentarz...</a>'
+    test_page "The login link asks crawlers not to follow it" "/wdowa-superextra-a535.html" '?url=/wdowa-superextra-a535.html" rel="nofollow">Zaloguj się</a>'
+    test_page "and so does the registration link" "/wdowa-superextra-a535.html" 'rel="nofollow">załóż!</a>'
     test_not_found "A .txt named like IndexNow's key that is not the key is a 404 (#220)" "/0123456789abcdef0123456789abcdef.txt" "^0123456789abcdef0123456789abcdef$"
     test_page "llms.txt describes hhbd.pl (#217)" "/llms.txt" "^> Hhbd.pl, Hip-Hopowa Baza Danych, is a database of Polish hip-hop"
     test_header "as text" "/llms.txt" "^content-type: text/plain"

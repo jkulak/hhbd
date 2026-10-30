@@ -342,6 +342,11 @@
         if (!player) {
             return;
         }
+        // The play link beside a track ends in #clip, a fragment the server never sees, rather
+        // than ?autoplay=1, another address of the same page to every crawler (#286)
+        if (window.location.hash === '#clip' && !/[?&]autoplay=1/.test(player.src)) {
+            player.src += '&autoplay=1';
+        }
         var origin = new URL(player.src).origin;
         var played = false;
         function listen() {

@@ -12,6 +12,19 @@ merge names the release. Each change is a bullet whose first sentence stands alo
 the release's note; changes to the build, the tests, CI or the deploy go under `### Internal`,
 which the note leaves out. The sections before, by version, stay as they were.
 
+## 2026-10-30
+
+### Changed
+- Crawlers are kept off what is no page of its own, where a week of the edge's log had 69% of
+  ClaudeBot's fetches, 63% of Meta's and 75% of Amazonbot's (#286). The play link beside a track
+  goes to the song's page at `#clip`, where the script starts its video, and "Dodaj kolejny
+  komentarz..." to `#post-comment`: fragments, which are the page's own address to a crawler,
+  where `?autoplay=1` and `?showCommentForm=1` were the same page at another one. robots.txt
+  closes those old addresses, the account pages, which every page's header linked with its own
+  address in `?url=`, and search's tabs and pages, and leaves a search itself open; the login
+  and registration links say `nofollow`. An old `?autoplay=1` link still starts the video.
+  robots.txt also names Applebot-Extended, meta-externalagent and Amazonbot in its one group.
+
 ## 2026-10-29
 
 ### Internal

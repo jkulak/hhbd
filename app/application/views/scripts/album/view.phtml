@@ -100,7 +100,8 @@
           </td>
           <td>
             <?php echo $this->partial('song/_link.phtml', array('song' => $song)) ?>
-            <a href="<?php echo $song->getUrl(); ?>?autoplay=1#clip" class="play"></a>
+            <?php // A fragment, not ?autoplay=1: the same address to a crawler, the song's page itself (#286) ?>
+            <a href="<?php echo $song->getUrl(); ?>#clip" class="play"></a>
             <ul class="feat">
             <?php if (!empty($song->featuring->items)): ?>
               <li>gościnnie:

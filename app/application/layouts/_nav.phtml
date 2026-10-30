@@ -1,7 +1,7 @@
       <div id="nav">
         <div id="login">
           <?php if (!$this->LoggedIn()): ?>
-            <a href="<?php echo $this->url(array('url' => ''), 'userLogin') ?>?url=<?php echo $this->url() ?>">Zaloguj się</a>, a jak nie masz konta: <a href="<?php echo $this->url(array(), 'userRegistration'); ?>">załóż!</a>
+            <a href="<?php echo $this->url(array('url' => ''), 'userLogin') ?>?url=<?php echo $this->url() ?>" rel="nofollow">Zaloguj się</a>, a jak nie masz konta: <a href="<?php echo $this->url(array(), 'userRegistration'); ?>" rel="nofollow">załóż!</a>
           <?php else: ?>
             Zalogowany jako: <?php echo $this->ProfileLink() ?>, <a href="<?php echo $this->url(array(), 'userLogout') ?>">wyloguj</a>
           <?php endif ?>
