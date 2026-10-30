@@ -1,9 +1,10 @@
 <?php
 
 /**
- * One Polish sentence of facts for the top of an album's or an artist's page (#219), the kind
- * search engines and the assistants answering from them quote: who, what, when, by which label,
- * how many tracks. Built from plain arrays, as Jkl_StructuredData is, so each case is testable;
+ * One Polish sentence of facts for the top of an album's, an artist's, a song's or a label's
+ * page (#219, #287), the kind search engines and the assistants answering from them quote, and
+ * models trained on the page keep, as they mostly drop the JSON-LD's script: who, what, when,
+ * by which label, how many tracks, who made a song. Built from plain arrays, as Jkl_StructuredData is, so each case is testable;
  * Zend_View_Helper_Summary hands it the containers' values. Plain text: the view escapes it.
  *
  * Each part that is not known is left out, and the sentence still reads: the names come first,
@@ -85,6 +86,68 @@ class Jkl_Summary
         return $sentence . '.';
     }
 
+    /** How many albums a song's sentence names before it counts the rest, and a label's artists */
+    private const NAMED = 3;
+    private const NAMED_ARTISTS = 5;
+
+    /**
+     * "Wdowa – „Pogoda”, utwór z albumu „Superextra” (Alkopoligamia, 2010); muzyka: Beatmo;
+     * gościnnie: Pezet (wokal); skrecze: Dj Technik."
+     *
+     * @param array $song title, artists (the names of who performs it), albums (each a title, a
+     *                    year, '' or 0 for none, and a label, a name or null), music, featuring
+     *                    and scratch (names, a guest's with what it did as the page has it)
+     */
+    public static function song(array $song)
+    {
+        $artists = self::names($song['artists']);
+        $sentence = (empty($artists) ? '' : self::listed($artists) . ' – ') . '„' . trim($song['title']) . '”, utwór';
+        $albums = array();
+        foreach ($song['albums'] as $album) {
+            $facts = array_values(array_filter(array(trim((string) $album['label']), (int) $album['year'] > 0 ? (string) (int) $album['year'] : ''), 'strlen'));
+            $albums[] = '„' . trim($album['title']) . '”' . (empty($facts) ? '' : ' (' . implode(', ', $facts) . ')');
+        }
+        if (!empty($albums)) {
+            // Four named read as well as three and one more counted
+            $rest = count($albums) > self::NAMED + 1 ? count($albums) - self::NAMED : 0;
+            $named = $rest > 0 ? array_slice($albums, 0, self::NAMED) : $albums;
+            $sentence .= ' z ' . (1 === count($albums) ? 'albumu ' : 'albumów ')
+                . ($rest > 0 ? implode(', ', $named) . ' i ' . $rest . ' innych' : self::listed($named));
+        }
+        foreach (array('music' => 'muzyka', 'featuring' => 'gościnnie', 'scratch' => 'skrecze') as $key => $word) {
+            $names = self::names($song[$key]);
+            if (!empty($names)) {
+                $sentence .= '; ' . $word . ': ' . self::listed($names);
+            }
+        }
+        return $sentence . '.';
+    }
+
+    /**
+     * "Alkopoligamia – wytwórnia; na Hhbd.pl 12 albumów z lat 2009–2018, wykonawcy: Wdowa, Ten
+     * Typ Mes, Pezet, Małpa, Rasmentalism i inni."
+     *
+     * @param array $label name, albums (a count), from and to (the first and last year, null for
+     *                     none), artists (the names, the one with most albums first)
+     */
+    public static function label(array $label)
+    {
+        $sentence = trim($label['name']) . ' – wytwórnia';
+        $albums = (int) $label['albums'];
+        if ($albums > 0) {
+            $sentence .= '; na Hhbd.pl ' . $albums . ' ' . Jkl_Tools_String::plural($albums, 'album', 'albumy', 'albumów');
+            if (null !== $label['from']) {
+                $sentence .= $label['from'] === $label['to'] ? ' z ' . $label['from'] . ' roku' : ' z lat ' . $label['from'] . '–' . $label['to'];
+            }
+            $artists = self::names($label['artists']);
+            if (!empty($artists)) {
+                $sentence .= ', ' . (1 === count($artists) ? 'wykonawca: ' : 'wykonawcy: ')
+                    . (count($artists) > self::NAMED_ARTISTS ? implode(', ', array_slice($artists, 0, self::NAMED_ARTISTS)) . ' i inni' : self::listed($artists));
+            }
+        }
+        return $sentence . '.';
+    }
+
     /**
      * When, to the precision it is known: "5 września 2017", "w maju 2016", "w 2016 roku"; for
      * an announcement "na 5 września 2026", "na maj 2026", "na 2026 rok"; '' for no date
@@ -103,6 +166,12 @@ class Jkl_Summary
             return $announced ? 'na ' . self::FOR_MONTH[$month] . ' ' . $year : 'w ' . self::IN_MONTH[$month] . ' ' . $year;
         }
         return ($announced ? 'na ' : '') . (int) $day . ' ' . Jkl_Tools_Date::$months[$month] . ' ' . $year;
+    }
+
+    /** The names that are there, trimmed, once each, in their order */
+    private static function names($names)
+    {
+        return array_values(array_unique(array_filter(array_map('trim', (array) $names), 'strlen')));
     }
 
     /** "A", "A i B", "A, B i C" */

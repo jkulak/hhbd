@@ -2,6 +2,7 @@
     <h1><?php echo $this->label->name ?></h1>
   <?php if ($this->IsAdmin()): ?><?php echo $this->partial('review/_panel.phtml', array('items' => $this->reviewItems, 'messages' => $this->reviewMessages, 'back' => strtok($_SERVER['REQUEST_URI'], '?'))) ?><?php endif ?>
   <?php echo $this->partial('common/_share.phtml', array('currentUrl' => $this->currentUrl, 'title' => $this->title)) ?>
+  <p id="lead"><?php echo $this->Summary()->label($this->label) ?></p>
 	  <section>
       <?php if (isset($this->label->logo)): ?>
         <div id="logo">

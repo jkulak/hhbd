@@ -382,6 +382,9 @@ run_fixture_tests() {
     test_page "and a year when only the year is known" "/eldo-podmiejski-gwar-a50.html" '<p id="lead">Eldo – „Podmiejski Gwar”, album wydany w 2013 roku przez EMI Music Poland.</p>'
     test_page "and a single's tracks" "/pezet-muzyka-powazna-a2.html" '<p id="lead">Pezet – „Muzyka Poważna”, singiel wydany 20 maja 2006 przez Asfalt: 2 utwory.</p>'
     test_page "and an artist's other names and albums" "/mes-p35.html" '<p id="lead">Mes – wykonawca, znany też jako JŹW; na Hhbd.pl 1 album z 2015 roku.</p>'
+    test_page "A song's says who performs it, on which album of which label and year, and its guests (#287)" "/pogoda-s7329.html" '<p id="lead">Wdowa – „Pogoda”, utwór z albumu „Superextra” (Alkopoligamia, 2010); gościnnie: Beatmo (muzyka) i Dj Technik (scratch).</p>'
+    test_page "and names each album a song is on" "/outro-s30.html" '<p id="lead">Stasiak – „Outro”, utwór z albumów „Światła Miasta” (Step Records, 2008) i „Koniec Świata” (QL Records, 2016).</p>'
+    test_page "A label's says how many albums, from which years, and by whom, most albums first" "/asfalt-l1.html" '<p id="lead">Asfalt – wytwórnia; na Hhbd.pl 6 albumów z lat 2004–2020, wykonawcy: Eldo, Zeus, Pih, Quebonafide i Pezet.</p>'
     test_page "An album with no known date renders" "/eldo-polskie-karate-a778.html" "Polskie Karate"
     test_page_multi "A two-disc tracklist is numbered by disc" "/eldo-trzecia-czesc-tryptyku-a3.html" "1-01" "2-01"
     # Where the data came from is for an admin's eyes only, at the top of the page (#158)
@@ -1197,6 +1200,8 @@ run_tests() {
     echo "--- Summary ---"
     test_page "An album's page sums it up under its heading" "/wdowa-superextra-a535.html" '<p id="lead">Wdowa – „Superextra”, album wydany '
     test_page "and so does an artist's" "/mes-p35.html" '<p id="lead">Mes – wykonawca'
+    test_page "and a song's (#287)" "/pogoda-s7329.html" '<p id="lead">Wdowa – „Pogoda”, utwór z albumu „Superextra”'
+    test_page "and a label's" "/alkopoligamia-l58.html" '<p id="lead">Alkopoligamia – wytwórnia; na Hhbd.pl '
     echo ""
 
     # The generated descriptions say facts, none of the sentences every page repeated (#245):

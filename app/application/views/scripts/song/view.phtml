@@ -6,6 +6,7 @@
 	  <?php endif ?>
 	</h1>
   <?php echo $this->partial('common/_share.phtml', array('currentUrl' => $this->currentUrl, 'title' => $this->title)) ?>
+  <p id="lead"><?php echo $this->Summary()->song($this->song) ?></p>
 	<div class="pane">
   	<h2 class="hidden">Informacje podstawowe</h2>
   	<ul id="essential">

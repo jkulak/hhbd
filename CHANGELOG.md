@@ -14,6 +14,15 @@ which the note leaves out. The sections before, by version, stay as they were.
 
 ## 2026-10-30
 
+### Added
+- A song's and a label's page open with a sentence of facts under the heading, as an album's
+  and an artist's have since #219 (#287): who performs a song, on which album of which label
+  and year, who made its music, guests and scratches on it; how many albums a label has on
+  hhbd.pl, from which years, and its artists, those with most albums first. It is the text
+  search engines and assistants quote and models trained on the page keep, as the JSON-LD is in
+  a script they mostly drop. A song's albums are read with their label in the same query, so
+  the page sends no more queries than before.
+
 ### Changed
 - Crawlers are kept off what is no page of its own, where a week of the edge's log had 69% of
   ClaudeBot's fetches, 63% of Meta's and 75% of Amazonbot's (#286). The play link beside a track

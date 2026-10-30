@@ -27,6 +27,9 @@ class Model_Album_Api extends Jkl_Model_Api
     /** The same for the lists that never named an album's label, so no label is looked up for each */
     private const BARE_COLUMNS = 't3.*, t3.id AS alb_id, ' . self::CREDITS_JSON . ', ' . self::COVERS_JSON;
 
+    /** The same with the label, read in the row as LIST_COLUMNS has it: a song's albums, which its sentence names with their label (#287) */
+    private const LABELLED_COLUMNS = self::BARE_COLUMNS . ', t3.labelid AS lab_id, ' . self::LABEL_JSON;
+
     /**
      * An album's credits with what a list shows of each artist, its covers and its label, read
      * in the album's own row (#255): a page of albums read them in a query of each, and each
@@ -785,7 +788,7 @@ class Model_Album_Api extends Jkl_Model_Api
         $id = intval($id);
         $limit = intval($limit);
         // A song on an album twice is one album; IN gives each once, without grouping.
-        $query = 'SELECT ' . self::BARE_COLUMNS . ' FROM albums AS t3
+        $query = 'SELECT ' . self::LABELLED_COLUMNS . ' FROM albums AS t3
               WHERE t3.id IN (SELECT albumid FROM album_lookup WHERE songid=' . $id . ') AND ' . self::SHOWN . ' ORDER BY t3.id' .
                   (($limit != null) ? ' LIMIT ' . $limit : '');
         return $this->getList($query);
@@ -807,7 +810,7 @@ class Model_Album_Api extends Jkl_Model_Api
             $lists[$songId] = new Jkl_List();
         }
         if (!empty($songIds)) {
-            $query = 'SELECT l.songid AS on_song, ' . self::BARE_COLUMNS . ' FROM albums AS t3
+            $query = 'SELECT l.songid AS on_song, ' . self::LABELLED_COLUMNS . ' FROM albums AS t3
                   JOIN (SELECT DISTINCT songid, albumid FROM album_lookup WHERE songid IN (' . implode(', ', $songIds) . ')) l ON l.albumid = t3.id
                   WHERE ' . self::SHOWN . ' ORDER BY l.songid, t3.id';
             foreach ($this->_db->fetchAll($query) as $row) {

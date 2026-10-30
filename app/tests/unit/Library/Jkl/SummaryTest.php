@@ -3,8 +3,9 @@
 use PHPUnit\Framework\TestCase;
 
 /**
- * The sentence of facts under an album's and an artist's heading (#219): each part when it is
- * known, in the form Polish asks of it, and a sentence that reads without it.
+ * The sentence of facts under an album's, an artist's, a song's and a label's heading (#219,
+ * #287): each part when it is known, in the form Polish asks of it, and a sentence that reads
+ * without it.
  */
 class Jkl_SummaryTest extends TestCase
 {
@@ -90,5 +91,69 @@ class Jkl_SummaryTest extends TestCase
             'Kaz Bałagane – wykonawca, znany też jako Kaz.',
             Jkl_Summary::artist(array('name' => 'Kaz Bałagane', 'band' => false, 'otherNames' => array('Kaz'), 'albums' => 0, 'from' => null, 'to' => null))
         );
+    }
+
+    private function song(array $extra = array()): string
+    {
+        return Jkl_Summary::song($extra + array(
+            'title' => 'Pogoda', 'artists' => array('Wdowa'),
+            'albums' => array(array('title' => 'Superextra', 'year' => '2010', 'label' => 'Alkopoligamia')),
+            'music' => array('Beatmo'), 'featuring' => array('Pezet (wokal)'), 'scratch' => array('Dj Technik'),
+        ));
+    }
+
+    public function testASongSaysWhoPerformsItOnWhichAlbumAndWhoMadeIt(): void
+    {
+        $this->assertSame('Wdowa – „Pogoda”, utwór z albumu „Superextra” (Alkopoligamia, 2010); muzyka: Beatmo; gościnnie: Pezet (wokal); skrecze: Dj Technik.', $this->song());
+    }
+
+    public function testASongOnSeveralAlbumsNamesEachAndCountsWhatIsOverFour(): void
+    {
+        $album = function ($title, $year, $label = null) {
+            return array('title' => $title, 'year' => $year, 'label' => $label);
+        };
+        $this->assertSame(
+            'Stasiak – „Outro”, utwór z albumów „Światła Miasta” (Step Records, 2008) i „Koniec Świata” (2016).',
+            $this->song(array('title' => 'Outro', 'artists' => array('Stasiak'), 'albums' => array($album('Światła Miasta', '2008', 'Step Records'), $album('Koniec Świata', '2016')), 'music' => array(), 'featuring' => array(), 'scratch' => array()))
+        );
+        $four = array($album('A', '2001'), $album('B', '2002'), $album('C', '2003'), $album('D', '2004'));
+        $this->assertSame('„X”, utwór z albumów „A” (2001), „B” (2002), „C” (2003) i „D” (2004).', $this->song(array('title' => 'X', 'artists' => array(), 'albums' => $four, 'music' => array(), 'featuring' => array(), 'scratch' => array())));
+        $six = array_merge($four, array($album('E', '2005'), $album('F', '2006')));
+        $this->assertSame('„X”, utwór z albumów „A” (2001), „B” (2002), „C” (2003) i 3 innych.', $this->song(array('title' => 'X', 'artists' => array(), 'albums' => $six, 'music' => array(), 'featuring' => array(), 'scratch' => array())));
+    }
+
+    public function testASongLeavesOutWhatIsNotKnown(): void
+    {
+        $this->assertSame(
+            'Wdowa i Pezet – „Pogoda”, utwór z albumu „Superextra”; muzyka: Beatmo i Zeus.',
+            $this->song(array('artists' => array('Wdowa', ' Pezet ', 'Wdowa', ''), 'albums' => array(array('title' => 'Superextra', 'year' => '', 'label' => null)), 'music' => array('Beatmo', 'Zeus'), 'featuring' => array(), 'scratch' => array()))
+        );
+        $this->assertSame('Wdowa – „Pogoda”, utwór.', $this->song(array('albums' => array(), 'music' => array(), 'featuring' => array(), 'scratch' => array())));
+    }
+
+    public function testALabelSaysHowManyAlbumsFromWhichYearsAndByWhom(): void
+    {
+        $this->assertSame(
+            'Asfalt – wytwórnia; na Hhbd.pl 6 albumów z lat 2004–2020, wykonawcy: Eldo, Zeus, Pih, Quebonafide i Pezet.',
+            Jkl_Summary::label(array('name' => 'Asfalt', 'albums' => 6, 'from' => 2004, 'to' => 2020, 'artists' => array('Eldo', 'Zeus', 'Pih', 'Quebonafide', 'Pezet')))
+        );
+    }
+
+    public function testALabelNamesFiveArtistsAndOneArtistAsOne(): void
+    {
+        $this->assertSame(
+            'Prosto – wytwórnia; na Hhbd.pl 12 albumów z lat 2001–2021, wykonawcy: A, B, C, D, E i inni.',
+            Jkl_Summary::label(array('name' => 'Prosto', 'albums' => 12, 'from' => 2001, 'to' => 2021, 'artists' => array('A', 'B', 'C', 'D', 'E', 'F')))
+        );
+        $this->assertSame(
+            'Alkopoligamia – wytwórnia; na Hhbd.pl 1 album z 2010 roku, wykonawca: Wdowa.',
+            Jkl_Summary::label(array('name' => 'Alkopoligamia', 'albums' => 1, 'from' => 2010, 'to' => 2010, 'artists' => array('Wdowa')))
+        );
+    }
+
+    public function testALabelWithoutAlbumsSaysOnlyWhatItIs(): void
+    {
+        $this->assertSame('Nowa – wytwórnia.', Jkl_Summary::label(array('name' => 'Nowa', 'albums' => 0, 'from' => null, 'to' => null, 'artists' => array())));
+        $this->assertSame('Stara – wytwórnia; na Hhbd.pl 2 albumy.', Jkl_Summary::label(array('name' => 'Stara', 'albums' => 2, 'from' => null, 'to' => null, 'artists' => array())));
     }
 }
