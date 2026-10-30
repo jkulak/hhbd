@@ -1094,7 +1094,7 @@ run_tests() {
     test_page_absent "and leaves a search itself open, as llms.txt hands it out" "/robots.txt" '^Disallow: /szukaj\(\.html\)*\(?q=\)*$'
     test_page_absent "An album's play links are the song's page itself, with no query" "/wdowa-superextra-a535.html" '?autoplay='
     test_page "and go to its video" "/wdowa-superextra-a535.html" 'href="/pogoda-s7329.html#clip" class="play"'
-    test_page "where the old link still starts the video" "/pogoda-s7329.html?autoplay=1" 'embed/M7lc1UVf-VE?enablejsapi=1&amp;autoplay=1"'
+    test_page "where the old link still starts the video" "/pogoda-s7329.html?autoplay=1" 'embed/[A-Za-z0-9_-]*?enablejsapi=1&amp;autoplay=1"'
     test_page "and the script starts it at #clip" "$(linked_address /js/s.js)" "window.location.hash === '#clip'"
     test_page_absent "\"Dodaj kolejny komentarz\" is no other address of the page" "/wdowa-superextra-a535.html" 'showCommentForm'
     test_page "but the form on the page" "/wdowa-superextra-a535.html" '<a href="#post-comment">Dodaj kolejny komentarz...</a>'

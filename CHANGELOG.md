@@ -27,6 +27,10 @@ which the note leaves out. The sections before, by version, stay as they were.
   and registration links say `nofollow`. An old `?autoplay=1` link still starts the video.
   robots.txt also names Applebot-Extended, meta-externalagent and Amazonbot in its one group.
 
+### Internal
+- The smoke test's check that an old `?autoplay=1` link still starts a song's video takes the
+  video production has, not only the fixtures' (#286).
+
 ## 2026-10-29
 
 ### Internal
