@@ -15,6 +15,7 @@ which the note leaves out. The sections before, by version, stay as they were.
 ## 2026-10-31
 
 ### Added
+- Every page's footer sends greetings to Marcin, in its row of links (#297).
 - A label's page describes the label in JSON-LD, as an album's, an artist's and a song's have
   since #195 (#288): an `Organization` with its logo and its own site, the albums it released
   as an `ItemList`, each with its artists and date, and the path to it. A group's page names
