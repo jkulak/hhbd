@@ -9,6 +9,13 @@ hhbd.pl, www.hhbd.pl {
 	import access_log
 	import security_headers
 	import compress
+	# A crawler that names itself nowhere, a Chrome 48 running the pages' scripts from two
+	# Chinese networks, fetched some 2,000 pages a day and made 2,290 of the 2,462 pageviews Umami
+	# counted in the week to 31 October (#295). By the address the edge believes after
+	# Cloudflare's, as the access log shows it; respond runs before the proxy, so nginx never
+	# sees it. Baiduspider, from its own ranges under its own name, is not in them.
+	@unnamed_crawler client_ip 111.225.214.0/24 119.249.100.0/24
+	respond @unnamed_crawler 403
 	# The live colour's nginx, which ci-deploy rewrites as it moves the edge from one colour to
 	# the other (CONTRACT.md §3 in gcloud-ovh-migrate).
 	import ../live/hhbd.caddyfile

@@ -12,7 +12,7 @@ day, and with it every script that deployed there.
 |---|---|---|
 | `deploy/ovh/compose.yaml` | `/srv/hhbd/compose.yaml` | the stack: nginx, app, postgres (PostgreSQL 17, the database since #236), and the importer job; nothing published |
 | `deploy/ovh/hhbd.enc.env` | `/srv/hhbd/hhbd.enc.env` | the secrets, SOPS-encrypted to the host and personal age keys |
-| `deploy/ovh/hhbd.pl.caddyfile` | `/srv/edge/sites/hhbd.pl.caddyfile` | how the shared edge reaches nginx: through the live upstream below |
+| `deploy/ovh/hhbd.pl.caddyfile` | `/srv/edge/sites/hhbd.pl.caddyfile` | how the shared edge reaches nginx: through the live upstream below, and whom it turns away first (#295) |
 | | `/srv/edge/live/hhbd.caddyfile` | the live colour's nginx (`hhbd-blue-web:80` or `hhbd-green-web:80`), which `ci-deploy` rewrites at each switch |
 | `deploy/ovh/systemd/hhbd-release.{service,timer}` | `/etc/systemd/system/` | the day's release from the release queue (#258), once a day between 09:00 and 21:00 Warsaw time |
 | `deploy/ovh/service.env` | | what the shared scripts and the deploy workflow read: the service, its images, its timers, and the containers whose log format is still to come |

@@ -22,6 +22,12 @@ which the note leaves out. The sections before, by version, stay as they were.
   on it and who scratches, each at the address of their page: what search engines need to
   answer who made what.
 
+### Changed
+- The edge answers 403 to a crawler that names itself nowhere, a Chrome 48 from two Chinese
+  networks, `111.225.214.0/24` and `119.249.100.0/24`, which ran the pages' scripts and made
+  2,290 of the 2,462 pageviews Umami counted in the week to 31 October (#295). Baiduspider comes
+  from its own ranges and is not affected.
+
 ### Internal
 - The fixtures give the song "Intro" its music and scratches, so the smoke test checks the
   JSON-LD that names them.
