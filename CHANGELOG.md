@@ -29,6 +29,9 @@ which the note leaves out. The sections before, by version, stay as they were.
   2,290 of the 2,462 pageviews Umami counted in the week to 31 October (#295). Baiduspider comes
   from its own ranges and is not affected.
 
+### Removed
+- The footer no longer sends greetings to Marcin, which came in with v2026.10.65 (#299).
+
 ### Internal
 - The fixtures give the song "Intro" its music and scratches, so the smoke test checks the
   JSON-LD that names them.

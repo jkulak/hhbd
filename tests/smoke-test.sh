@@ -1261,7 +1261,6 @@ run_tests() {
     test_page_absent "Universal Analytics, dead since 2023, is gone (#161)" "/" "UA-3311418"
     test_page_absent "and so is Tag Manager" "/" "GTM-MGJ9HQ"
     test_page "The footer opens the privacy settings" "/" 'id="privacy-settings">Ustawienia prywatności</a>'
-    test_page "The footer greets Marcin" "/" '<li id="greetings">Pozdrowienia dla Marcina!</li>'
     test_page "The privacy page says what is measured" "/prywatnosc.html" "Google Analytics 4"
     # Umami counts visits on hhbd.pl alone, whatever Google's tags are (#281)
     test_once "Umami's tag is in the home page once, for hhbd.pl alone (#281)" "/" "$UMAMI_TAG"
