@@ -5,11 +5,10 @@ class UserController extends Zend_Controller_Action
     public function init()
     {
         $this->_request = $this->getRequest();
-        // Logging in, registering and the page that asks for it are nothing to find in a search
-        // engine; a profile is (#147).
-        if ('view' !== $this->_request->getActionName()) {
-            $this->view->headMeta()->setName('robots', 'noindex,follow');
-        }
+        // Nothing here is to be found in a search engine: logging in, registering and the page
+        // that asks for it (#147), and a profile, a nickname and its comments, a thin page in
+        // Google's judgement of the site (#303)
+        $this->view->headMeta()->setName('robots', 'noindex,follow');
     }
 
     public function indexAction()

@@ -1144,6 +1144,7 @@ run_tests() {
     test_page_status "and asks not to be indexed" "/nie-ma-takiego-a999999999.html" 404 'name="robots" content="noindex,follow"'
     test_page "Search results ask not to be indexed" "/szukaj.html?q=tede" 'name="robots" content="noindex,follow"'
     test_page "The login page asks not to be indexed" "/uzytkownik/logowanie.html" 'name="robots" content="noindex,follow"'
+    test_page "A user's profile asks not to be indexed (#303)" "/testuser1-u1.html" 'name="robots" content="noindex,follow"'
     test_page "An album's page asks to be indexed" "/wdowa-superextra-a535.html" 'name="robots" content="index,follow"'
     test_page_absent "An artist's meta description holds no HTML" "/mes-p35.html" '&lt;p'
     test_page_absent "A song's meta description holds none of its lyrics' line breaks" "/pogoda-s7329.html" '&lt;br'
