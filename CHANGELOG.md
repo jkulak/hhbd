@@ -17,6 +17,12 @@ which the note leaves out. The sections before, by version, stay as they were.
 ### Changed
 - A user's profile asks search engines not to index it, as logging in and registering do (#303):
   a nickname and its comments are nothing to find there.
+- A song without lyrics shows the pane for them only to someone logged in, who can add them, and
+  has its facts as its meta description instead of an invitation to add them (#302).
+
+### Removed
+- A song's page no longer has the "Wykorzystane sample" pane, which said on every song that we
+  knew of no samples yet (#302); nobody records them.
 
 ### Fixed
 - Every link to an album whose artist shares a name with another one, and the album sitemap,

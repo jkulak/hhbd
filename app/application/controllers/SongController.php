@@ -113,7 +113,8 @@ class SongController extends Zend_Controller_Action
             $lines = preg_replace('/\s*<br\s*\/?>\s*/i', ', ', $song->lyrics);
             $this->view->headMeta()->setName('description', Jkl_Tools_String::metaDescription('Tekst i teledysk utworu ' . $this->view->song->albumArtist->name . ' - ' . $this->view->song->title . '. ' . $lines));
         } else {
-            $this->view->headMeta()->setName('description', Jkl_Tools_String::metaDescription('Teledysk i informacje o utworze ' . $this->view->song->albumArtist->name . ' - ' . $this->view->song->title . '. Na razie nie mamy tekstu, ale jeżeli go posiadasz, możesz dodać.'));
+            // Its facts, as Open Graph has them, not one sentence every such song shared (#302)
+            $this->view->headMeta()->setName('description', Jkl_Tools_String::metaDescription($song->autoDescription));
         }
 
         // Open Graph (#177): the song's facts, not its lyrics, and the cover of its first album

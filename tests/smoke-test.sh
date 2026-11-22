@@ -436,6 +436,11 @@ run_fixture_tests() {
     test_page "A song with no lyrics and no credits asks not to be indexed (#243)" "/domowa-produkcja-s9102.html" 'name="robots" content="noindex,follow"'
     test_page_absent "and the song sitemap leaves it out" "/sitemap-songs.xml" "-s9102.html<"
     test_page "A song with credits is indexed" "/pogoda-s7329.html" 'name="robots" content="index,follow"'
+    test_page_absent "A song without lyrics shows a visitor no pane for them (#302)" "/domowa-produkcja-s9102.html" 'id="lyrics"'
+    test_admin_page "while someone logged in gets it, to add them" "/domowa-produkcja-s9102.html" 'id="lyrics"' 'id="edit-lyrics"'
+    test_page "A song with lyrics shows them to a visitor" "/pogoda-s7329.html" 'id="lyrics"'
+    test_page "A song without lyrics has its facts as its meta description" "/domowa-produkcja-s9102.html" 'name="description" content="Utwór Domowa Produkcja, na którym wokalnie udziela się Wöyza'
+    test_page_absent "not a sentence every such song shared" "/domowa-produkcja-s9102.html" "Na razie nie mamy tekstu"
     test_page "An artist with no album, credit, group or profile asks not to be indexed" "/enemis-p2258.html" 'name="robots" content="noindex,follow"'
     test_page_absent "and the artist sitemap leaves it out" "/sitemap-artists.xml" "-p2258.html<"
     test_page "An artist with albums is indexed" "/mes-p35.html" 'name="robots" content="index,follow"'
@@ -1151,6 +1156,7 @@ run_tests() {
     test_page "An album's page asks to be indexed" "/wdowa-superextra-a535.html" 'name="robots" content="index,follow"'
     test_page_absent "An artist's meta description holds no HTML" "/mes-p35.html" '&lt;p'
     test_page_absent "A song's meta description holds none of its lyrics' line breaks" "/pogoda-s7329.html" '&lt;br'
+    test_page_absent "A song's page has no pane for samples nobody recorded (#302)" "/pogoda-s7329.html" "Wykorzystane sample"
     test_page_absent "A news item's meta description holds no HTML" "/onar-jak-na-pierwszej-plycie-wideo-n1877.html" 'name="description" content="[^"]*&lt;'
     echo ""
 

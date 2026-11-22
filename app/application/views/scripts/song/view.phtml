@@ -79,15 +79,9 @@
   </div>
   <?php endif ?>
 
-  <div id="samples" class="pane">
-    <h2>Wykorzystane sample</h2>
-    <?php if (!empty($this->song->samples)): ?>
-      sd
-    <?php else: ?>
-      Na razie nie mamy informacji o tym jakie sample zostały wykorzystane w "<?php echo $this->song->title ?>". Sprawdź za kilka dni.
-    <?php endif ?>
-  </div>
-
+  <?php // No pane for lyrics a song does not have, but for whoever can add them: the same empty
+        // heading on thousands of pages is what a search engine takes for a template (#302) ?>
+  <?php if (!empty($this->song->lyrics) || $this->LoggedIn()): ?>
   <div id="lyrics" class="pane">
     <div class="header">
       <h2><?php echo $this->song->albumArtist->name ?> - <?php echo $this->song->title ?> tekst</h2>
@@ -111,7 +105,7 @@
     </div>
     <?php endif ?>
   </div>
-
+  <?php endif ?>
 
   <div id="description" class="pane">
     <div class="header">
