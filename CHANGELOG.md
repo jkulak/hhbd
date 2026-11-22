@@ -18,6 +18,12 @@ which the note leaves out. The sections before, by version, stay as they were.
 - A user's profile asks search engines not to index it, as logging in and registering do (#303):
   a nickname and its comments are nothing to find there.
 
+### Fixed
+- Every link to an album whose artist shares a name with another one, and the album sitemap,
+  name the address the album's page answers on, not one it redirects from (#304): the links
+  took the artist's qualifier (`emen-superlativez-records-odbicia-a7293.html` for
+  `emen-odbicia-a7293.html`), 17 albums in the sitemap.
+
 ## 2026-10-31
 
 ### Added

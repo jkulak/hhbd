@@ -44,4 +44,14 @@ class Model_Album_ContainerTest extends TestCase
             'getUrl() should not require parameters'
         );
     }
+
+    public function testAnAlbumsSlugIsItsArtistsPlainNameAndItsTitle(): void
+    {
+        $this->assertSame('emen-odbicia', Model_Album_Container::slugOf('Emen', 'Odbicia'));
+    }
+
+    public function testATitleWithNoLettersLeavesTheArtistsNameAlone(): void
+    {
+        $this->assertSame('peja', Model_Album_Container::slugOf('Peja', '???'));
+    }
 }

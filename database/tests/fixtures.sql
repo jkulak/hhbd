@@ -68,6 +68,7 @@ INSERT INTO album_artist_lookup (albumid, artistid, role, "position", credited_a
 INSERT INTO album_artist_lookup (albumid, artistid, role, "position", credited_as, status) VALUES (778, 2, 'main', 1, NULL, 999);
 INSERT INTO album_artist_lookup (albumid, artistid, role, "position", credited_as, status) VALUES (779, 35, 'main', 1, NULL, 999);
 INSERT INTO album_artist_lookup (albumid, artistid, role, "position", credited_as, status) VALUES (780, 68, 'main', 1, NULL, 999);
+INSERT INTO album_artist_lookup (albumid, artistid, role, "position", credited_as, status) VALUES (781, 64, 'main', 1, NULL, 999);
 
 -- album_covers
 
@@ -173,6 +174,7 @@ INSERT INTO albums (id, legal, title, release_type, urlname, labelid, self_relea
 INSERT INTO albums (id, legal, title, release_type, urlname, labelid, self_released, year, release_date_precision, announced, premier, media_mc, catalog_mc, media_cd, catalog_cd, media_lp, catalog_lp, media_digital, catalog_digital, epfor, singiel, addedby, added, updatedby, updated, viewed, cover, description, artistabout, notes, status) VALUES (778, 'y', 'Polskie Karate', 'album', '', 1, 0, NULL, 'day', 0, '', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, '2013-03-03 17:48:24', NULL, NULL, 10, '', NULL, '', NULL, 999);
 INSERT INTO albums (id, legal, title, release_type, urlname, labelid, self_released, year, release_date_precision, announced, premier, media_mc, catalog_mc, media_cd, catalog_cd, media_lp, catalog_lp, media_digital, catalog_digital, epfor, singiel, addedby, added, updatedby, updated, viewed, cover, description, artistabout, notes, status) VALUES (779, 'y', 'Taśma Robocza', 'album', 'tasma-robocza', NULL, 0, '2016-01-01', 'year', 0, '', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, 1100, LOCALTIMESTAMP(0), NULL, NULL, 0, '', NULL, '', NULL, 0);
 INSERT INTO albums (id, legal, title, release_type, urlname, labelid, self_released, year, release_date_precision, announced, premier, media_mc, catalog_mc, media_cd, catalog_cd, media_lp, catalog_lp, media_digital, catalog_digital, epfor, singiel, addedby, added, updatedby, updated, viewed, cover, description, artistabout, notes, status) VALUES (780, 'y', 'Własnym Sumptem', 'album', 'wlasnym-sumptem', NULL, 1, '2016-03-18', 'day', 0, '', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, 1100, LOCALTIMESTAMP(0), NULL, NULL, 0, '', NULL, '', NULL, 999);
+INSERT INTO albums (id, legal, title, release_type, urlname, labelid, self_released, year, release_date_precision, announced, premier, media_mc, catalog_mc, media_cd, catalog_cd, media_lp, catalog_lp, media_digital, catalog_digital, epfor, singiel, addedby, added, updatedby, updated, viewed, cover, description, artistabout, notes, status) VALUES (781, 'y', 'Pod Wiatr', 'album', 'pod-wiatr', NULL, 1, '2012-04-20', 'day', 0, '', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, '2012-04-20 12:00:00', NULL, NULL, 0, '', NULL, '', NULL, 999);
 
 -- altnames_lookup
 INSERT INTO altnames_lookup (artistid, altname, status) VALUES (5, 'Tede', 999);
@@ -750,7 +752,7 @@ SELECT pg_catalog.setval('album_promomixes_id_seq', 1, false);
 
 SELECT pg_catalog.setval('album_reviews_id_seq', 1, false);
 
-SELECT pg_catalog.setval('albums_id_seq', 780, true);
+SELECT pg_catalog.setval('albums_id_seq', 781, true);
 
 SELECT pg_catalog.setval('artists_everyweek_id_seq', 1, false);
 

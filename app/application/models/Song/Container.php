@@ -154,10 +154,11 @@ class Model_Song_Container
         if (empty($this->album->url)) {
             return '';
         }
-        $prefix = !empty($this->artist->items[0]) ? $this->artist->items[0]->url . '-' : '';
+        $artistName = !empty($this->artist->items[0]) ? $this->artist->items[0]->name : '';
         $router = Zend_Controller_Front::getInstance()->getRouter();
         return $router->assemble(
-            array('id' => $this->album->id, 'seo' => $prefix . $this->album->url),
+            // The slug the album's page answers on, without a namesake's qualifier (#304)
+            array('id' => $this->album->id, 'seo' => Model_Album_Container::slugOf($artistName, $this->album->title)),
             'album',
             true
         );

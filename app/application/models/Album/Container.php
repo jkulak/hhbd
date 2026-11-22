@@ -193,18 +193,35 @@ class Model_Album_Container
     }
 
     /**
-     * Get full URL path for album
+     * The album's address, the one its page names canonical: /artist-album-a123.html
      *
-     * @return string Full URL path (e.g., /artist-album-a123.html)
+     * @return string
      */
     public function getUrl()
     {
         $router = Zend_Controller_Front::getInstance()->getRouter();
         return $router->assemble(
-            array('id' => $this->id, 'seo' => $this->artist->url . '-' . $this->url),
+            array('id' => $this->id, 'seo' => $this->slug()),
             'album',
             true
         );
+    }
+
+    /** The address's words, before -a<id>.html: slugOf() its artist and title */
+    public function slug()
+    {
+        return self::slugOf($this->artist->name, $this->title);
+    }
+
+    /**
+     * An album's slug, for its address everywhere and its page's canonical one alike: its
+     * artist's plain name and its title. The links took the artist's qualified name (#102),
+     * which the page answered with a 301 to this, for every album of an artist with a namesake
+     * (#304).
+     */
+    public static function slugOf($artistName, $title)
+    {
+        return Jkl_Tools_Url::createUrl($artistName . '+-+' . $title);
     }
 
     /**
