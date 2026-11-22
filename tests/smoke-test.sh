@@ -413,7 +413,6 @@ run_fixture_tests() {
     test_page_200 "and nginx serves it" "/content/news/test-news-001.jpg"
     test_redirect_301 "An old address's underscore finds a slug written with a dash (#26)" "/n/dj_technik" "/dj-technik-p6.html"
     test_not_found "A song on no album and by no artist is a 404, not a 500 (#37)" "/bez-albumu-s9100.html" "Call to a member function"
-    test_page_absent "and the song sitemap leaves it out (#147)" "/sitemap-songs.xml" "-s9100.html<"
     test_page_absent "A news excerpt that was not cut gets no dots (#163)" "/" 'doczekać!\.\.\.'
     # Passwords and the comment question (#41): these log in and post, so on the fixtures only
     test_login "An account from before #41 logs in with its MD5 and the old salt" "legacy@example.com" "legacypass"
@@ -434,8 +433,9 @@ run_fixture_tests() {
     test_admin_page "nor the lyrics form" "/pogoda-s7329/edytuj-tekst.html" "<textarea" '!class="adsbygoogle"'
     # A page with nothing of its own stays out of search engines' index and the sitemap (#243)
     test_page "A song with no lyrics and no credits asks not to be indexed (#243)" "/domowa-produkcja-s9102.html" 'name="robots" content="noindex,follow"'
-    test_page_absent "and the song sitemap leaves it out" "/sitemap-songs.xml" "-s9102.html<"
-    test_page "A song with credits is indexed" "/pogoda-s7329.html" 'name="robots" content="index,follow"'
+    test_page "A song with lyrics is indexed" "/pogoda-s7329.html" 'name="robots" content="index,follow"'
+    test_page "A song with credits alone asks not to be indexed (#301)" "/sam-bit-s9103.html" 'name="robots" content="noindex,follow"'
+    test_page "while one with a video and its credits is indexed" "/klip-bez-slow-s9104.html" 'name="robots" content="index,follow"'
     test_page_absent "A song without lyrics shows a visitor no pane for them (#302)" "/domowa-produkcja-s9102.html" 'id="lyrics"'
     test_admin_page "while someone logged in gets it, to add them" "/domowa-produkcja-s9102.html" 'id="lyrics"' 'id="edit-lyrics"'
     test_page "A song with lyrics shows them to a visitor" "/pogoda-s7329.html" 'id="lyrics"'
@@ -512,7 +512,6 @@ run_fixture_tests() {
     test_lastmod "An album whose publication nothing kept has no lastmod in the album sitemap (#221)" "/sitemap-albums.xml" "/pezet-jestem-hip-hopem-a1.html" ""
     test_not_found "A song on an unpublished album alone is a 404 too" "/szkic-numer-jeden-s9101.html" "Szkic Numer Jeden"
     test_page_absent "and the search does not find it" "/szukaj.html?q=Szkic+Numer" "-s9101.html"
-    test_page_absent "nor the song sitemap" "/sitemap-songs.xml" "-s9101.html<"
     test_page_absent "nor its artist's page" "/mes-p35.html" "Szkic Numer Jeden"
     test_page "An artist credited on that song alone asks not to be indexed (#276)" "/x-p2259.html" 'name="robots" content="noindex,follow"'
     test_page_absent "and the artist sitemap leaves it out" "/sitemap-artists.xml" "-p2259.html<"
@@ -1041,8 +1040,8 @@ run_tests() {
     test_page_absent "A visitor sees no sources paragraph on the about page (#158)" "/o-nas.html" "not affiliated with, sponsored or endorsed by Discogs"
     test_page "The album sitemap gives each album's canonical URL" "/sitemap-albums.xml" "/wdowa-superextra-a535.html</loc>"
     test_lastmod "and the day each was published, as its lastmod (#221)" "/sitemap-albums.xml" "/wdowa-superextra-a535.html" "2010-01-30"
-    test_page "The song sitemap gives canonical URLs" "/sitemap-songs.xml" "/pogoda-s7329.html</loc>"
-    test_lastmod "and the day the newest of a song's albums was published" "/sitemap-songs.xml" "/pogoda-s7329.html" "2010-01-30"
+    test_not_found "Songs have no sitemap (#301)" "/sitemap-songs.xml" "<urlset"
+    test_page_absent "and the sitemap index names none" "/sitemap-index.xml" "sitemap-songs"
     test_page "An album's page links its songs at their canonical address (#202)" "/wdowa-superextra-a535.html" 'href="/pogoda-s7329.html"'
     test_page_absent "never through the artist's slug, which redirects" "/wdowa-superextra-a535.html" 'href="/wdowa-pogoda-s7329.html"'
     test_redirect_301 "though that old form still leads to the song" "/wdowa-pogoda-s7329.html" "/pogoda-s7329.html"
@@ -1132,10 +1131,9 @@ run_tests() {
     test_page "llms.txt describes hhbd.pl (#217)" "/llms.txt" "^> Hhbd.pl, Hip-Hopowa Baza Danych, is a database of Polish hip-hop"
     test_header "as text" "/llms.txt" "^content-type: text/plain"
     test_sitemap "The sitemap index" "/sitemap-index.xml" sitemapindex
-    test_page "The sitemap index names the song sitemap at an absolute address" "/sitemap-index.xml" "<loc>${BASE_URL}/sitemap-songs.xml</loc>"
+    test_page "The sitemap index names the album sitemap at an absolute address" "/sitemap-index.xml" "<loc>${BASE_URL}/sitemap-albums.xml</loc>"
     test_sitemap "The album sitemap" "/sitemap-albums.xml" urlset
     test_sitemap "The artist sitemap" "/sitemap-artists.xml" urlset
-    test_sitemap "The song sitemap" "/sitemap-songs.xml" urlset
     test_sitemap "The label sitemap" "/sitemap-labels.xml" urlset
     test_sitemap "The news sitemap" "/sitemap-news.xml" urlset
     test_sitemap "The sitemap of the lists and rankings (#194)" "/sitemap-pages.xml" urlset

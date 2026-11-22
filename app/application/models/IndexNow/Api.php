@@ -39,22 +39,21 @@ class Model_IndexNow_Api extends Jkl_Model_Api
         return null === $this->_client ? null : $this->_client->key();
     }
 
-    /** A published album's page and its songs'; nothing for one a visitor cannot open */
+    /**
+     * A published album's page; nothing for one a visitor cannot open. Not its songs', which the
+     * sitemaps leave out too (#301).
+     */
     public function albumPaths($albumId)
     {
         if (!Model_Album_Api::getInstance()->isPublished($albumId)) {
             return array();
         }
-        $paths = array(Model_Album_Api::getInstance()->find($albumId)->getUrl());
-        foreach (Model_Song_Api::getInstance()->getTracklist($albumId)->items as $song) {
-            $paths[] = $song->getUrl();
-        }
-        return $paths;
+        return array(Model_Album_Api::getInstance()->find($albumId)->getUrl());
     }
 
     /**
      * The pages an applied import created or changed, from its report: each label's, each
-     * artist's with something to show, and each album's that is published, with its songs. An
+     * artist's with something to show, and each album's that is published. An
      * artist waiting for its album in the release queue (#258) has nothing to show yet.
      */
     public function importPaths(array $report)
@@ -78,8 +77,8 @@ class Model_IndexNow_Api extends Jkl_Model_Api
     }
 
     /**
-     * The pages a released album shows or changes (#258): its own and its songs', its artists'
-     * and its label's, where a new album now stands
+     * The pages a released album shows or changes (#258): its own, its artists' and its label's,
+     * where a new album now stands
      */
     public function releasePaths($albumId)
     {

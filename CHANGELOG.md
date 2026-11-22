@@ -15,12 +15,19 @@ which the note leaves out. The sections before, by version, stay as they were.
 ## 2026-11-22
 
 ### Changed
+- A song's page asks to be indexed only with its lyrics, or with a video and someone credited on
+  it (#301); a title with names alone carries `noindex,follow`, as a title with a video alone
+  has since #243.
 - A user's profile asks search engines not to index it, as logging in and registering do (#303):
   a nickname and its comments are nothing to find there.
 - A song without lyrics shows the pane for them only to someone logged in, who can add them, and
   has its facts as its meta description instead of an invitation to add them (#302).
 
 ### Removed
+- Songs have no sitemap any more, and IndexNow hears of no song's page (#301): most of the 12,700
+  in it were a title and the names their album's page shows, and Google left them out of its
+  index along with much of the rest. Their albums still link them, and `/sitemap-songs.xml` is a
+  404.
 - A song's page no longer has the "Wykorzystane sample" pane, which said on every song that we
   knew of no samples yet (#302); nobody records them.
 

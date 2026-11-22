@@ -107,6 +107,8 @@ INSERT INTO album_lookup (songid, albumid, disc, track, status) VALUES (30, 12, 
 INSERT INTO album_lookup (songid, albumid, disc, track, status) VALUES (30, 4, 1, 3, 999);
 INSERT INTO album_lookup (songid, albumid, disc, track, status) VALUES (9101, 779, 1, 1, 999);
 INSERT INTO album_lookup (songid, albumid, disc, track, status) VALUES (9102, 780, 1, 1, 999);
+INSERT INTO album_lookup (songid, albumid, disc, track, status) VALUES (9103, 780, 1, 2, 999);
+INSERT INTO album_lookup (songid, albumid, disc, track, status) VALUES (9104, 780, 1, 3, 999);
 
 -- album_merges
 
@@ -484,6 +486,8 @@ INSERT INTO migration_archive (id, version, table_name, action, row_data, added)
 
 -- music_lookup
 INSERT INTO music_lookup (songid, artistid, status) VALUES (1, 37, 999);
+INSERT INTO music_lookup (songid, artistid, status) VALUES (9103, 68, 999);
+INSERT INTO music_lookup (songid, artistid, status) VALUES (9104, 68, 999);
 
 -- news
 INSERT INTO news (id, news, title, expires, glyph, graph, viewed, addedby, added) VALUES (1, 'Pezet zapowiada nowy album na wiosnę. Fani nie mogą się doczekać!', 'Premiera nowego albumu Pezeta', NULL, '', 'test-news-001.jpg', 3000, NULL, '2024-02-01 12:00:00');
@@ -729,6 +733,8 @@ A my na ławce', 'http://www.youtube.com/v/M7lc1UVf-VE?version=3&f=videos&app=yo
 INSERT INTO songs (id, title, urlname, length, bpm, acapella, radio, instrumental, addedby, added, updatedby, updated, viewed, status, description, lyrics, youtube_url, youtube_url_flag) VALUES (9100, 'Bez albumu', '', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 999, NULL, '', NULL, 0);
 INSERT INTO songs (id, title, urlname, length, bpm, acapella, radio, instrumental, addedby, added, updatedby, updated, viewed, status, description, lyrics, youtube_url, youtube_url_flag) VALUES (9101, 'Szkic Numer Jeden', 'szkic-numer-jeden', NULL, NULL, NULL, NULL, NULL, 1100, LOCALTIMESTAMP(0), NULL, NULL, 0, 999, NULL, '', NULL, 0);
 INSERT INTO songs (id, title, urlname, length, bpm, acapella, radio, instrumental, addedby, added, updatedby, updated, viewed, status, description, lyrics, youtube_url, youtube_url_flag) VALUES (9102, 'Domowa Produkcja', 'domowa-produkcja', NULL, NULL, NULL, NULL, NULL, 1100, LOCALTIMESTAMP(0), NULL, NULL, 0, 999, NULL, '', NULL, 0);
+INSERT INTO songs (id, title, urlname, length, bpm, acapella, radio, instrumental, addedby, added, updatedby, updated, viewed, status, description, lyrics, youtube_url, youtube_url_flag) VALUES (9103, 'Sam Bit', 'sam-bit', NULL, NULL, NULL, NULL, NULL, 1100, '2016-03-18 12:00:00', NULL, NULL, 0, 999, NULL, '', NULL, 0);
+INSERT INTO songs (id, title, urlname, length, bpm, acapella, radio, instrumental, addedby, added, updatedby, updated, viewed, status, description, lyrics, youtube_url, youtube_url_flag) VALUES (9104, 'Klip Bez Słów', 'klip-bez-slow', NULL, NULL, NULL, NULL, NULL, 1100, '2016-03-18 12:00:00', NULL, NULL, 0, 999, NULL, '', 'https://www.youtube.com/watch?v=M7lc1UVf-VE', 0);
 
 -- submision_errors
 
@@ -792,7 +798,7 @@ SELECT pg_catalog.setval('searches_id_seq', 15, true);
 
 SELECT pg_catalog.setval('song_samples_id_seq', 1, false);
 
-SELECT pg_catalog.setval('songs_id_seq', 9102, true);
+SELECT pg_catalog.setval('songs_id_seq', 9104, true);
 
 SELECT pg_catalog.setval('submision_errors_id_seq', 1, false);
 

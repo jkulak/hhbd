@@ -20,15 +20,16 @@ class Model_Song_Api extends Jkl_Model_Api
     public const MINIMUM_LYRICS_LENGTH = 20;
 
     /**
-     * A song whose page has something of its own (#243): lyrics, or someone credited with its
-     * music, a guest verse or the scratches. A page with none of them, a title and perhaps a
-     * video, asks search engines not to index it and stays out of the sitemap; the condition
-     * is on the songs table aliased t1, for both.
+     * A song whose page is worth a search engine's index: its lyrics, or its video with someone
+     * credited with its music, a guest verse or the scratches. A title with names alone, which
+     * the album's page shows too, asks not to be indexed (#301), as a title with a video alone
+     * did since #243. The condition is on the songs table aliased t1.
      */
     public const HAS_CONTENT = "(t1.lyrics <> ''
-        OR EXISTS (SELECT 1 FROM music_lookup m WHERE m.songid = t1.id)
-        OR EXISTS (SELECT 1 FROM feature_lookup f WHERE f.songid = t1.id)
-        OR EXISTS (SELECT 1 FROM scratch_lookup x WHERE x.songid = t1.id))";
+        OR (t1.youtube_url <> ''
+            AND (EXISTS (SELECT 1 FROM music_lookup m WHERE m.songid = t1.id)
+                 OR EXISTS (SELECT 1 FROM feature_lookup f WHERE f.songid = t1.id)
+                 OR EXISTS (SELECT 1 FROM scratch_lookup x WHERE x.songid = t1.id))))";
 
     /**
      * A song a visitor is shown is on a published album with an artist: one on no such album
@@ -375,29 +376,6 @@ class Model_Song_Api extends Jkl_Model_Api
         */
 
         return $result->rowCount();
-    }
-
-    /**
-    * Returns list of most recent songs
-    * used for: sitemaps
-    **/
-    /**
-     * The songs that have a page, newest first, for the sitemap (#147). A song not shown (SHOWN)
-     * answers 404, so it is no address to hand a search engine. Each comes with the moment its
-     * page last gained an album, the newest of its albums' published, for its lastmod (#221):
-     * a join on the albums that show it, as SHOWN and a subquery a song cost the planner nearly
-     * twice as much, and past 500,000 PostgreSQL optimises a query with JIT first, for half a
-     * second (#276).
-     */
-    public function getSitemap($limit)
-    {
-        $query = 'SELECT t1.*, t1.id AS song_id, t1.title AS sng_title, s.published
-              FROM songs t1
-              JOIN (SELECT l.songid, max(al.published) AS published ' . self::SHOWN_ON . ' GROUP BY l.songid) s ON s.songid = t1.id
-              WHERE ' . self::HAS_CONTENT . '
-              ORDER BY t1.added DESC
-              LIMIT ' . intval($limit);
-        return $this->_getList($query);
     }
 
     /** The songs a visitor can open, those on a shown album, for the about page's figures (#218) */

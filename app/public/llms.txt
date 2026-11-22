@@ -30,5 +30,5 @@ Each album, artist, song and label has one page at one address, named in its `re
 
 ## Optional
 
-- [Sitemap index](https://hhbd.pl/sitemap-index.xml): every page above, one sitemap per kind
+- [Sitemap index](https://hhbd.pl/sitemap-index.xml): the albums, artists, labels, news and lists, one sitemap per kind; a song's page is linked from its albums
 - [About](https://hhbd.pl/o-nas.html)

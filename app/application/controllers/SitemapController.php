@@ -3,8 +3,8 @@
 /**
  * The sitemaps robots.txt names (#147): an index of the five, and one per kind of page. Each
  * address is absolute, as the protocol requires, and the canonical one its page names in
- * rel="canonical". An album's and a song's carry a lastmod, the day the page appeared (#221);
- * no other has one, as the rows' updated says when a row changed, not when its page did (a new
+ * rel="canonical". An album's carries a lastmod, the day the page appeared (#221); no other
+ * has one, as the rows' updated says when a row changed, not when its page did (a new
  * album changes its artist's page), and a date that is not true is worse than none.
  * Model_Sitemap_Api says which pages each lists.
  */

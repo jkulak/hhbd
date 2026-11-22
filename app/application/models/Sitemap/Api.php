@@ -6,21 +6,25 @@
  */
 class Model_Sitemap_Api extends Jkl_Model_Api
 {
-    /** The kinds of page with a sitemap, in the index's order */
-    public const KINDS = array('pages', 'albums', 'artists', 'news', 'songs', 'labels');
+    /**
+     * The kinds of page with a sitemap, in the index's order. Songs have none (#301): most are a
+     * title and the names the album's page shows, and the few worth an index are linked from
+     * their albums.
+     */
+    public const KINDS = array('pages', 'albums', 'artists', 'news', 'labels');
 
     /** The pages that list others: the lists, the years (#196) and the rankings over each period (#194) */
     public const PAGES = array('/', '/albumy.html', '/wykonawcy.html', '/wytwornie.html', '/premiery.html', '/top10.html');
 
-    /** The protocol's most for one file; hhbd has about 19,000 songs, the longest list */
+    /** The protocol's most for one file; the longest list, the artists, has about 4,500 */
     public const LIMIT = 50000;
 
     /**
      * The kinds whose entries say when their page appeared (#221): an album's when it was
-     * published, a song's when the newest of its albums was. Every other kind's rows keep no
-     * moment their page changed, so their entries have no lastmod.
+     * published. Every other kind's rows keep no moment their page changed, so their entries
+     * have no lastmod.
      */
-    public const DATED = array('albums', 'songs');
+    public const DATED = array('albums');
 
     private static $_instance;
 
@@ -59,9 +63,6 @@ class Model_Sitemap_Api extends Jkl_Model_Api
                 break;
             case 'artists':
                 $list = Model_Artist_Api::getInstance()->getSitemap(self::LIMIT);
-                break;
-            case 'songs':
-                $list = Model_Song_Api::getInstance()->getSitemap(self::LIMIT);
                 break;
             case 'labels':
                 $list = Model_Label_Api::getInstance()->getRecent(self::LIMIT);

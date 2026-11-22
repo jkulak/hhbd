@@ -78,8 +78,8 @@ class SongController extends Zend_Controller_Action
         Jkl_Canonical::redirectIfNeeded($this, $canonicalSlug);
 
         $this->view->Analytics()->page('song', $song->id, $song->albumArtist->name . ' - ' . $song->title);
-        // Without lyrics or credits a page is a title and perhaps a video: there for a visitor,
-        // kept out of search engines' index, as of the sitemap (#243)
+        // Without lyrics, or a video with its credits, a page is a title and names the album's
+        // page shows too: there for a visitor, kept out of search engines' index (#243, #301)
         if (!Model_Song_Api::getInstance()->hasContent($song->id)) {
             $this->view->headMeta()->setName('robots', 'noindex,follow');
         }
